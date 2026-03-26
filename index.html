@@ -75,20 +75,36 @@
 
         function preload(){
             var g = this.make.graphics();
-            g.fillStyle(0x3E2723);g.fillRect(16,30,12,45);g.fillStyle(0x1B5E20);g.fillCircle(22,30,28);g.fillCircle(12,25,20);g.fillCircle(32,25,18);g.generateTexture('tree',45,75);g.clear();
-            g.fillStyle(0x2E7D32);g.fillCircle(20,20,18);g.fillCircle(12,18,12);g.fillCircle(28,16,10);g.generateTexture('bush',40,40);g.clear();
-            g.fillStyle(0x424242);g.fillRect(0,55,100,15);g.fillStyle(0x795548);g.fillRect(5,15,90,40);g.fillStyle(0x5D4037);g.fillRect(0,10,100,8);g.fillStyle(0x81D4FA);g.fillRect(15,25,12,15);g.fillRect(65,25,12,15);g.fillStyle(0x3E2723);g.fillRect(42,35,16,20);g.generateTexture('building',100,70);g.clear();
-            g.fillStyle(0x5D4037);g.fillRect(0,0,4,30);g.fillRect(26,0,4,30);g.fillRect(52,0,4,30);g.fillRect(78,0,4,30);g.fillStyle(0x8D6E63);g.fillRect(4,4,22,4);g.fillRect(4,14,22,4);g.fillRect(30,4,22,4);g.fillRect(30,14,22,4);g.generateTexture('wall',100,30);g.clear();
-            g.fillStyle(0x3E2723);g.fillRect(2,25,46,20);g.fillStyle(0x5D4037);g.fillRect(0,20,50,8);g.fillStyle(0x3E2723);g.fillRect(5,30,15,15);g.generateTexture('shack',50,48);g.clear();
-            g.fillStyle(0x795548);g.fillRect(2,2,26,26);g.fillStyle(0x6D4C41);g.fillRect(0,0,30,4);g.fillRect(0,26,30,4);g.fillStyle(0x5D4037);g.fillRect(0,12,30,4);g.generateTexture('crate',30,30);g.clear();
-            g.fillStyle(0x1B5E20);g.fillRect(12,25,16,22);g.fillStyle(0x37474F);g.fillRect(13,45,5,18);g.fillRect(22,45,5,18);g.fillStyle(0xFFCCBC);g.fillCircle(20,14,10);g.fillStyle(0x3E2723);g.fillCircle(20,8,9);g.fillStyle(0x212121);g.fillRect(16,12,3,3);g.fillRect(21,12,3,3);g.generateTexture('survivor1',40,65);g.clear();
-            g.fillStyle(0x9C27B0);g.fillRect(14,25,12,25);g.fillStyle(0xFFCCBC);g.fillCircle(20,14,9);g.fillStyle(0xFF8F00);g.fillCircle(20,8,10);g.fillCircle(12,14,8);g.fillCircle(28,14,8);g.fillStyle(0x212121);g.fillCircle(17,13,2);g.fillCircle(23,13,2);g.fillStyle(0xFFCCBC);g.fillRect(15,48,3,15);g.fillRect(22,48,3,15);g.generateTexture('survivor2',40,65);g.clear();
-            g.fillStyle(0xD32F2F);g.fillRect(10,25,20,20);g.fillStyle(0x1565C0);g.fillRect(13,43,5,20);g.fillRect(22,43,5,20);g.fillStyle(0xD7CCC8);g.fillCircle(20,14,10);g.fillStyle(0x212121);g.fillCircle(20,7,10);g.fillRect(16,12,3,3);g.fillRect(21,12,3,3);g.fillStyle(0xFFD700);g.fillCircle(28,16,2);g.generateTexture('survivor3',40,65);g.clear();
-            g.fillStyle(0xFF9800);g.fillRect(12,24,16,22);g.fillStyle(0x5C6BC0);g.fillRect(14,42,12,10);g.fillStyle(0xFFCCBC);g.fillCircle(20,14,9);g.fillStyle(0x5D4037);g.fillCircle(20,7,9);g.fillCircle(30,10,6);g.fillStyle(0x212121);g.fillCircle(17,13,2);g.fillCircle(23,13,2);g.fillRect(15,54,3,12);g.fillRect(22,54,3,12);g.generateTexture('survivor4',40,65);g.clear();
-            g.fillStyle(0x212121);g.fillRect(10,25,20,30);g.fillStyle(0xB71C1C);g.fillRect(8,22,24,15);g.fillStyle(0x7f0000);g.fillCircle(15,32,4);g.fillCircle(25,35,3);g.fillStyle(0xD7CCC8);g.fillCircle(20,14,11);g.fillStyle(0x37474F);g.fillRect(10,8,20,14);g.fillStyle(0xFF0000);g.fillCircle(15,12,3);g.fillCircle(25,12,3);g.fillStyle(0x000000);g.fillRect(15,18,10,3);g.generateTexture('killer_m',40,70);g.clear();
-            g.fillStyle(0x616161);g.fillRect(0,0,40,30);g.fillStyle(0x424242);g.fillRect(2,2,20,26);g.fillStyle(0x00E676);g.fillRect(4,4,6,8);g.fillRect(12,4,6,8);g.fillStyle(0xF44336);g.fillCircle(35,15,5);g.generateTexture('generator',40,30);g.clear();
-            g.fillStyle(0x5D4037);g.fillRect(0,0,70,55);g.fillStyle(0x4E342E);g.fillRect(5,5,25,45);g.fillRect(40,5,25,45);g.fillStyle(0x3E2723);g.fillRect(3,0,8,10);g.fillRect(59,0,8,10);g.fillStyle(0xF44336);g.fillCircle(17,25,6);g.fillCircle(53,25,6);g.generateTexture('exit',70,55);g.clear();
-            g.fillStyle(0x3d6b1e);g.fillRect(0,0,32,32);g.fillStyle(0x4a7c23);g.fillCircle(8,8,4);g.fillCircle(24,20,3);g.generateTexture('ground',32,32);
+            
+            g.fillStyle(0x1B5E20);g.fillRect(10,40,25,35);g.fillStyle(0x2E7D32);g.fillCircle(22,40,20);g.fillCircle(12,35,12);g.fillCircle(32,35,10);g.fillStyle(0x3E2723);g.fillRect(18,70,8,5);g.fillStyle(0x5D4037);g.fillRect(8,60,12,15);g.fillRect(24,60,12,15);g.generateTexture('tree',45,85);g.clear();
+            
+            g.fillStyle(0x388E3C);g.fillCircle(20,20,18);g.fillStyle(0x2E7D32);g.fillCircle(10,18,10);g.fillCircle(30,16,10);g.fillStyle(0x1B5E20);g.fillCircle(20,25,6);g.generateTexture('bush',40,40);g.clear();
+            
+            g.fillStyle(0x4E342E);g.fillRect(0,55,100,15);g.fillStyle(0x6D4C41);g.fillRect(5,15,90,40);g.fillStyle(0x5D4037);g.fillRect(0,10,100,8);g.fillStyle(0x81D4FA);g.fillRect(15,25,12,15);g.fillRect(65,25,12,15);g.fillStyle(0x3E2723);g.fillRect(42,35,16,20);g.fillStyle(0xFFEB3B);g.fillRect(20,30,8,10);g.fillRect(70,30,8,10);g.generateTexture('building',100,70);g.clear();
+            
+            g.fillStyle(0x5D4037);g.fillRect(0,0,4,30);g.fillRect(26,0,4,30);g.fillRect(52,0,4,30);g.fillRect(78,0,4,30);g.fillStyle(0x8D6E63);g.fillRect(4,4,22,4);g.fillRect(4,14,22,4);g.fillRect(30,4,22,4);g.fillRect(30,14,22,4);g.fillStyle(0x6D4C41);g.fillRect(10,20,10,10);g.fillRect(60,20,10,10);g.generateTexture('wall',100,30);g.clear();
+            
+            g.fillStyle(0x4E342E);g.fillRect(2,25,46,20);g.fillStyle(0x5D4037);g.fillRect(0,20,50,8);g.fillStyle(0x6D4C41);g.fillRect(5,30,15,10);g.fillStyle(0x3E2723);g.fillRect(35,30,10,15);g.fillStyle(0xFFA726);g.fillRect(20,20,10,10);g.generateTexture('shack',50,48);g.clear();
+            
+            g.fillStyle(0x795548);g.fillRect(2,2,26,26);g.fillStyle(0x6D4C41);g.fillRect(0,0,30,4);g.fillRect(0,26,30,4);g.fillStyle(0x5D4037);g.fillRect(0,12,30,4);g.fillStyle(0x4E342E);g.fillRect(8,8,14,10);g.generateTexture('crate',30,30);g.clear();
+            
+            g.fillStyle(0xD32F2F);g.fillRect(10,28,20,25);g.fillStyle(0x1976D2);g.fillRect(10,53,8,12);g.fillRect(22,53,8,12);g.fillStyle(0xFFCCBC);g.fillCircle(20,16,11);g.fillStyle(0xFFAB91);g.fillCircle(16,14,3);g.fillCircle(24,14,3);g.fillStyle(0x5D4037);g.fillCircle(20,10,11);g.fillStyle(0x212121);g.fillRect(16,9,3,3);g.fillRect(21,9,3,3);g.fillStyle(0xFFFFFF);g.fillRect(18,12,4,2);g.generateTexture('survivor1',40,65);g.clear();
+            
+            g.fillStyle(0x7B1FA2);g.fillRect(12,28,16,25);g.fillStyle(0x4A148C);g.fillRect(12,53,16,12);g.fillStyle(0xFFCCBC);g.fillCircle(20,16,10);g.fillStyle(0xFF8F00);g.fillCircle(20,10,10);g.fillStyle(0xFF6F00);g.fillCircle(14,14,5);g.fillCircle(26,14,5);g.fillStyle(0x212121);g.fillCircle(17,14,2);g.fillCircle(23,14,2);g.fillStyle(0xFFECB3);g.fillCircle(20,8,3);g.generateTexture('survivor2',40,65);g.clear();
+            
+            g.fillStyle(0x388E3C);g.fillRect(10,28,20,25);g.fillStyle(0x1565C0);g.fillRect(10,53,8,12);g.fillRect(22,53,8,12);g.fillStyle(0xD7CCC8);g.fillCircle(20,16,11);g.fillStyle(0x424242);g.fillCircle(20,8,11);g.fillStyle(0x212121);g.fillRect(16,7,3,2);g.fillRect(21,7,3,2);g.fillStyle(0xFFD700);g.fillCircle(28,12,4);g.generateTexture('survivor3',40,65);g.clear();
+            
+            g.fillStyle(0xFF5722);g.fillRect(12,28,16,25);g.fillStyle(0x3F51B5);g.fillRect(12,53,16,12);g.fillStyle(0xFFCCBC);g.fillCircle(20,16,10);g.fillStyle(0x8D6E63);g.fillCircle(20,9,10);g.fillStyle(0x6D4C41);g.fillCircle(12,14,4);g.fillCircle(28,14,4);g.fillStyle(0x212121);g.fillCircle(17,14,2);g.fillCircle(23,14,2);g.fillStyle(0xE91E63);g.fillRect(15,22,10,6);g.generateTexture('survivor4',40,65);g.clear();
+            
+            g.fillStyle(0x212121);g.fillRect(8,28,24,30);g.fillStyle(0xB71C1C);g.fillRect(5,24,30,18);g.fillStyle(0x7f0000);g.fillCircle(12,35,5);g.fillCircle(20,38,4);g.fillCircle(28,35,5);g.fillStyle(0xD7CCC8);g.fillCircle(20,14,12);g.fillStyle(0x37474F);g.fillRect(8,6,24,18);g.fillStyle(0xFF1744);g.fillCircle(14,10,4);g.fillCircle(26,10,4);g.fillStyle(0x000000);g.fillRect(15,18,10,4);g.fillStyle(0xFFFFFF);g.fillCircle(17,16,2);g.fillCircle(23,16,2);g.generateTexture('killer_m',40,70);g.clear();
+            
+            g.fillStyle(0x546E7A);g.fillRect(2,2,36,26);g.fillStyle(0x37474F);g.fillRect(4,4,14,10);g.fillRect(22,4,14,10);g.fillStyle(0x00E676);g.fillRect(6,6,5,6);g.fillRect(24,6,5,6);g.fillStyle(0xF44336);g.fillCircle(18,15,8);g.fillStyle(0xFFFFFF);g.fillCircle(18,15,4);g.generateTexture('generator',40,30);g.clear();
+            
+            g.fillStyle(0x4E342E);g.fillRect(0,0,70,55);g.fillStyle(0x3E2723);g.fillRect(5,5,25,45);g.fillRect(40,5,25,45);g.fillStyle(0x2E1B15);g.fillRect(3,0,8,10);g.fillRect(59,0,8,10);g.fillStyle(0xF44336);g.fillCircle(17,25,8);g.fillCircle(53,25,8);g.fillStyle(0x212121);g.fillRect(30,35,10,15);g.fillStyle(0x4CAF50);g.fillRect(15,15,40,20);g.generateTexture('exit',70,55);g.clear();
+            
+            g.fillStyle(0x2E7D32);g.fillRect(0,0,32,32);g.fillStyle(0x388E3C);g.fillCircle(8,8,5);g.fillCircle(24,20,4);g.fillCircle(16,28,3);g.fillStyle(0x1B5E20);g.fillCircle(12,16,3);g.generateTexture('ground',32,32);g.clear();
+            
+            g.fillStyle(0x424242);g.fillCircle(15,15,12);g.fillStyle(0x616161);g.fillCircle(15,15,8);g.fillStyle(0x757575);g.fillCircle(15,15,4);g.generateTexture('hook',30,30);g.clear();
         }
 
         function create(){
@@ -108,24 +124,49 @@
             
             this.colliders = [];
             var builds = [{x:200,y:200},{x:900,y:200},{x:200,y:600},{x:900,y:600},{x:550,y:400}];
-            builds.forEach(function(b){var bl = this.add.image(b.x, b.y, 'building');bl.setDepth(b.y);this.colliders.push(bl);}, this);
+            builds.forEach(function(b){
+                var bl = this.add.image(b.x, b.y, 'building');
+                bl.setDepth(b.y);
+                this.colliders.push(bl);
+            }, this);
             
             var shacks = [{x:100,y:400},{x:1050,y:300},{x:350,y:650},{x:800,y:100}];
-            shacks.forEach(function(s){var sh = this.add.image(s.x, s.y, 'shack');sh.setDepth(s.y);this.colliders.push(sh);}, this);
+            shacks.forEach(function(s){
+                var sh = this.add.image(s.x, s.y, 'shack');
+                sh.setDepth(s.y);
+                this.colliders.push(sh);
+            }, this);
             
             var fences = [{x:300,y:150},{x:850,y:350},{x:150,y:500},{x:1000,y:650}];
-            fences.forEach(function(f){var fe = this.add.image(f.x, f.y, 'wall');fe.setDepth(f.y);this.colliders.push(fe);}, this);
+            fences.forEach(function(f){
+                var fe = this.add.image(f.x, f.y, 'wall');
+                fe.setDepth(f.y);
+                this.colliders.push(fe);
+            }, this);
             
             var crates = [{x:280,y:350},{x:920,y:500},{x:400,y:200},{x:750,y:650}];
-            crates.forEach(function(c){var cr = this.add.image(c.x, c.y, 'crate');cr.setDepth(c.y);this.colliders.push(cr);}, this);
+            crates.forEach(function(c){
+                var cr = this.add.image(c.x, c.y, 'crate');
+                cr.setDepth(c.y);
+                this.colliders.push(cr);
+            }, this);
             
-            var group = this.physics.add.group(this.colliders);
+            var group = this.physics.add.group();
+            this.colliders.forEach(function(obj){
+                obj.body = obj.body || {};
+                obj.body.immovable = true;
+                group.add(obj);
+            });
+            group.setImmovable(true);
+            
+            this.physics.add.collider(player, group);
             
             var genPos = [{x:150,y:150},{x:1050,y:150},{x:600,y:350},{x:150,y:750},{x:1050,y:750}];
             genPos.forEach(function(p){
                 var gen = this.add.sprite(p.x, p.y, 'generator');
                 gen.progress = 0;
                 gen.repaired = false;
+                gen.beingRepaired = false;
                 var bar = this.add.graphics();
                 bar.x = p.x - 20;
                 bar.y = p.y - 20;
@@ -134,11 +175,24 @@
                 light.setAlpha(0);
                 light.setDepth(p.y + 1);
                 gen.light = light;
+                this.physics.add.existing(gen);
+                gen.body.setImmovable(true);
+                gen.body.setCollideWorldBounds(false);
                 generators.push(gen);
             }, this);
             
             this.exit = this.add.sprite(1150, 450, 'exit');
             this.exit.setTint(0x440000);
+            
+            var hookPositions = [{x:350,y:250},{x:800,y:250},{x:350,y:650},{x:800,y:650},{x:575,y:450}];
+            this.hooks = [];
+            hookPositions.forEach(function(hp){
+                var hook = this.add.sprite(hp.x, hp.y, 'hook');
+                hook.setTint(0x888888);
+                hook.setScale(1.2);
+                hook.occupied = false;
+                this.hooks.push(hook);
+            }, this);
             
             player = isKiller ? this.add.sprite(600, 450, 'killer_m') : this.add.sprite(150, 150, 'survivor1');
             this.physics.add.existing(player);
@@ -154,6 +208,8 @@
                 sp.forEach(function(p, i){
                     var s = this.add.sprite(p.x, p.y, st[i]);
                     s.alive = true;
+                    s.dying = false;
+                    s.hooked = false;
                     this.physics.add.existing(s);
                     s.body.setCollideWorldBounds(false);
                     s.setDepth(p.y);
@@ -177,12 +233,137 @@
             var spd = isKiller ? CONFIG.KILLER_SPEED : CONFIG.PLAYER_SPEED;
             player.body.setVelocity(vec.x * spd, vec.y * spd);
             
+            if(isKiller && isActionPressed()){
+                this.survivors.forEach(function(s){
+                    if(s.alive && !s.dying){
+                        var d = Phaser.Math.Distance.Between(player.x, player.y, s.x, s.y);
+                        if(d < 50){
+                            s.alive = false;
+                            s.dying = true;
+                            s.setTint(0x888888);
+                            UI.showToast('Выживший сбит! Отнеси на крюк!');
+                        }
+                    } else if(s.dying && !s.hooked){
+                        var d = Phaser.Math.Distance.Between(player.x, player.y, s.x, s.y);
+                        if(d < 50 && Math.abs(vec.x) < 0.3 && Math.abs(vec.y) < 0.3){
+                            var hook = this.hooks.find(function(h){ return !h.occupied; });
+                            if(hook){
+                                s.x = hook.x;
+                                s.y = hook.y;
+                                s.hooked = true;
+                                hook.occupied = true;
+                                hook.setTint(0xff0000);
+                                UI.showToast('Выживший повешен!');
+                                survivorsLeft--;
+                            }
+                        }
+                    }
+                }, this);
+                
+                generators.forEach(function(gen){
+                    var d = Phaser.Math.Distance.Between(player.x, player.y, gen.x, gen.y);
+                    if(d < 50 && gen.progress > 0){
+                        gen.progress = 0;
+                        gen.bar.clear();
+                        gen.setTint(0x444444);
+                        UI.showToast('Генератор сломан!');
+                    } else if(d < 50 && !gen.repaired){
+                        gen.beingRepaired = true;
+                    }
+                });
+            } else if(isKiller) {
+                generators.forEach(function(gen){
+                    gen.beingRepaired = false;
+                });
+            }
+            
             if(isKiller && this.survivors){
                 this.survivors.forEach(function(s){
                     if(s.alive){
                         if(Math.random() < 0.02){
                             s.body.setVelocity((Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60);
                         }
+                        var d = Phaser.Math.Distance.Between(s.x, s.y, player.x, player.y);
+                        if(d < 150){
+                            var a = Phaser.Math.Angle.Between(s.x, s.y, player.x, player.y);
+                            s.body.setVelocity(Math.cos(a) * 80, Math.sin(a) * 80);
+                        }
+                    } else if(s.dying && !s.hooked && !isActionPressed()){
+                        s.body.setVelocity(0, 0);
+                    }
+                });
+            }
+            
+            if(!isKiller){
+                var nearGenerator = false;
+                if(isActionPressed()){
+                    generators.forEach(function(gen){
+                        if(!gen.repaired){
+                            var d = Phaser.Math.Distance.Between(player.x, player.y, gen.x, gen.y);
+                            if(d < 50){
+                                nearGenerator = true;
+                                gen.progress += dt / 100;
+                                gen.bar.clear();
+                                gen.bar.fillStyle(0x000000, 0.7);
+                                gen.bar.fillRect(-20, -20, 40, 6);
+                                gen.bar.fillStyle(0xffff00);
+                                gen.bar.fillRect(-19, -19, 38 * (gen.progress / 100), 4);
+                                if(gen.progress >= 100){
+                                    gen.repaired = true;
+                                    gen.light.setAlpha(1);
+                                    gen.setTint(0x00ff00);
+                                    UI.showToast('Генератор починен!');
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                if(nearGenerator){
+                    player.body.setVelocity(0, 0);
+                }
+                
+                var rep = generators.filter(function(g){ return g.repaired; }).length;
+                if(rep >= CONFIG.GENERATOR_COUNT && !exitOpen){
+                    exitOpen = true;
+                    this.exit.setTint(0x00ff00);
+                    UI.showToast('ВЫХОД ОТКРЫТ!');
+                }
+                
+                if(exitOpen){
+                    var d = Phaser.Math.Distance.Between(player.x, player.y, this.exit.x, this.exit.y);
+                    if(d < 50){
+                        UI.showGameOver(true);
+                        stopGame();
+                        return;
+                    }
+                }
+            }
+            
+            if(isKiller && catchCooldown > 0) catchCooldown -= dt / 1000;
+            
+            if(isKiller && this.survivors){
+                var allDead = this.survivors.every(function(s){ return s.hooked; });
+                if(allDead && this.survivors.length > 0){
+                    UI.showGameOver(false);
+                    stopGame();
+                    return;
+                }
+            }
+            
+            player.setDepth(player.y + 1000);
+            
+            var rep = generators.filter(function(g){ return g.repaired; }).length;
+            var roleEl = document.getElementById('player-role');
+            var genEl = document.getElementById('gen-count');
+            var exitEl = document.getElementById('exit-state');
+            var aliveEl = document.getElementById('alive-count');
+            
+            if(roleEl) roleEl.textContent = isKiller ? 'Убийца' : 'Выживший';
+            if(genEl) genEl.textContent = rep + '/5';
+            if(exitEl) exitEl.textContent = exitOpen ? 'открыт' : 'закрыт';
+            if(aliveEl) aliveEl.textContent = 'Выжившие: ' + survivorsLeft;
+        }
                         var d = Phaser.Math.Distance.Between(s.x, s.y, player.x, player.y);
                         if(d < 150){
                             var a = Phaser.Math.Angle.Between(s.x, s.y, player.x, player.y);
@@ -295,6 +476,7 @@
             var knob = joystickInner.firstChild;
             var touching = false;
             var maxDist = 45;
+            var joystickId = null;
             
             function updateJoystick(clientX, clientY){
                 var rect = joystickInner.getBoundingClientRect();
@@ -311,37 +493,38 @@
             
             joystick.addEventListener('touchstart', function(e){
                 e.preventDefault();
+                e.stopPropagation();
                 touching = true;
+                joystickId = e.changedTouches[0].identifier;
                 updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
             }, {passive: false});
             
             joystick.addEventListener('touchmove', function(e){
                 e.preventDefault();
+                e.stopPropagation();
                 if(touching){
-                    updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+                    for(var i = 0; i < e.changedTouches.length; i++){
+                        if(e.changedTouches[i].identifier === joystickId){
+                            updateJoystick(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+                            break;
+                        }
+                    }
                 }
             }, {passive: false});
             
-            joystick.addEventListener('touchend', function(){
+            joystick.addEventListener('touchend', function(e){
+                e.preventDefault();
+                e.stopPropagation();
                 touching = false;
+                joystickId = null;
                 inputVector.x = 0;
                 inputVector.y = 0;
                 knob.style.transform = 'translate(-50%,-50%)';
             });
             
-            joystick.addEventListener('mousedown', function(e){
-                touching = true;
-                updateJoystick(e.clientX, e.clientY);
-            });
-            
-            document.addEventListener('mousemove', function(e){
-                if(touching){
-                    updateJoystick(e.clientX, e.clientY);
-                }
-            });
-            
-            document.addEventListener('mouseup', function(){
+            joystick.addEventListener('touchcancel', function(){
                 touching = false;
+                joystickId = null;
                 inputVector.x = 0;
                 inputVector.y = 0;
                 knob.style.transform = 'translate(-50%,-50%)';
@@ -349,21 +532,19 @@
             
             actionBtn.addEventListener('touchstart', function(e){
                 e.preventDefault();
+                e.stopPropagation();
                 actionPressed = true;
                 actionBtn.style.transform = 'scale(0.95)';
             }, {passive: false});
             
-            actionBtn.addEventListener('touchend', function(){
+            actionBtn.addEventListener('touchend', function(e){
+                e.preventDefault();
+                e.stopPropagation();
                 actionPressed = false;
                 actionBtn.style.transform = 'scale(1)';
             });
             
-            actionBtn.addEventListener('mousedown', function(){
-                actionPressed = true;
-                actionBtn.style.transform = 'scale(0.95)';
-            });
-            
-            actionBtn.addEventListener('mouseup', function(){
+            actionBtn.addEventListener('touchcancel', function(){
                 actionPressed = false;
                 actionBtn.style.transform = 'scale(1)';
             });
