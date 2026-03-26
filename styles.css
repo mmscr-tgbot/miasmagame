@@ -42,6 +42,10 @@ html, body {
     display: flex;
 }
 
+#loading-screen.active {
+    display: flex;
+}
+
 h1 {
     font-size: 28px;
     color: #ff3333;
