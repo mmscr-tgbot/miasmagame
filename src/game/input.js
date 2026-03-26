@@ -3,8 +3,10 @@ const Input = {
     actionPressed: false,
     joystick: null,
     actionBtn: null,
+    gameScene: null,
     
-    init() {
+    init(scene) {
+        this.gameScene = scene;
         this.createJoystick();
         this.createActionButton();
     },
@@ -14,15 +16,13 @@ const Input = {
         
         const zone = document.createElement('div');
         zone.id = 'joystick-zone';
-        zone.style.cssText = 'position: fixed; bottom: 30px; left: 30px; width: 100px; height: 100px; z-index: 100;';
+        zone.style.cssText = 'position: fixed; bottom: 30px; left: 30px; width: 110px; height: 110px; z-index: 200; touch-action: none;';
         
         const base = document.createElement('div');
-        base.id = 'joystick-base';
-        base.style.cssText = 'width: 100%; height: 100%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; position: relative;';
+        base.style.cssText = 'width: 100%; height: 100%; background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.4); border-radius: 50%; position: relative;';
         
         const stick = document.createElement('div');
-        stick.id = 'joystick-stick';
-        stick.style.cssText = 'width: 40px; height: 40px; background: rgba(255,50,50,0.8); border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);';
+        stick.style.cssText = 'width: 45px; height: 45px; background: rgba(255,50,50,0.9); border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(255,50,50,0.5);';
         
         base.appendChild(stick);
         zone.appendChild(base);
@@ -30,14 +30,16 @@ const Input = {
         this.joystick = { zone, base, stick };
         
         let touching = false;
-        const maxDist = 40;
+        const maxDist = 45;
         
         const updateJoystick = (cx, cy) => {
             const rect = base.getBoundingClientRect();
-            const dx = cx - (rect.left + rect.width/2);
-            const dy = cy - (rect.top + rect.height/2);
+            const cx2 = rect.left + rect.width / 2;
+            const cy2 = rect.top + rect.height / 2;
+            let dx = cx - cx2;
+            let dy = cy - cy2;
             
-            const dist = Math.sqrt(dx*dx + dy*dy);
+            const dist = Math.sqrt(dx * dx + dy * dy);
             const limitedDist = Math.min(dist, maxDist);
             const angle = Math.atan2(dy, dx);
             
@@ -50,24 +52,31 @@ const Input = {
             this.vector.y = ny;
         };
         
-        zone.addEventListener('touchstart', e => {
-            e.preventDefault();
-            touching = true;
-            updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
-        }, {passive: false});
-        
-        zone.addEventListener('touchmove', e => {
-            e.preventDefault();
-            if (touching) {
-                updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
-            }
-        }, {passive: false});
-        
-        zone.addEventListener('touchend', () => {
+        const resetJoystick = () => {
             touching = false;
             stick.style.transform = 'translate(-50%, -50%)';
             this.vector.x = 0;
             this.vector.y = 0;
+        };
+        
+        zone.addEventListener('touchstart', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            touching = true;
+            updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+        
+        zone.addEventListener('touchmove', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (touching) {
+                updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, { passive: false });
+        
+        zone.addEventListener('touchend', e => {
+            e.preventDefault();
+            resetJoystick();
         });
         
         zone.addEventListener('mousedown', e => {
@@ -79,43 +88,30 @@ const Input = {
             if (touching) updateJoystick(e.clientX, e.clientY);
         });
         
-        document.addEventListener('mouseup', () => {
-            touching = false;
-            stick.style.transform = 'translate(-50%, -50%)';
-            this.vector.x = 0;
-            this.vector.y = 0;
-        });
+        document.addEventListener('mouseup', resetJoystick);
     },
     
     createActionButton() {
         if (this.actionBtn) return;
         
         const btn = document.createElement('div');
-        btn.id = 'action-btn';
         btn.textContent = 'ДЕЙСТВИЕ';
-        btn.style.cssText = 'position: fixed; bottom: 50px; right: 30px; width: 70px; height: 70px; border-radius: 50%; background: rgba(255,50,50,0.8); border: 2px solid rgba(255,255,255,0.5); color: #fff; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 100; text-align: center; padding: 5px;';
+        btn.style.cssText = 'position: fixed; bottom: 50px; right: 30px; width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #ff6600, #ff3300); border: 3px solid rgba(255,255,255,0.5); color: #fff; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 200; touch-action: none; box-shadow: 0 0 15px rgba(255,50,0,0.5);';
         
-        btn.addEventListener('touchstart', e => {
-            e.preventDefault();
+        const press = () => {
             this.actionPressed = true;
-            btn.style.background = 'rgba(255,50,50,1)';
-        }, {passive: false});
+            btn.style.transform = 'scale(0.95)';
+        };
         
-        btn.addEventListener('touchend', e => {
-            e.preventDefault();
+        const release = () => {
             this.actionPressed = false;
-            btn.style.background = 'rgba(255,50,50,0.8)';
-        });
+            btn.style.transform = 'scale(1)';
+        };
         
-        btn.addEventListener('mousedown', () => {
-            this.actionPressed = true;
-            btn.style.background = 'rgba(255,50,50,1)';
-        });
-        
-        btn.addEventListener('mouseup', () => {
-            this.actionPressed = false;
-            btn.style.background = 'rgba(255,50,50,0.8)';
-        });
+        btn.addEventListener('touchstart', e => { e.preventDefault(); press(); }, { passive: false });
+        btn.addEventListener('touchend', e => { e.preventDefault(); release(); });
+        btn.addEventListener('mousedown', press);
+        btn.addEventListener('mouseup', release);
         
         document.body.appendChild(btn);
         this.actionBtn = btn;
@@ -127,5 +123,27 @@ const Input = {
     
     isActionPressed() {
         return this.actionPressed;
+    },
+    
+    destroy() {
+        if (this.joystick && this.joystick.zone) {
+            this.joystick.zone.remove();
+            this.joystick = null;
+        }
+        if (this.actionBtn) {
+            this.actionBtn.remove();
+            this.actionBtn = null;
+        }
     }
 };
+
+function initApp() {
+    if (window.Telegram && Telegram.WebApp) {
+        try {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        } catch(e) {}
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
