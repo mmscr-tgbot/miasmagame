@@ -1,4 +1,15 @@
 let firebaseReady = false;
+let firebaseApp = null;
+
+async function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
 
 async function initApp() {
     console.log('Инициализация приложения...');
@@ -6,19 +17,25 @@ async function initApp() {
     UI.init();
     UI.showScreen('loading');
     
-    if (typeof firebase !== 'undefined' && firebaseConfig) {
-        try {
-            firebase.initializeApp(firebaseConfig);
+    try {
+        await Promise.all([
+            loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js'),
+            loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js'),
+            loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js')
+        ]);
+        
+        if (typeof firebase !== 'undefined' && firebaseConfig) {
+            firebaseApp = firebase.initializeApp(firebaseConfig);
             await initFirebaseAuth();
             await initFirebaseDB();
             firebaseReady = true;
             console.log('Firebase готов');
-        } catch (e) {
-            console.error('Ошибка Firebase:', e);
-            UI.showToast('Ошибка подключения');
+        } else {
+            throw new Error('Firebase не определён');
         }
-    } else {
-        console.error('Firebase не загружен');
+    } catch (e) {
+        console.error('Ошибка Firebase:', e);
+        UI.showToast('Ошибка подключения');
     }
     
     initTelegramWebApp();
