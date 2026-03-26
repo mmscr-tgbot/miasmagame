@@ -1,30 +1,31 @@
-function initApp() {
+window.initApp = function() {
     console.log('Miasma Massacre starting...');
     
-    const loadingText = document.querySelector('#loading-screen p');
-    if (loadingText) loadingText.textContent = 'Загрузка...';
-    
-    function checkPhaser() {
+    var checkCount = 0;
+    function checkReady() {
+        checkCount++;
         if (typeof Phaser !== 'undefined') {
-            console.log('Phaser loaded!');
-            setTimeout(() => {
-                document.getElementById('loading-screen').style.display = 'none';
-                document.getElementById('main-menu').style.display = 'flex';
-            }, 500);
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'flex';
+            console.log('Ready!');
+            return;
+        }
+        if (checkCount < 50) {
+            setTimeout(checkReady, 200);
         } else {
-            console.log('Waiting for Phaser...');
-            setTimeout(checkPhaser, 100);
+            document.querySelector('#loading-screen p').textContent = 'Ошибка загрузки';
         }
     }
+    checkReady();
     
-    setTimeout(checkPhaser, 500);
-    
-    if (window.Telegram && Telegram.WebApp) {
-        try {
-            Telegram.WebApp.ready();
-            Telegram.WebApp.expand();
-        } catch(e) {}
-    }
-}
+    var tgScript = document.createElement('script');
+    tgScript.src = 'https://telegram.org/js/telegram-web-app.js';
+    tgScript.onload = function() {
+        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
+            try { Telegram.WebApp.ready(); Telegram.WebApp.expand(); } catch(e) {}
+        }
+    };
+    document.head.appendChild(tgScript);
+};
 
-document.addEventListener('DOMContentLoaded', initApp);
+document.addEventListener('DOMContentLoaded', window.initApp);
