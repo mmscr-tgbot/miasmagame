@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
     <title>Miasma Massacre</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -15,79 +14,33 @@
         <div id="loading-screen" class="screen active">
             <div class="loader"></div>
             <p>Загрузка...</p>
-            <p id="loading-status"></p>
         </div>
         
         <div id="main-menu" class="screen">
             <h1>Miasma Massacre</h1>
             <div class="menu-buttons">
-                <button id="btn-create-room" class="btn primary">Создать комнату</button>
-                <button id="btn-join-room" class="btn secondary">Присоединиться</button>
+                <button id="btn-single" class="btn primary">Играть (Solo)</button>
+                <button id="btn-multi" class="btn secondary" disabled>Мультиплеер (скоро)</button>
             </div>
             <div class="version">v1.0.0</div>
         </div>
         
-        <div id="create-room" class="screen">
-            <h2>Создать комнату</h2>
-            <div class="form-group">
-                <input type="text" id="room-name" placeholder="Название комнаты" maxlength="20">
-            </div>
-            <div class="room-settings">
-                <label>
-                    <span>Макс. игроков:</span>
-                    <select id="max-players">
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4" selected>4</option>
-                    </select>
-                </label>
-            </div>
-            <div class="buttons">
-                <button id="btn-create" class="btn primary">Создать</button>
-                <button id="btn-back-create" class="btn secondary">Назад</button>
-            </div>
-        </div>
-        
-        <div id="join-room" class="screen">
-            <h2>Присоединиться</h2>
-            <div class="form-group">
-                <input type="text" id="join-code" placeholder="Код комнаты" maxlength="8">
-            </div>
-            <div class="buttons">
-                <button id="btn-join" class="btn primary">Войти</button>
-                <button id="btn-back-join" class="btn secondary">Назад</button>
-            </div>
-        </div>
-        
-        <div id="lobby" class="screen">
-            <div class="lobby-header">
-                <h2 id="lobby-title">Комната</h2>
-                <div class="room-code">Код: <span id="display-room-code">---</span></div>
-            </div>
-            <div class="players-list" id="players-list">
-                <div class="player-slot empty">Ожидание игрока...</div>
-            </div>
-            <div class="lobby-status" id="lobby-status">Ожидание игроков...</div>
-            <div class="lobby-actions">
-                <button id="btn-start" class="btn primary" disabled>Начать игру</button>
-                <button id="btn-leave" class="btn danger">Выйти</button>
+        <div id="role-select" class="screen">
+            <h2>Выбери роль</h2>
+            <div class="menu-buttons">
+                <button id="btn-play-killer" class="btn primary">Убийца</button>
+                <button id="btn-play-survivor" class="btn secondary">Выживший</button>
             </div>
         </div>
         
         <div id="game-screen" class="screen">
             <div id="game-container"></div>
             <div id="hud">
-                <div id="role-indicator" class="hidden">Роль: <span id="player-role">---</span></div>
-                <div id="generators-info" class="hidden">
-                    <span>Генераторы: </span>
-                    <span id="gen-count">0/5</span>
-                </div>
-                <div id="exit-status" class="hidden">
-                    <span>Выход: </span>
-                    <span id="exit-state">закрыт</span>
-                </div>
+                <div id="role-indicator">Роль: <span id="player-role">---</span></div>
+                <div id="generators-info">Генераторы: <span id="gen-count">0/5</span></div>
+                <div id="exit-status">Выход: <span id="exit-state">закрыт</span></div>
             </div>
-            <div id="player-list-hud" class="hidden">
+            <div id="player-list-hud">
                 <div id="alive-count">Выжившие: 4/4</div>
             </div>
         </div>
@@ -101,15 +54,8 @@
     
     <div id="toast" class="hidden"></div>
     
-    <script src="src/firebase/config.js"></script>
-    <script src="src/firebase/auth.js"></script>
-    <script src="src/firebase/database.js"></script>
-    <script src="src/ui/ui.js"></script>
     <script src="src/game/game.js"></script>
     <script src="src/game/input.js"></script>
-    <script src="src/game/player.js"></script>
-    <script src="src/game/generator.js"></script>
-    <script src="src/game/room.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

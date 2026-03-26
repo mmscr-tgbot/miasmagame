@@ -1,135 +1,131 @@
 const Input = {
-    joystick: null,
-    joystickBase: null,
-    joystickStick: null,
-    joystickZone: null,
-    actionButton: null,
-    isActionPressed: false,
     vector: { x: 0, y: 0 },
-    angle: 0,
-    active: false,
-    gameScene: null,
+    actionPressed: false,
+    joystick: null,
+    actionBtn: null,
     
-    init(gameScene) {
-        this.gameScene = gameScene;
+    init() {
         this.createJoystick();
         this.createActionButton();
     },
     
     createJoystick() {
-        this.joystickZone = document.createElement('div');
-        this.joystickZone.className = 'joystick-zone';
-        this.joystickZone.style.cssText = 'position: fixed; bottom: 30px; left: 30px; width: 100px; height: 100px; z-index: 200;';
+        if (this.joystick) return;
         
-        this.joystickBase = document.createElement('div');
-        this.joystickBase.className = 'joystick-base';
-        this.joystickBase.style.cssText = 'width: 100%; height: 100%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; position: relative;';
+        const zone = document.createElement('div');
+        zone.id = 'joystick-zone';
+        zone.style.cssText = 'position: fixed; bottom: 30px; left: 30px; width: 100px; height: 100px; z-index: 100;';
         
-        this.joystickStick = document.createElement('div');
-        this.joystickStick.className = 'joystick-stick';
-        this.joystickStick.style.cssText = 'width: 40px; height: 40px; background: rgba(255,50,50,0.8); border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);';
+        const base = document.createElement('div');
+        base.id = 'joystick-base';
+        base.style.cssText = 'width: 100%; height: 100%; background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; position: relative;';
         
-        this.joystickBase.appendChild(this.joystickStick);
-        this.joystickZone.appendChild(this.joystickBase);
-        document.body.appendChild(this.joystickZone);
+        const stick = document.createElement('div');
+        stick.id = 'joystick-stick';
+        stick.style.cssText = 'width: 40px; height: 40px; background: rgba(255,50,50,0.8); border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);';
         
-        this.setupJoystickEvents();
+        base.appendChild(stick);
+        zone.appendChild(base);
+        document.body.appendChild(zone);
+        this.joystick = { zone, base, stick };
+        
+        let touching = false;
+        const maxDist = 40;
+        
+        const updateJoystick = (cx, cy) => {
+            const rect = base.getBoundingClientRect();
+            const dx = cx - (rect.left + rect.width/2);
+            const dy = cy - (rect.top + rect.height/2);
+            
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const limitedDist = Math.min(dist, maxDist);
+            const angle = Math.atan2(dy, dx);
+            
+            const nx = (limitedDist / maxDist) * Math.cos(angle);
+            const ny = (limitedDist / maxDist) * Math.sin(angle);
+            
+            stick.style.transform = `translate(calc(-50% + ${nx * maxDist}px), calc(-50% + ${ny * maxDist}px))`;
+            
+            this.vector.x = nx;
+            this.vector.y = ny;
+        };
+        
+        zone.addEventListener('touchstart', e => {
+            e.preventDefault();
+            touching = true;
+            updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+        }, {passive: false});
+        
+        zone.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (touching) {
+                updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        }, {passive: false});
+        
+        zone.addEventListener('touchend', () => {
+            touching = false;
+            stick.style.transform = 'translate(-50%, -50%)';
+            this.vector.x = 0;
+            this.vector.y = 0;
+        });
+        
+        zone.addEventListener('mousedown', e => {
+            touching = true;
+            updateJoystick(e.clientX, e.clientY);
+        });
+        
+        document.addEventListener('mousemove', e => {
+            if (touching) updateJoystick(e.clientX, e.clientY);
+        });
+        
+        document.addEventListener('mouseup', () => {
+            touching = false;
+            stick.style.transform = 'translate(-50%, -50%)';
+            this.vector.x = 0;
+            this.vector.y = 0;
+        });
     },
     
     createActionButton() {
-        this.actionButton = document.createElement('div');
-        this.actionButton.className = 'action-btn';
-        this.actionButton.textContent = 'ДЕЙСТВИЕ';
-        this.actionButton.style.cssText = 'position: fixed; bottom: 50px; right: 30px; width: 70px; height: 70px; border-radius: 50%; background: rgba(255,50,50,0.8); border: 2px solid rgba(255,255,255,0.5); color: #fff; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 200;';
+        if (this.actionBtn) return;
         
-        document.body.appendChild(this.actionButton);
+        const btn = document.createElement('div');
+        btn.id = 'action-btn';
+        btn.textContent = 'ДЕЙСТВИЕ';
+        btn.style.cssText = 'position: fixed; bottom: 50px; right: 30px; width: 70px; height: 70px; border-radius: 50%; background: rgba(255,50,50,0.8); border: 2px solid rgba(255,255,255,0.5); color: #fff; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; z-index: 100; text-align: center; padding: 5px;';
         
-        this.actionButton.addEventListener('touchstart', (e) => {
+        btn.addEventListener('touchstart', e => {
             e.preventDefault();
-            this.isActionPressed = true;
-            this.actionButton.style.background = 'rgba(255,50,50,1)';
+            this.actionPressed = true;
+            btn.style.background = 'rgba(255,50,50,1)';
+        }, {passive: false});
+        
+        btn.addEventListener('touchend', e => {
+            e.preventDefault();
+            this.actionPressed = false;
+            btn.style.background = 'rgba(255,50,50,0.8)';
         });
         
-        this.actionButton.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            this.isActionPressed = false;
-            this.actionButton.style.background = 'rgba(255,50,50,0.8)';
+        btn.addEventListener('mousedown', () => {
+            this.actionPressed = true;
+            btn.style.background = 'rgba(255,50,50,1)';
         });
+        
+        btn.addEventListener('mouseup', () => {
+            this.actionPressed = false;
+            btn.style.background = 'rgba(255,50,50,0.8)';
+        });
+        
+        document.body.appendChild(btn);
+        this.actionBtn = btn;
     },
     
-    setupJoystickEvents() {
-        let startX, startY, centerX, centerY;
-        const maxDistance = 40;
-        
-        const handleStart = (e) => {
-            e.preventDefault();
-            const touch = e.touches ? e.touches[0] : e;
-            const rect = this.joystickBase.getBoundingClientRect();
-            
-            centerX = rect.left + rect.width / 2;
-            centerY = rect.top + rect.height / 2;
-            
-            startX = touch.clientX;
-            startY = touch.clientY;
-            
-            this.active = true;
-        };
-        
-        const handleMove = (e) => {
-            if (!this.active) return;
-            e.preventDefault();
-            
-            const touch = e.touches ? e.touches[0] : e;
-            let deltaX = touch.clientX - startX;
-            let deltaY = touch.clientY - startY;
-            
-            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-            
-            if (distance > maxDistance) {
-                const ratio = maxDistance / distance;
-                deltaX *= ratio;
-                deltaY *= ratio;
-            }
-            
-            this.joystickStick.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
-            
-            this.vector.x = deltaX / maxDistance;
-            this.vector.y = deltaY / maxDistance;
-            this.angle = Math.atan2(deltaY, deltaX);
-        };
-        
-        const handleEnd = () => {
-            this.active = false;
-            this.vector.x = 0;
-            this.vector.y = 0;
-            this.joystickStick.style.transform = 'translate(-50%, -50%)';
-        };
-        
-        this.joystickZone.addEventListener('touchstart', handleStart, { passive: false });
-        document.addEventListener('touchmove', handleMove, { passive: false });
-        document.addEventListener('touchend', handleEnd);
-        
-        this.joystickZone.addEventListener('mousedown', handleStart);
-        document.addEventListener('mousemove', handleMove);
-        document.addEventListener('mouseup', handleEnd);
-    },
-    
-    getJoystickVector() {
-        return { x: this.vector.x, y: this.vector.y, angle: this.angle };
+    getVector() {
+        return this.vector;
     },
     
     isActionPressed() {
-        return this.isActionPressed;
-    },
-    
-    destroy() {
-        if (this.joystickZone) {
-            this.joystickZone.remove();
-        }
-        if (this.actionButton) {
-            this.actionButton.remove();
-        }
-        this.joystickZone = null;
-        this.actionButton = null;
+        return this.actionPressed;
     }
 };
