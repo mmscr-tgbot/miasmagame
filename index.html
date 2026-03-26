@@ -112,10 +112,12 @@
     }
     function getInputVector(){return iv;}
     function isActionPressed(){return ap;}
+    document.addEventListener('DOMContentLoaded',function(){
     document.getElementById('btn-single').onclick=function(){UI.showScreen('role-select');};
     document.getElementById('btn-play-killer').onclick=function(){startGame(true);};
     document.getElementById('btn-play-survivor').onclick=function(){startGame(false);};
     document.getElementById('btn-back-menu').onclick=function(){stopGame();UI.showScreen('main-menu');};
+    });
     var checkAttempts=0;
     var checkInt=setInterval(function(){checkAttempts++;if(typeof Phaser!=='undefined'){clearInterval(checkInt);document.getElementById('loading-screen').style.display='none';document.getElementById('main-menu').style.display='flex';}else if(checkAttempts>20){clearInterval(checkInt);document.querySelector('#loading-screen p').textContent='Ошибка загрузки';}},200);
     var tg=document.createElement('script');tg.src='https://telegram.org/js/telegram-web-app.js';tg.onload=function(){try{Telegram.WebApp.ready();Telegram.WebApp.expand();}catch(e){}};document.head.appendChild(tg);
