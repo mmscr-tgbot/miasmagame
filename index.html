@@ -6,6 +6,19 @@
     <title>Miasma Massacre</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <link rel="stylesheet" href="styles.css">
+    <script>
+    var gameReady = false;
+    function checkGame() {
+        if (typeof Phaser !== 'undefined') {
+            gameReady = true;
+            document.getElementById('loading-screen').style.display = 'none';
+            document.getElementById('main-menu').style.display = 'flex';
+        } else {
+            setTimeout(checkGame, 300);
+        }
+    }
+    setTimeout(checkGame, 1000);
+    </script>
 </head>
 <body>
     <div id="app">
@@ -611,16 +624,6 @@
     document.getElementById('btn-play-killer').onclick = function() { startGame(true); };
     document.getElementById('btn-play-survivor').onclick = function() { startGame(false); };
     document.getElementById('btn-back-menu').onclick = function() { stopGame(); UI.showScreen('main-menu'); };
-    
-    // Check Phaser
-    var checkInterval = setInterval(function() {
-        if (typeof Phaser !== 'undefined' && Phaser) {
-            clearInterval(checkInterval);
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('main-menu').style.display = 'flex';
-            console.log('Ready');
-        }
-    }, 100);
     
     // Telegram
     var tg = document.createElement('script');
