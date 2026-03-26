@@ -34,7 +34,10 @@ const UI = {
         });
         
         document.getElementById('btn-create').addEventListener('click', async () => {
+            console.log('Кнопка создания нажата');
+            
             const ready = typeof isFirebaseReady === 'function' ? isFirebaseReady() : false;
+            console.log('Firebase готов:', ready);
             
             if (!ready) {
                 this.showToast('Подождите, идёт подключение...');
@@ -48,17 +51,26 @@ const UI = {
             const userId = getTelegramUserId() || user?.uid || 'user_' + Date.now();
             const userName = 'Игрок' + userId.slice(-4);
             
+            console.log('Параметры:', roomName, maxPlayers, userId);
             this.showToast('Создаю комнату...');
             
-            const result = await createRoom(roomName, maxPlayers, userId, userName);
-            
-            if (result.success) {
-                await joinRoom(result.roomId, userId, userName);
-                this.showScreen('lobby');
-                this.updateLobby(result.roomData);
-                this.showToast('Комната создана!');
-            } else {
-                this.showToast('Ошибка: ' + (result.error || 'Неизвестная'));
+            try {
+                console.log('Вызов createRoom...');
+                const result = await createRoom(roomName, maxPlayers, userId, userName);
+                console.log('Результат createRoom:', result);
+                
+                if (result.success) {
+                    console.log('Присоединение к комнате...');
+                    await joinRoom(result.roomId, userId, userName);
+                    this.showScreen('lobby');
+                    this.updateLobby(result.roomData);
+                    this.showToast('Комната создана: ' + result.roomId);
+                } else {
+                    this.showToast('Ошибка: ' + (result.error || 'Неизвестная'));
+                }
+            } catch (e) {
+                console.error('Исключение:', e);
+                this.showToast('Ошибка: ' + e.message);
             }
         });
         
