@@ -2,7 +2,6 @@ let db;
 let roomsRef;
 let currentRoomId = null;
 let unsubscribeRoom = null;
-let unsubscribePlayers = null;
 
 async function initFirebaseDB() {
     try {
@@ -109,9 +108,8 @@ async function leaveRoom(roomCode, playerId) {
         
         if (!players || Object.keys(players).length === 0) {
             await roomRef.remove();
-            console.log('Комната удалена (пустая)');
+            console.log('Комната удалена');
         } else {
-            const roomData = snapshot.val();
             const hostId = (await roomRef.child('hostId').once('value')).val();
             
             if (hostId === playerId) {
@@ -150,10 +148,6 @@ function unsubscribeFromRoom() {
     if (unsubscribeRoom) {
         unsubscribeRoom();
         unsubscribeRoom = null;
-    }
-    if (unsubscribePlayers) {
-        unsubscribePlayers();
-        unsubscribePlayers = null;
     }
 }
 
@@ -201,7 +195,7 @@ async function startGame(roomCode) {
         
         await roomRef.update(updates);
         
-        console.log('Игра началась в комнате:', roomCode);
+        console.log('Игра началась:', roomCode);
         return { success: true };
     } catch (error) {
         console.error('Ошибка начала игры:', error);
@@ -230,14 +224,6 @@ async function updateGenerator(roomCode, generatorId, data) {
     }
 }
 
-async function updateGameState(roomCode, gameState) {
-    try {
-        await roomsRef.child(roomCode).child('gameState').set(gameState);
-    } catch (error) {
-        console.error('Ошибка обновления состояния игры:', error);
-    }
-}
-
 async function setPlayerCaught(roomCode, playerId) {
     try {
         await roomsRef.child(roomCode).child('players').child(playerId).update({
@@ -245,7 +231,7 @@ async function setPlayerCaught(roomCode, playerId) {
             caughtAt: Date.now()
         });
     } catch (error) {
-        console.error('Ошибка установки статуса пойман:', error);
+        console.error('Ошибка:', error);
     }
 }
 
@@ -263,7 +249,7 @@ async function endGame(roomCode, result) {
         
         return { success: true };
     } catch (error) {
-        console.error('Ошибка завершения игры:', error);
+        console.error('Ошибка завершения:', error);
         return { success: false, error: error.message };
     }
 }

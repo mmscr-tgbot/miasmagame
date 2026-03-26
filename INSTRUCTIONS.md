@@ -1,9 +1,9 @@
-# DBD Mobile - Инструкция по запуску
+# Miasma Massacre - Инструкция по запуску
 
 ## Структура проекта
 
 ```
-DBD/
+Miasma/
 ├── index.html          # Главная страница
 ├── styles.css          # Стили
 ├── app.js              # Точка входа

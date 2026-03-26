@@ -20,7 +20,7 @@ async function initFirebaseAuth() {
             createdAt: Date.now()
         };
         
-        console.log('Анонимная авторизация успешна:', currentUser.uid);
+        console.log('Анонимная авторизация:', currentUser.uid);
         return currentUser;
     } catch (error) {
         console.error('Ошибка авторизации:', error);

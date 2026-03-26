@@ -34,6 +34,13 @@ const UI = {
         });
         
         document.getElementById('btn-create').addEventListener('click', async () => {
+            console.log('Кнопка создания нажата, firebaseReady:', firebaseReady);
+            
+            if (!firebaseReady) {
+                this.showToast('Firebase загружается...');
+                return;
+            }
+            
             const roomName = document.getElementById('room-name').value.trim() || 'Комната';
             const maxPlayers = parseInt(document.getElementById('max-players').value);
             
@@ -41,18 +48,34 @@ const UI = {
             const userId = getTelegramUserId() || user?.uid || 'user_' + Date.now();
             const userName = 'Игрок' + userId.slice(-4);
             
-            const result = await createRoom(roomName, maxPlayers, userId, userName);
+            console.log('Создаю комнату:', roomName, maxPlayers, userId);
             
-            if (result.success) {
-                await joinRoom(result.roomId, userId, userName);
-                this.showScreen('lobby');
-                this.updateLobby(result.roomData);
-            } else {
-                this.showToast('Ошибка: ' + result.error);
+            try {
+                const result = await createRoom(roomName, maxPlayers, userId, userName);
+                console.log('Результат createRoom:', result);
+                
+                if (result.success) {
+                    console.log('Авто-присоединение к комнате:', result.roomId);
+                    await joinRoom(result.roomId, userId, userName);
+                    this.showScreen('lobby');
+                    this.updateLobby(result.roomData);
+                } else {
+                    this.showToast('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+                }
+            } catch (e) {
+                console.error('Исключение при создании:', e);
+                this.showToast('Ошибка: ' + e.message);
             }
         });
         
         document.getElementById('btn-join').addEventListener('click', async () => {
+            console.log('Кнопка входа нажата, firebaseReady:', firebaseReady);
+            
+            if (!firebaseReady) {
+                this.showToast('Firebase загружается...');
+                return;
+            }
+            
             const roomCode = document.getElementById('join-code').value.trim().toUpperCase();
             
             if (!roomCode || roomCode.length < 4) {
@@ -64,13 +87,17 @@ const UI = {
             const userId = getTelegramUserId() || user?.uid || 'user_' + Date.now();
             const userName = 'Игрок' + userId.slice(-4);
             
+            console.log('Попытка присоединиться к:', roomCode);
+            
             const result = await joinRoom(roomCode, userId, userName);
+            console.log('Результат joinRoom:', result);
+            console.log('Результат join:', result);
             
             if (result.success) {
                 this.showScreen('lobby');
                 this.updateLobby(result.roomData);
             } else {
-                this.showToast('Ошибка: ' + result.error);
+                this.showToast('Ошибка: ' + (result.error || 'Неизвестная'));
             }
         });
         
@@ -160,7 +187,7 @@ const UI = {
             lobbyStatus.textContent = 'Игра началась!';
             btnStart.disabled = true;
         } else if (playerCount >= CONFIG.MIN_PLAYERS_TO_START) {
-            lobbyStatus.textContent = `Игроков: ${playerCount}/${maxPlayers}. Готовы кstart`;
+            lobbyStatus.textContent = `Игроков: ${playerCount}/${maxPlayers}. Готовы к старту`;
             btnStart.disabled = false;
         } else {
             lobbyStatus.textContent = `Игроков: ${playerCount}/${maxPlayers}. Нужно минимум ${CONFIG.MIN_PLAYERS_TO_START}`;
