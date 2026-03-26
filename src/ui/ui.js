@@ -34,10 +34,18 @@ const UI = {
         });
         
         document.getElementById('btn-create').addEventListener('click', async () => {
-            console.log('Кнопка создания нажата');
+            console.log('=== Кнопка создания нажата ===');
+            console.log('typeof isFirebaseReady:', typeof isFirebaseReady);
             
-            const ready = typeof isFirebaseReady === 'function' ? isFirebaseReady() : false;
+            let ready = false;
+            try {
+                ready = isFirebaseReady();
+            } catch(e) {
+                console.error('Ошибка проверки:', e);
+            }
+            
             console.log('Firebase готов:', ready);
+            console.log('typeof firebase в global:', typeof firebase);
             
             if (!ready) {
                 this.showToast('Подождите, идёт подключение...');
@@ -57,25 +65,29 @@ const UI = {
             try {
                 console.log('Вызов createRoom...');
                 const result = await createRoom(roomName, maxPlayers, userId, userName);
-                console.log('Результат createRoom:', result);
+                console.log('Результат createRoom:', JSON.stringify(result));
                 
-                if (result.success) {
+                if (result && result.success) {
                     console.log('Присоединение к комнате...');
                     await joinRoom(result.roomId, userId, userName);
                     this.showScreen('lobby');
                     this.updateLobby(result.roomData);
                     this.showToast('Комната создана: ' + result.roomId);
                 } else {
-                    this.showToast('Ошибка: ' + (result.error || 'Неизвестная'));
+                    console.log('Ошибка в результате:', result);
+                    this.showToast('Ошибка: ' + (result && result.error ? result.error : 'Неизвестная'));
                 }
             } catch (e) {
                 console.error('Исключение:', e);
-                this.showToast('Ошибка: ' + e.message);
+                this.showToast('Ошибка: ' + (e.message || e));
             }
         });
         
         document.getElementById('btn-join').addEventListener('click', async () => {
-            const ready = typeof isFirebaseReady === 'function' ? isFirebaseReady() : false;
+            let ready = false;
+            try {
+                ready = isFirebaseReady();
+            } catch(e) {}
             
             if (!ready) {
                 this.showToast('Подождите, идёт подключение...');
@@ -96,13 +108,14 @@ const UI = {
             this.showToast('Подключение...');
             
             const result = await joinRoom(roomCode, userId, userName);
+            console.log('Результат joinRoom:', result);
             
-            if (result.success) {
+            if (result && result.success) {
                 this.showScreen('lobby');
                 this.updateLobby(result.roomData);
                 this.showToast('Вы в комнате!');
             } else {
-                this.showToast('Ошибка: ' + (result.error || 'Неизвестная'));
+                this.showToast('Ошибка: ' + (result && result.error ? result.error : 'Неизвестная'));
             }
         });
         

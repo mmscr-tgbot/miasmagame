@@ -238,5 +238,6 @@ function getCurrentRoomId() {
 }
 
 function isFirebaseReady() {
-    return firebaseReady;
+    console.log('Проверка isFirebaseReady:', firebaseReady, typeof firebase, typeof roomsRef);
+    return firebaseReady && typeof firebase !== 'undefined' && roomsRef;
 }
