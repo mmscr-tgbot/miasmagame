@@ -5,123 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://telegram.org data: blob:;">
     <title>Miasma Massacre</title>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <link rel="stylesheet" href="styles.css">
-    <script>
-    var UI = { showScreen: function(n){var s=['loading-screen','main-menu','role-select','game-screen','game-over'];s.forEach(function(x){document.getElementById(x).style.display='none'});document.getElementById(n).style.display='flex';}, showToast: function(m){var t=document.getElementById('toast');t.textContent=m;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');}};
-    var CONFIG = { PLAYER_SPEED: 140, KILLER_SPEED: 160, GENERATOR_COUNT: 5, CATCH_DISTANCE: 45, CATCH_COOLDOWN: 2 };
-    var game = null, player = null, generators = [], isKiller = false, exitOpen = false, survivorsLeft = 4, catchCooldown = 0;
-    function startGame(km){ isKiller = km; exitOpen = false; survivorsLeft = 4; catchCooldown = 0; generators = []; UI.showScreen('game-screen'); UI.showToast(isKiller ? 'Поймай всех!' : 'Найди генераторы!'); initGame(); }
-    function stopGame(){ if(game){ game.destroy(true); game = null; } }
-    function initGame(){ document.getElementById('game-container').innerHTML = ''; game = new Phaser.Game({type:Phaser.AUTO, parent:'game-container', width:window.innerWidth, height:window.innerHeight, backgroundColor:'#2d5a27', physics:{default:'arcade',arcade:{gravity:{y:0}}}, scene:{preload:p,create:c,update:u}}); }
-    function p(){
-        var g=this.make.graphics();
-        g.fillStyle(0x3E2723);g.fillRect(16,30,12,45);g.fillStyle(0x1B5E20);g.fillCircle(22,30,28);g.fillCircle(12,25,20);g.fillCircle(32,25,18);g.generateTexture('tree',45,75);g.clear();
-        g.fillStyle(0x2E7D32);g.fillCircle(20,20,18);g.fillCircle(12,18,12);g.fillCircle(28,16,10);g.generateTexture('bush',40,40);g.clear();
-        g.fillStyle(0x424242);g.fillRect(0,55,100,15);g.fillStyle(0x795548);g.fillRect(5,15,90,40);g.fillStyle(0x5D4037);g.fillRect(0,10,100,8);g.fillStyle(0x81D4FA);g.fillRect(15,25,12,15);g.fillRect(65,25,12,15);g.fillStyle(0x3E2723);g.fillRect(42,35,16,20);g.generateTexture('building',100,70);g.clear();
-        g.fillStyle(0x5D4037);g.fillRect(0,0,4,30);g.fillRect(26,0,4,30);g.fillRect(52,0,4,30);g.fillRect(78,0,4,30);g.fillStyle(0x8D6E63);g.fillRect(4,4,22,4);g.fillRect(4,14,22,4);g.fillRect(30,4,22,4);g.fillRect(30,14,22,4);g.generateTexture('wall',100,30);g.clear();
-        g.fillStyle(0x3E2723);g.fillRect(2,25,46,20);g.fillStyle(0x5D4037);g.fillRect(0,20,50,8);g.fillStyle(0x3E2723);g.fillRect(5,30,15,15);g.generateTexture('shack',50,48);g.clear();
-        g.fillStyle(0x795548);g.fillRect(2,2,26,26);g.fillStyle(0x6D4C41);g.fillRect(0,0,30,4);g.fillRect(0,26,30,4);g.fillStyle(0x5D4037);g.fillRect(0,12,30,4);g.generateTexture('crate',30,30);g.clear();
-        g.fillStyle(0x1B5E20);g.fillRect(12,25,16,22);g.fillStyle(0x37474F);g.fillRect(13,45,5,18);g.fillRect(22,45,5,18);g.fillStyle(0xFFCCBC);g.fillCircle(20,14,10);g.fillStyle(0x3E2723);g.fillCircle(20,8,9);g.fillStyle(0x212121);g.fillRect(16,12,3,3);g.fillRect(21,12,3,3);g.generateTexture('survivor1',40,65);g.clear();
-        g.fillStyle(0x9C27B0);g.fillRect(14,25,12,25);g.fillStyle(0xFFCCBC);g.fillCircle(20,14,9);g.fillStyle(0xFF8F00);g.fillCircle(20,8,10);g.fillCircle(12,14,8);g.fillCircle(28,14,8);g.fillStyle(0x212121);g.fillCircle(17,13,2);g.fillCircle(23,13,2);g.fillStyle(0xFFCCBC);g.fillRect(15,48,3,15);g.fillRect(22,48,3,15);g.generateTexture('survivor2',40,65);g.clear();
-        g.fillStyle(0xD32F2F);g.fillRect(10,25,20,20);g.fillStyle(0x1565C0);g.fillRect(13,43,5,20);g.fillRect(22,43,5,20);g.fillStyle(0xD7CCC8);g.fillCircle(20,14,10);g.fillStyle(0x212121);g.fillCircle(20,7,10);g.fillRect(16,12,3,3);g.fillRect(21,12,3,3);g.fillStyle(0xFFD700);g.fillCircle(28,16,2);g.generateTexture('survivor3',40,65);g.clear();
-        g.fillStyle(0xFF9800);g.fillRect(12,24,16,22);g.fillStyle(0x5C6BC0);g.fillRect(14,42,12,10);g.fillStyle(0xFFCCBC);g.fillCircle(20,14,9);g.fillStyle(0x5D4037);g.fillCircle(20,7,9);g.fillCircle(30,10,6);g.fillStyle(0x212121);g.fillCircle(17,13,2);g.fillCircle(23,13,2);g.fillRect(15,54,3,12);g.fillRect(22,54,3,12);g.generateTexture('survivor4',40,65);g.clear();
-        g.fillStyle(0x212121);g.fillRect(10,25,20,30);g.fillStyle(0xB71C1C);g.fillRect(8,22,24,15);g.fillStyle(0x7f0000);g.fillCircle(15,32,4);g.fillCircle(25,35,3);g.fillStyle(0xD7CCC8);g.fillCircle(20,14,11);g.fillStyle(0x37474F);g.fillRect(10,8,20,14);g.fillStyle(0xFF0000);g.fillCircle(15,12,3);g.fillCircle(25,12,3);g.fillStyle(0x000000);g.fillRect(15,18,10,3);g.generateTexture('killer_m',40,70);g.clear();
-        g.fillStyle(0x616161);g.fillRect(0,0,40,30);g.fillStyle(0x424242);g.fillRect(2,2,20,26);g.fillStyle(0x00E676);g.fillRect(4,4,6,8);g.fillRect(12,4,6,8);g.fillStyle(0xF44336);g.fillCircle(35,15,5);g.generateTexture('generator',40,30);g.clear();
-        g.fillStyle(0x5D4037);g.fillRect(0,0,70,55);g.fillStyle(0x4E342E);g.fillRect(5,5,25,45);g.fillRect(40,5,25,45);g.fillStyle(0x3E2723);g.fillRect(3,0,8,10);g.fillRect(59,0,8,10);g.fillStyle(0xF44336);g.fillCircle(17,25,6);g.fillCircle(53,25,6);g.generateTexture('exit',70,55);g.clear();
-        g.fillStyle(0x3d6b1e);g.fillRect(0,0,32,32);g.fillStyle(0x4a7c23);g.fillCircle(8,8,4);g.fillCircle(24,20,3);g.generateTexture('ground',32,32);
-    }
-    function c(){
-        var mw=1200,mh=900;
-        for(var x=0;x<mw;x+=32)for(var y=0;y<mh;y+=32){var t=this.add.image(x+16,y+16,'ground');t.setAlpha(0.5+Math.random()*0.5);}
-        var trees=[{x:50,y:50},{x:150,y:80},{x:1100,y:50},{x:1050,y:120},{x:50,y:800},{x:120,y:850},{x:1100,y:800},{x:1050,y:850},{x:600,y:50},{x:300,y:300},{x:900,y:300},{x:300,y:600},{x:900,y:600}];
-        trees.forEach(function(p){this.add.image(p.x,p.y,'tree').setDepth(p.y);},this);
-        var bushes=[{x:200,y:200},{x:400,y:150},{x:800,y:200},{x:200,y:700},{x:1000,y:400},{x:600,y:700}];
-        bushes.forEach(function(p){this.add.image(p.x,p.y,'bush').setDepth(p.y);},this);
-        var builds=[{x:200,y:200},{x:900,y:200},{x:200,y:600},{x:900,y:600},{x:550,y:400}];
-        this.colliders=[];
-        builds.forEach(function(b){var bl=this.add.image(b.x,b.y,'building');bl.setDepth(b.y);this.colliders.push(bl);},this);
-        var shacks=[{x:100,y:400},{x:1050,y:300},{x:350,y:650},{x:800,y:100}];
-        shacks.forEach(function(s){var sh=this.add.image(s.x,s.y,'shack');sh.setDepth(s.y);this.colliders.push(sh);},this);
-        var fences=[{x:300,y:150},{x:850,y:350},{x:150,y:500},{x:1000,y:650}];
-        fences.forEach(function(f){var fe=this.add.image(f.x,f.y,'wall');fe.setDepth(f.y);this.colliders.push(fe);},this);
-        var crates=[{x:280,y:350},{x:920,y:500},{x:400,y:200},{x:750,y:650}];
-        crates.forEach(function(c){var cr=this.add.image(c.x,c.y,'crate');cr.setDepth(c.y);this.colliders.push(cr);},this);
-        var genPos=[{x:150,y:150},{x:1050,y:150},{x:600,y:350},{x:150,y:750},{x:1050,y:750}];
-        genPos.forEach(function(p,idx){
-            var gen=this.add.sprite(p.x,p.y,'generator');gen.progress=0;gen.repaired=false;
-            var bar=this.add.graphics();bar.x=p.x-20;bar.y=p.y-20;gen.bar=bar;
-            var light=this.add.circle(p.x+15,p.y-12,5,0x00ff00);light.setAlpha(0);light.setDepth(p.y+1);gen.light=light;
-            generators.push(gen);
-        },this);
-        this.exit=this.add.sprite(1150,450,'exit');this.exit.setTint(0x440000);
-        player=isKiller?this.add.sprite(600,450,'killer_m'):this.add.sprite(150,150,'survivor1');
-        this.physics.add.existing(player);player.body.setCollideWorldBounds(false);player.setDepth(1000);
-        this.physics.add.collider(player,this.colliders);
-        if(isKiller){
-            this.survivors=[];var sp=[{x:1050,y:150},{x:150,y:750},{x:1050,y:750}];var st=['survivor2','survivor3','survivor4'];
-            sp.forEach(function(p,i){var s=this.add.sprite(p.x,p.y,st[i]);s.alive=true;this.physics.add.existing(s);s.body.setCollideWorldBounds(false);s.setDepth(p.y);this.physics.add.collider(s,this.colliders);this.survivors.push(s);},this);
-        }else{this.survivors=[];}
-        this.cameras.main.setBounds(0,0,0,0);this.cameras.main.setZoom(1);
-        initInput(this);
-    }
-    function u(time,dt){
-        if(!player)return;
-        var vec=getInputVector();var spd=isKiller?CONFIG.KILLER_SPEED:CONFIG.PLAYER_SPEED;
-        player.body.setVelocity(vec.x*spd,vec.y*spd);
-        if(isKiller){
-            this.survivors.forEach(function(s){if(s.alive){if(Math.random()<0.02)s.body.setVelocity((Math.random()-0.5)*60,(Math.random()-0.5)*60);var d=Phaser.Math.Distance.Between(s.x,s.y,player.x,player.y);if(d<150){var a=Phaser.Math.Angle.Between(s.x,s.y,player.x,player.y);s.body.setVelocity(Math.cos(a)*80,Math.sin(a)*80);}}});
-        }
-        if(!isKiller){
-            if(isActionPressed()){
-                generators.forEach(function(gen){if(!gen.repaired){var d=Phaser.Math.Distance.Between(player.x,player.y,gen.x,gen.y);if(d<50){gen.progress+=dt/100;gen.bar.clear();gen.bar.fillStyle(0x000000,0.7);gen.bar.fillRect(-20,-20,40,6);gen.bar.fillStyle(0xffff00);gen.bar.fillRect(-19,-19,38*(gen.progress/100),4);if(gen.progress>=100){gen.repaired=true;gen.light.setAlpha(1);gen.setTint(0x00ff00);UI.showToast('Генератор починен!');}}}}});
-            }
-            generators.forEach(function(gen){if(gen.repaired&&gen.light){gen.x+=(Math.random()-0.5)*1.5;gen.y+=(Math.random()-0.5)*1.5;}});
-            var rep=generators.filter(function(g){return g.repaired;}).length;
-            if(rep>=CONFIG.GENERATOR_COUNT&&!exitOpen){exitOpen=true;this.exit.setTint(0x00ff00);UI.showToast('ВЫХОД ОТКРЫТ!');}
-            if(exitOpen){var d=Phaser.Math.Distance.Between(player.x,player.y,this.exit.x,this.exit.y);if(d<50){UI.showGameOver(true);stopGame();return;}}
-        }
-        if(isKiller&&catchCooldown>0)catchCooldown-=dt/1000;
-        if(isKiller){
-            this.survivors.forEach(function(s){if(s.alive){var d=Phaser.Math.Distance.Between(player.x,player.y,s.x,s.y);if(d<CONFIG.CATCH_DISTANCE&&catchCooldown<=0){s.alive=false;s.setAlpha(0.3);survivorsLeft--;catchCooldown=CONFIG.CATCH_COOLDOWN;UI.showToast('Пойман!');}}});
-            if(survivorsLeft<=0){UI.showGameOver(false);stopGame();return;}
-        }
-        player.setDepth(player.y+1000);
-        var rep=generators.filter(function(g){return g.repaired;}).length;
-        document.getElementById('player-role').textContent=isKiller?'Убийца':'Выживший';
-        document.getElementById('gen-count').textContent=rep+'/5';
-        document.getElementById('exit-state').textContent=exitOpen?'открыт':'закрыт';
-        document.getElementById('alive-count').textContent='Выжившие: '+survivorsLeft;
-    }
-    UI.showGameOver=function(won){document.getElementById('game-result-title').textContent=won?'ПОБЕДА!':'ПОРАЖЕНИЕ';document.getElementById('game-result-message').textContent=won?'Ты сбежал!':isKiller?'Ты поймал всех!':'Тебя поймали!';UI.showScreen('game-over');};
-    var iv={x:0,y:0},ap=false,js,ab;
-    function initInput(sc){
-        js=document.createElement('div');js.style.cssText='position:fixed;bottom:30px;left:30px;width:110px;height:110px;z-index:200;touch-action:none;';js.innerHTML='<div style="width:100%;height:100%;background:rgba(255,255,255,0.15);border:3px solid rgba(255,255,255,0.4);border-radius:50%;position:relative;"><div style="width:45px;height:45px;background:rgba(255,50,50,0.9);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div></div>';document.body.appendChild(js);
-        ab=document.createElement('div');ab.textContent='ДЕЙСТВИЕ';ab.style.cssText='position:fixed;bottom:50px;right:30px;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#ff3300);border:3px solid rgba(255,255,255,0.5);color:#fff;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:200;touch-action:none;';document.body.appendChild(ab);
-        var tg=false,md=45,b=js.firstChild,st=b.firstChild;
-        js.addEventListener('touchstart',function(e){e.preventDefault();tg=true;var r=b.getBoundingClientRect();var dx=e.touches[0].clientX-(r.left+r.width/2);var dy=e.touches[0].clientY-(r.top+r.height/2);var ds=Math.min(Math.sqrt(dx*dx+dy*dy),md);var an=Math.atan2(dy,dx);var nx=ds/md*Math.cos(an);var ny=ds/md*Math.sin(an);st.style.transform='translate(calc(-50% + '+(nx*md)+'px), calc(-50% + '+(ny*md)+'px))';iv.x=nx;iv.y=ny;},{passive:false});
-        js.addEventListener('touchmove',function(e){e.preventDefault();if(tg){var r=b.getBoundingClientRect();var dx=e.touches[0].clientX-(r.left+r.width/2);var dy=e.touches[0].clientY-(r.top+r.height/2);var ds=Math.min(Math.sqrt(dx*dx+dy*dy),md);var an=Math.atan2(dy,dx);var nx=ds/md*Math.cos(an);var ny=ds/md*Math.sin(an);st.style.transform='translate(calc(-50% + '+(nx*md)+'px), calc(-50% + '+(ny*md)+'px))';iv.x=nx;iv.y=ny;}},{passive:false});
-        js.addEventListener('touchend',function(){tg=false;iv.x=0;iv.y=0;st.style.transform='translate(-50%,-50%)';});
-        js.addEventListener('mousedown',function(e){tg=true;var r=b.getBoundingClientRect();var dx=e.clientX-(r.left+r.width/2);var dy=e.clientY-(r.top+r.height/2);var ds=Math.min(Math.sqrt(dx*dx+dy*dy),md);var an=Math.atan2(dy,dx);st.style.transform='translate(calc(-50% + '+(ds/md*Math.cos(an)*md)+'px), calc(-50% + '+(ds/md*Math.sin(an)*md)+'px))';iv.x=ds/md*Math.cos(an);iv.y=ds/md*Math.sin(an);});
-        document.addEventListener('mousemove',function(e){if(tg){var r=b.getBoundingClientRect();var dx=e.clientX-(r.left+r.width/2);var dy=e.clientY-(r.top+r.height/2);var ds=Math.min(Math.sqrt(dx*dx+dy*dy),md);var an=Math.atan2(dy,dx);st.style.transform='translate(calc(-50% + '+(ds/md*Math.cos(an)*md)+'px), calc(-50% + '+(ds/md*Math.sin(an)*md)+'px))';iv.x=ds/md*Math.cos(an);iv.y=ds/md*Math.sin(an);}});
-        document.addEventListener('mouseup',function(){tg=false;iv.x=0;iv.y=0;st.style.transform='translate(-50%,-50%)';});
-        ab.addEventListener('touchstart',function(e){e.preventDefault();ap=true;ab.style.transform='scale(0.95)';},{passive:false});
-        ab.addEventListener('touchend',function(){ap=false;ab.style.transform='scale(1)';});
-        ab.addEventListener('mousedown',function(){ap=true;ab.style.transform='scale(0.95)';});
-        ab.addEventListener('mouseup',function(){ap=false;ab.style.transform='scale(1)';});
-    }
-    function getInputVector(){return iv;}
-    function isActionPressed(){return ap;}
-    document.addEventListener('DOMContentLoaded',function(){
-    document.getElementById('btn-single').onclick=function(){UI.showScreen('role-select');};
-    document.getElementById('btn-play-killer').onclick=function(){startGame(true);};
-    document.getElementById('btn-play-survivor').onclick=function(){startGame(false);};
-    document.getElementById('btn-back-menu').onclick=function(){stopGame();UI.showScreen('main-menu');};
-    });
-    var checkAttempts=0;
-    var checkInt=setInterval(function(){checkAttempts++;if(typeof Phaser!=='undefined'){clearInterval(checkInt);document.getElementById('loading-screen').style.display='none';document.getElementById('main-menu').style.display='flex';}else if(checkAttempts>20){clearInterval(checkInt);document.querySelector('#loading-screen p').textContent='Ошибка загрузки';}},200);
-    var tg=document.createElement('script');tg.src='https://telegram.org/js/telegram-web-app.js';tg.onload=function(){try{Telegram.WebApp.ready();Telegram.WebApp.expand();}catch(e){}};document.head.appendChild(tg);
-    </script>
 </head>
 <body>
     <div id="app">
@@ -132,5 +16,404 @@
         <div id="game-over" style="display:none"><h2 id="game-result-title">Победа!</h2><p id="game-result-message"></p><button id="btn-back-menu" class="btn primary">В меню</button></div>
     </div>
     <div id="toast"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script>
+    (function(){
+        var UI = { 
+            showScreen: function(n){var s=['loading-screen','main-menu','role-select','game-screen','game-over'];s.forEach(function(x){var el=document.getElementById(x);if(el)el.style.display='none'});var target=document.getElementById(n);if(target)target.style.display='flex';}, 
+            showToast: function(m){var t=document.getElementById('toast');if(t){t.textContent=m;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');}},
+            showGameOver: function(won){var title=document.getElementById('game-result-title');var msg=document.getElementById('game-result-message');if(title)title.textContent=won?'ПОБЕДА!':'ПОРАЖЕНИЕ';if(msg)msg.textContent=won?'Ты сбежал!':isKiller?'Ты поймал всех!':'Тебя поймали!';UI.showScreen('game-over');}
+        };
+        var CONFIG = { PLAYER_SPEED: 140, KILLER_SPEED: 160, GENERATOR_COUNT: 5, CATCH_DISTANCE: 45, CATCH_COOLDOWN: 2 };
+        var game = null, player = null, generators = [], isKiller = false, exitOpen = false, survivorsLeft = 4, catchCooldown = 0;
+
+        function startGame(km){ 
+            isKiller = km; 
+            exitOpen = false; 
+            survivorsLeft = 4; 
+            catchCooldown = 0; 
+            generators = []; 
+            UI.showScreen('game-screen'); 
+            UI.showToast(isKiller ? 'Поймай всех!' : 'Найди генераторы!'); 
+            initGame(); 
+        }
+
+        function stopGame(){ 
+            if(game){ 
+                game.destroy(true); 
+                game = null; 
+                player = null; 
+            } 
+            var existingJoystick = document.querySelector('[data-joystick]');
+            var existingActionBtn = document.querySelector('[data-action-btn]');
+            if(existingJoystick) existingJoystick.remove();
+            if(existingActionBtn) existingActionBtn.remove();
+        }
+
+        function initGame(){ 
+            var container = document.getElementById('game-container');
+            if(container) container.innerHTML = '';
+            game = new Phaser.Game({
+                type: Phaser.AUTO, 
+                parent: 'game-container', 
+                width: window.innerWidth, 
+                height: window.innerHeight, 
+                backgroundColor: '#2d5a27', 
+                physics: { default: 'arcade', arcade: { gravity: { y: 0 } } }, 
+                scene: { preload: preload, create: create, update: update }
+            }); 
+        }
+
+        function preload(){
+            var g = this.make.graphics();
+            g.fillStyle(0x3E2723);g.fillRect(16,30,12,45);g.fillStyle(0x1B5E20);g.fillCircle(22,30,28);g.fillCircle(12,25,20);g.fillCircle(32,25,18);g.generateTexture('tree',45,75);g.clear();
+            g.fillStyle(0x2E7D32);g.fillCircle(20,20,18);g.fillCircle(12,18,12);g.fillCircle(28,16,10);g.generateTexture('bush',40,40);g.clear();
+            g.fillStyle(0x424242);g.fillRect(0,55,100,15);g.fillStyle(0x795548);g.fillRect(5,15,90,40);g.fillStyle(0x5D4037);g.fillRect(0,10,100,8);g.fillStyle(0x81D4FA);g.fillRect(15,25,12,15);g.fillRect(65,25,12,15);g.fillStyle(0x3E2723);g.fillRect(42,35,16,20);g.generateTexture('building',100,70);g.clear();
+            g.fillStyle(0x5D4037);g.fillRect(0,0,4,30);g.fillRect(26,0,4,30);g.fillRect(52,0,4,30);g.fillRect(78,0,4,30);g.fillStyle(0x8D6E63);g.fillRect(4,4,22,4);g.fillRect(4,14,22,4);g.fillRect(30,4,22,4);g.fillRect(30,14,22,4);g.generateTexture('wall',100,30);g.clear();
+            g.fillStyle(0x3E2723);g.fillRect(2,25,46,20);g.fillStyle(0x5D4037);g.fillRect(0,20,50,8);g.fillStyle(0x3E2723);g.fillRect(5,30,15,15);g.generateTexture('shack',50,48);g.clear();
+            g.fillStyle(0x795548);g.fillRect(2,2,26,26);g.fillStyle(0x6D4C41);g.fillRect(0,0,30,4);g.fillRect(0,26,30,4);g.fillStyle(0x5D4037);g.fillRect(0,12,30,4);g.generateTexture('crate',30,30);g.clear();
+            g.fillStyle(0x1B5E20);g.fillRect(12,25,16,22);g.fillStyle(0x37474F);g.fillRect(13,45,5,18);g.fillRect(22,45,5,18);g.fillStyle(0xFFCCBC);g.fillCircle(20,14,10);g.fillStyle(0x3E2723);g.fillCircle(20,8,9);g.fillStyle(0x212121);g.fillRect(16,12,3,3);g.fillRect(21,12,3,3);g.generateTexture('survivor1',40,65);g.clear();
+            g.fillStyle(0x9C27B0);g.fillRect(14,25,12,25);g.fillStyle(0xFFCCBC);g.fillCircle(20,14,9);g.fillStyle(0xFF8F00);g.fillCircle(20,8,10);g.fillCircle(12,14,8);g.fillCircle(28,14,8);g.fillStyle(0x212121);g.fillCircle(17,13,2);g.fillCircle(23,13,2);g.fillStyle(0xFFCCBC);g.fillRect(15,48,3,15);g.fillRect(22,48,3,15);g.generateTexture('survivor2',40,65);g.clear();
+            g.fillStyle(0xD32F2F);g.fillRect(10,25,20,20);g.fillStyle(0x1565C0);g.fillRect(13,43,5,20);g.fillRect(22,43,5,20);g.fillStyle(0xD7CCC8);g.fillCircle(20,14,10);g.fillStyle(0x212121);g.fillCircle(20,7,10);g.fillRect(16,12,3,3);g.fillRect(21,12,3,3);g.fillStyle(0xFFD700);g.fillCircle(28,16,2);g.generateTexture('survivor3',40,65);g.clear();
+            g.fillStyle(0xFF9800);g.fillRect(12,24,16,22);g.fillStyle(0x5C6BC0);g.fillRect(14,42,12,10);g.fillStyle(0xFFCCBC);g.fillCircle(20,14,9);g.fillStyle(0x5D4037);g.fillCircle(20,7,9);g.fillCircle(30,10,6);g.fillStyle(0x212121);g.fillCircle(17,13,2);g.fillCircle(23,13,2);g.fillRect(15,54,3,12);g.fillRect(22,54,3,12);g.generateTexture('survivor4',40,65);g.clear();
+            g.fillStyle(0x212121);g.fillRect(10,25,20,30);g.fillStyle(0xB71C1C);g.fillRect(8,22,24,15);g.fillStyle(0x7f0000);g.fillCircle(15,32,4);g.fillCircle(25,35,3);g.fillStyle(0xD7CCC8);g.fillCircle(20,14,11);g.fillStyle(0x37474F);g.fillRect(10,8,20,14);g.fillStyle(0xFF0000);g.fillCircle(15,12,3);g.fillCircle(25,12,3);g.fillStyle(0x000000);g.fillRect(15,18,10,3);g.generateTexture('killer_m',40,70);g.clear();
+            g.fillStyle(0x616161);g.fillRect(0,0,40,30);g.fillStyle(0x424242);g.fillRect(2,2,20,26);g.fillStyle(0x00E676);g.fillRect(4,4,6,8);g.fillRect(12,4,6,8);g.fillStyle(0xF44336);g.fillCircle(35,15,5);g.generateTexture('generator',40,30);g.clear();
+            g.fillStyle(0x5D4037);g.fillRect(0,0,70,55);g.fillStyle(0x4E342E);g.fillRect(5,5,25,45);g.fillRect(40,5,25,45);g.fillStyle(0x3E2723);g.fillRect(3,0,8,10);g.fillRect(59,0,8,10);g.fillStyle(0xF44336);g.fillCircle(17,25,6);g.fillCircle(53,25,6);g.generateTexture('exit',70,55);g.clear();
+            g.fillStyle(0x3d6b1e);g.fillRect(0,0,32,32);g.fillStyle(0x4a7c23);g.fillCircle(8,8,4);g.fillCircle(24,20,3);g.generateTexture('ground',32,32);
+        }
+
+        function create(){
+            var mw = 1200, mh = 900;
+            for(var x = 0; x < mw; x += 32){
+                for(var y = 0; y < mh; y += 32){
+                    var t = this.add.image(x + 16, y + 16, 'ground');
+                    t.setAlpha(0.5 + Math.random() * 0.5);
+                }
+            }
+            
+            var trees = [{x:50,y:50},{x:150,y:80},{x:1100,y:50},{x:1050,y:120},{x:50,y:800},{x:120,y:850},{x:1100,y:800},{x:1050,y:850},{x:600,y:50},{x:300,y:300},{x:900,y:300},{x:300,y:600},{x:900,y:600}];
+            trees.forEach(function(p){this.add.image(p.x, p.y, 'tree').setDepth(p.y);}, this);
+            
+            var bushes = [{x:200,y:200},{x:400,y:150},{x:800,y:200},{x:200,y:700},{x:1000,y:400},{x:600,y:700}];
+            bushes.forEach(function(p){this.add.image(p.x, p.y, 'bush').setDepth(p.y);}, this);
+            
+            this.colliders = [];
+            var builds = [{x:200,y:200},{x:900,y:200},{x:200,y:600},{x:900,y:600},{x:550,y:400}];
+            builds.forEach(function(b){var bl = this.add.image(b.x, b.y, 'building');bl.setDepth(b.y);this.colliders.push(bl);}, this);
+            
+            var shacks = [{x:100,y:400},{x:1050,y:300},{x:350,y:650},{x:800,y:100}];
+            shacks.forEach(function(s){var sh = this.add.image(s.x, s.y, 'shack');sh.setDepth(s.y);this.colliders.push(sh);}, this);
+            
+            var fences = [{x:300,y:150},{x:850,y:350},{x:150,y:500},{x:1000,y:650}];
+            fences.forEach(function(f){var fe = this.add.image(f.x, f.y, 'wall');fe.setDepth(f.y);this.colliders.push(fe);}, this);
+            
+            var crates = [{x:280,y:350},{x:920,y:500},{x:400,y:200},{x:750,y:650}];
+            crates.forEach(function(c){var cr = this.add.image(c.x, c.y, 'crate');cr.setDepth(c.y);this.colliders.push(cr);}, this);
+            
+            var group = this.physics.add.group(this.colliders);
+            
+            var genPos = [{x:150,y:150},{x:1050,y:150},{x:600,y:350},{x:150,y:750},{x:1050,y:750}];
+            genPos.forEach(function(p){
+                var gen = this.add.sprite(p.x, p.y, 'generator');
+                gen.progress = 0;
+                gen.repaired = false;
+                var bar = this.add.graphics();
+                bar.x = p.x - 20;
+                bar.y = p.y - 20;
+                gen.bar = bar;
+                var light = this.add.circle(p.x + 15, p.y - 12, 5, 0x00ff00);
+                light.setAlpha(0);
+                light.setDepth(p.y + 1);
+                gen.light = light;
+                generators.push(gen);
+            }, this);
+            
+            this.exit = this.add.sprite(1150, 450, 'exit');
+            this.exit.setTint(0x440000);
+            
+            player = isKiller ? this.add.sprite(600, 450, 'killer_m') : this.add.sprite(150, 150, 'survivor1');
+            this.physics.add.existing(player);
+            player.body.setCollideWorldBounds(false);
+            player.setDepth(1000);
+            
+            this.physics.add.collider(player, group);
+            
+            if(isKiller){
+                this.survivors = [];
+                var sp = [{x:1050,y:150},{x:150,y:750},{x:1050,y:750}];
+                var st = ['survivor2', 'survivor3', 'survivor4'];
+                sp.forEach(function(p, i){
+                    var s = this.add.sprite(p.x, p.y, st[i]);
+                    s.alive = true;
+                    this.physics.add.existing(s);
+                    s.body.setCollideWorldBounds(false);
+                    s.setDepth(p.y);
+                    this.physics.add.collider(s, group);
+                    this.survivors.push(s);
+                }, this);
+            } else {
+                this.survivors = [];
+            }
+            
+            this.cameras.main.setBounds(0, 0, 0, 0);
+            this.cameras.main.setZoom(1);
+            
+            initInput(this);
+        }
+
+        function update(time, dt){
+            if(!player) return;
+            
+            var vec = getInputVector();
+            var spd = isKiller ? CONFIG.KILLER_SPEED : CONFIG.PLAYER_SPEED;
+            player.body.setVelocity(vec.x * spd, vec.y * spd);
+            
+            if(isKiller && this.survivors){
+                this.survivors.forEach(function(s){
+                    if(s.alive){
+                        if(Math.random() < 0.02){
+                            s.body.setVelocity((Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60);
+                        }
+                        var d = Phaser.Math.Distance.Between(s.x, s.y, player.x, player.y);
+                        if(d < 150){
+                            var a = Phaser.Math.Angle.Between(s.x, s.y, player.x, player.y);
+                            s.body.setVelocity(Math.cos(a) * 80, Math.sin(a) * 80);
+                        }
+                    }
+                });
+            }
+            
+            if(!isKiller){
+                if(isActionPressed()){
+                    generators.forEach(function(gen){
+                        if(!gen.repaired){
+                            var d = Phaser.Math.Distance.Between(player.x, player.y, gen.x, gen.y);
+                            if(d < 50){
+                                gen.progress += dt / 100;
+                                gen.bar.clear();
+                                gen.bar.fillStyle(0x000000, 0.7);
+                                gen.bar.fillRect(-20, -20, 40, 6);
+                                gen.bar.fillStyle(0xffff00);
+                                gen.bar.fillRect(-19, -19, 38 * (gen.progress / 100), 4);
+                                if(gen.progress >= 100){
+                                    gen.repaired = true;
+                                    gen.light.setAlpha(1);
+                                    gen.setTint(0x00ff00);
+                                    UI.showToast('Генератор починен!');
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                generators.forEach(function(gen){
+                    if(gen.repaired && gen.light){
+                        gen.x += (Math.random() - 0.5) * 1.5;
+                        gen.y += (Math.random() - 0.5) * 1.5;
+                    }
+                });
+                
+                var rep = generators.filter(function(g){ return g.repaired; }).length;
+                if(rep >= CONFIG.GENERATOR_COUNT && !exitOpen){
+                    exitOpen = true;
+                    this.exit.setTint(0x00ff00);
+                    UI.showToast('ВЫХОД ОТКРЫТ!');
+                }
+                
+                if(exitOpen){
+                    var d = Phaser.Math.Distance.Between(player.x, player.y, this.exit.x, this.exit.y);
+                    if(d < 50){
+                        UI.showGameOver(true);
+                        stopGame();
+                        return;
+                    }
+                }
+            }
+            
+            if(isKiller && catchCooldown > 0) catchCooldown -= dt / 1000;
+            
+            if(isKiller && this.survivors){
+                this.survivors.forEach(function(s){
+                    if(s.alive){
+                        var d = Phaser.Math.Distance.Between(player.x, player.y, s.x, s.y);
+                        if(d < CONFIG.CATCH_DISTANCE && catchCooldown <= 0){
+                            s.alive = false;
+                            s.setAlpha(0.3);
+                            survivorsLeft--;
+                            catchCooldown = CONFIG.CATCH_COOLDOWN;
+                            UI.showToast('Пойман!');
+                        }
+                    }
+                });
+                if(survivorsLeft <= 0){
+                    UI.showGameOver(false);
+                    stopGame();
+                    return;
+                }
+            }
+            
+            player.setDepth(player.y + 1000);
+            
+            var rep = generators.filter(function(g){ return g.repaired; }).length;
+            var roleEl = document.getElementById('player-role');
+            var genEl = document.getElementById('gen-count');
+            var exitEl = document.getElementById('exit-state');
+            var aliveEl = document.getElementById('alive-count');
+            
+            if(roleEl) roleEl.textContent = isKiller ? 'Ужийца' : 'Выживший';
+            if(genEl) genEl.textContent = rep + '/5';
+            if(exitEl) exitEl.textContent = exitOpen ? 'открыт' : 'закрыт';
+            if(aliveEl) aliveEl.textContent = 'Выжившие: ' + survivorsLeft;
+        }
+
+        var inputVector = {x: 0, y: 0};
+        var actionPressed = false;
+        
+        function initInput(scene){
+            var joystick = document.createElement('div');
+            joystick.setAttribute('data-joystick', 'true');
+            joystick.style.cssText = 'position:fixed;bottom:30px;left:30px;width:110px;height:110px;z-index:200;touch-action:none;';
+            joystick.innerHTML = '<div style="width:100%;height:100%;background:rgba(255,255,255,0.15);border:3px solid rgba(255,255,255,0.4);border-radius:50%;position:relative;"><div style="width:45px;height:45px;background:rgba(255,50,50,0.9);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div></div>';
+            document.body.appendChild(joystick);
+            
+            var actionBtn = document.createElement('div');
+            actionBtn.setAttribute('data-action-btn', 'true');
+            actionBtn.textContent = 'ДЕЙСТВИЕ';
+            actionBtn.style.cssText = 'position:fixed;bottom:50px;right:30px;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#ff3300);border:3px solid rgba(255,255,255,0.5);color:#fff;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:200;touch-action:none;';
+            document.body.appendChild(actionBtn);
+            
+            var joystickInner = joystick.firstChild;
+            var knob = joystickInner.firstChild;
+            var touching = false;
+            var maxDist = 45;
+            
+            function updateJoystick(clientX, clientY){
+                var rect = joystickInner.getBoundingClientRect();
+                var dx = clientX - (rect.left + rect.width / 2);
+                var dy = clientY - (rect.top + rect.height / 2);
+                var dist = Math.min(Math.sqrt(dx * dx + dy * dy), maxDist);
+                var angle = Math.atan2(dy, dx);
+                var normX = dist / maxDist * Math.cos(angle);
+                var normY = dist / maxDist * Math.sin(angle);
+                knob.style.transform = 'translate(calc(-50% + ' + (normX * maxDist) + 'px), calc(-50% + ' + (normY * maxDist) + 'px))';
+                inputVector.x = normX;
+                inputVector.y = normY;
+            }
+            
+            joystick.addEventListener('touchstart', function(e){
+                e.preventDefault();
+                touching = true;
+                updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+            }, {passive: false});
+            
+            joystick.addEventListener('touchmove', function(e){
+                e.preventDefault();
+                if(touching){
+                    updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, {passive: false});
+            
+            joystick.addEventListener('touchend', function(){
+                touching = false;
+                inputVector.x = 0;
+                inputVector.y = 0;
+                knob.style.transform = 'translate(-50%,-50%)';
+            });
+            
+            joystick.addEventListener('mousedown', function(e){
+                touching = true;
+                updateJoystick(e.clientX, e.clientY);
+            });
+            
+            document.addEventListener('mousemove', function(e){
+                if(touching){
+                    updateJoystick(e.clientX, e.clientY);
+                }
+            });
+            
+            document.addEventListener('mouseup', function(){
+                touching = false;
+                inputVector.x = 0;
+                inputVector.y = 0;
+                knob.style.transform = 'translate(-50%,-50%)';
+            });
+            
+            actionBtn.addEventListener('touchstart', function(e){
+                e.preventDefault();
+                actionPressed = true;
+                actionBtn.style.transform = 'scale(0.95)';
+            }, {passive: false});
+            
+            actionBtn.addEventListener('touchend', function(){
+                actionPressed = false;
+                actionBtn.style.transform = 'scale(1)';
+            });
+            
+            actionBtn.addEventListener('mousedown', function(){
+                actionPressed = true;
+                actionBtn.style.transform = 'scale(0.95)';
+            });
+            
+            actionBtn.addEventListener('mouseup', function(){
+                actionPressed = false;
+                actionBtn.style.transform = 'scale(1)';
+            });
+        }
+        
+        function getInputVector(){ return inputVector; }
+        function isActionPressed(){ return actionPressed; }
+        
+        function checkPhaser(){
+            if(typeof Phaser !== 'undefined'){
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('main-menu').style.display = 'flex';
+                return true;
+            }
+            return false;
+        }
+        
+        if(!checkPhaser()){
+            var attempts = 0;
+            var interval = setInterval(function(){
+                attempts++;
+                if(checkPhaser() || attempts > 30){
+                    clearInterval(interval);
+                    if(attempts > 30){
+                        var p = document.querySelector('#loading-screen p');
+                        if(p) p.textContent = 'Ошибка загрузки';
+                    }
+                }
+            }, 200);
+        }
+        
+        document.getElementById('btn-single').onclick = function(){
+            UI.showScreen('role-select');
+        };
+        
+        document.getElementById('btn-play-killer').onclick = function(){
+            startGame(true);
+        };
+        
+        document.getElementById('btn-play-survivor').onclick = function(){
+            startGame(false);
+        };
+        
+        document.getElementById('btn-back-menu').onclick = function(){
+            stopGame();
+            UI.showScreen('main-menu');
+        };
+        
+        var tg = document.createElement('script');
+        tg.src = 'https://telegram.org/js/telegram-web-app.js';
+        tg.onload = function(){
+            try{
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+            } catch(e){}
+        };
+        document.head.appendChild(tg);
+    })();
+    </script>
 </body>
 </html>
