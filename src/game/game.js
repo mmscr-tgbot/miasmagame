@@ -79,6 +79,7 @@ function initGame() {
 function preload() {
     const g = this.make.graphics();
     
+    // Дерево
     g.fillStyle(0x4a3728);
     g.fillRect(10, 30, 20, 40);
     g.fillStyle(0x228b22);
@@ -88,6 +89,7 @@ function preload() {
     g.generateTexture('tree', 40, 70);
     g.clear();
     
+    // Куст
     g.fillStyle(0x228b22);
     g.fillCircle(15, 15, 15);
     g.fillCircle(25, 15, 12);
@@ -95,27 +97,107 @@ function preload() {
     g.generateTexture('bush', 40, 35);
     g.clear();
     
-    g.fillStyle(0x8B4513);
-    g.fillEllipse(16, 32, 12, 18);
-    g.fillStyle(0xffdbac);
-    g.fillCircle(16, 12, 10);
-    g.fillStyle(0x333333);
-    g.fillRect(10, 10, 12, 4);
-    g.generateTexture('survivor_m', 32, 50);
+    // ============ ВЫЖИВШИЙ 1 - Мужчина в куртке ============
+    g.fillStyle(0x2d4a3e); // Тёмно-зелёная куртка
+    g.fillRect(10, 22, 20, 28);
+    g.fillStyle(0x1a332a); // Воротник
+    g.fillRect(12, 18, 16, 6);
+    g.fillStyle(0x8B4513); // Джинсы
+    g.fillRect(12, 45, 7, 18);
+    g.fillRect(21, 45, 7, 18);
+    g.fillStyle(0xffdbac); // Лицо
+    g.fillCircle(20, 12, 10);
+    g.fillStyle(0x4a3728); // Волосы
+    g.fillCircle(20, 6, 9);
+    g.fillStyle(0x222222); // Глаза
+    g.fillRect(16, 10, 3, 3);
+    g.fillRect(21, 10, 3, 3);
+    g.fillStyle(0xff6b6b); // Рот
+    g.fillRect(18, 16, 4, 2);
+    g.generateTexture('survivor1', 40, 65);
     g.clear();
     
-    g.fillStyle(0x1a1a1a);
-    g.fillRect(12, 20, 16, 30);
-    g.fillStyle(0xff0000);
-    g.fillRect(12, 25, 16, 8);
-    g.fillStyle(0xffdbac);
+    // ============ ВЫЖИВШАЯ 2 - Девушка в платье ============
+    g.fillStyle(0x8e44ad); // Фиолетовое платье
+    g.fillRect(12, 22, 16, 30);
+    g.fillStyle(0xffdbac); // Лицо
+    g.fillCircle(20, 12, 9);
+    g.fillStyle(0xd4a574); // Волосы длинные
+    g.fillCircle(20, 6, 8);
+    g.fillCircle(12, 10, 6);
+    g.fillCircle(28, 10, 6);
+    g.fillStyle(0x222222); // Глаза
+    g.fillCircle(17, 11, 2);
+    g.fillCircle(23, 11, 2);
+    g.fillStyle(0xe74c3c); // Губы
+    g.fillCircle(20, 16, 2);
+    g.fillStyle(0xffdbac); // Ноги
+    g.fillRect(14, 50, 4, 15);
+    g.fillRect(22, 50, 4, 15);
+    g.generateTexture('survivor2', 40, 65);
+    g.clear();
+    
+    // ============ ВЫЖИВШИЙ 3 - Мужчина в футболке ============
+    g.fillStyle(0xc0392b); // Красная футболка
+    g.fillRect(10, 22, 20, 25);
+    g.fillStyle(0x2980b9); // Синие штаны
+    g.fillRect(12, 42, 7, 22);
+    g.fillRect(21, 42, 7, 22);
+    g.fillStyle(0xffdbac); // Лицо
+    g.fillCircle(20, 12, 10);
+    g.fillStyle(0x1a1a1a); // Чёрные волосы
+    g.fillCircle(20, 5, 9);
+    g.fillStyle(0x222222); // Глаза
+    g.fillRect(16, 10, 3, 3);
+    g.fillRect(21, 10, 3, 3);
+    g.fillStyle(0x95a5a6); // Серьга
+    g.fillCircle(25, 14, 2);
+    g.generateTexture('survivor3', 40, 65);
+    g.clear();
+    
+    // ============ ВЫЖИВШАЯ 4 - Девушка с хвостиком ============
+    g.fillStyle(0xf39c12); // Жёлтая кофта
+    g.fillRect(12, 22, 16, 24);
+    g.fillStyle(0x3498db); // Синяя юбка
+    g.fillRect(14, 42, 12, 12);
+    g.fillStyle(0xffdbac); // Лицо
+    g.fillCircle(20, 12, 9);
+    g.fillStyle(0x8B4513); // Каштановые волосы
+    g.fillCircle(20, 5, 8);
+    g.fillCircle(28, 8, 5); // Хвостик
+    g.fillStyle(0x222222); // Глаза
+    g.fillCircle(17, 11, 2);
+    g.fillCircle(23, 11, 2);
+    g.fillStyle(0xffdbac); // Ноги
+    g.fillRect(15, 54, 3, 12);
+    g.fillRect(22, 54, 3, 12);
+    g.generateTexture('survivor4', 40, 65);
+    g.clear();
+    
+    // ============ УБИЙЦА - Монстр ============
+    g.fillStyle(0x1a1a1a); // Чёрное тело
+    g.fillRect(8, 20, 24, 35);
+    g.fillStyle(0x8B0000); // Красная грудь
+    g.fillRect(10, 22, 20, 15);
+    g.fillStyle(0x4a0000); // Пятна крови
+    g.fillCircle(15, 30, 4);
+    g.fillCircle(25, 35, 3);
+    g.fillStyle(0xffdbac); // Лицо
     g.fillCircle(20, 12, 12);
-    g.fillStyle(0x000000);
-    g.fillRect(14, 8, 5, 5);
-    g.fillRect(21, 8, 5, 5);
-    g.generateTexture('killer_m', 40, 55);
+    g.fillStyle(0x1a1a1a); // Маска
+    g.fillRect(10, 6, 20, 14);
+    g.fillStyle(0xff0000); // Глаза-маски
+    g.fillCircle(15, 12, 4);
+    g.fillCircle(25, 12, 4);
+    g.fillStyle(0x330000); // Рот-маска
+    g.fillRect(15, 18, 10, 4);
+    g.fillStyle(0x1a1a1a); // Ноги
+    g.fillRect(10, 52, 8, 15);
+    g.fillRect(22, 52, 8, 15);
+    g.generateTexture('killer_m', 40, 70);
     g.clear();
     
+    // Генератор
     g.fillStyle(0x444444);
     g.fillRect(0, 0, 35, 25);
     g.fillStyle(0x222222);
@@ -127,6 +209,7 @@ function preload() {
     g.generateTexture('generator', 35, 25);
     g.clear();
     
+    // Выход
     g.fillStyle(0x8B4513);
     g.fillRect(0, 0, 60, 50);
     g.fillStyle(0x654321);
@@ -137,6 +220,7 @@ function preload() {
     g.generateTexture('exit', 60, 50);
     g.clear();
     
+    // Стена
     g.fillStyle(0x555555);
     g.fillRect(0, 0, 40, 15);
     g.fillStyle(0x333333);
@@ -146,6 +230,7 @@ function preload() {
     g.generateTexture('wall', 40, 15);
     g.clear();
     
+    // Земля
     g.fillStyle(0x3d6b1e);
     g.fillRect(0, 0, 32, 32);
     g.fillStyle(0x4a7c23);
@@ -197,7 +282,7 @@ function create() {
     this.exit = this.add.sprite(1150, 450, 'exit');
     this.exit.setTint(0x440000);
     
-    player = isKiller ? this.add.sprite(600, 450, 'killer_m') : this.add.sprite(150, 150, 'survivor_m');
+    player = isKiller ? this.add.sprite(600, 450, 'killer_m') : this.add.sprite(150, 150, 'survivor1');
     this.physics.add.existing(player);
     player.body.setCollideWorldBounds(true);
     player.setDepth(1000);
@@ -205,8 +290,9 @@ function create() {
     if (!isKiller) {
         this.survivors = [];
         const survivorPositions = [{x: 1050, y: 150}, {x: 150, y: 750}, {x: 1050, y: 750}];
-        survivorPositions.forEach(p => {
-            const s = this.add.sprite(p.x, p.y, 'survivor_m');
+        const survivorTextures = ['survivor2', 'survivor3', 'survivor4'];
+        survivorPositions.forEach((p, i) => {
+            const s = this.add.sprite(p.x, p.y, survivorTextures[i]);
             s.alive = true;
             this.physics.add.existing(s);
             s.body.setCollideWorldBounds(true);

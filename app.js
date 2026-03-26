@@ -1,31 +1,45 @@
 window.initApp = function() {
-    console.log('Miasma Massacre starting...');
+    console.log('Starting...');
     
-    var checkCount = 0;
-    function checkReady() {
-        checkCount++;
-        if (typeof Phaser !== 'undefined') {
-            document.getElementById('loading-screen').style.display = 'none';
-            document.getElementById('main-menu').style.display = 'flex';
-            console.log('Ready!');
-            return;
-        }
-        if (checkCount < 50) {
-            setTimeout(checkReady, 200);
-        } else {
-            document.querySelector('#loading-screen p').textContent = 'Ошибка загрузки';
-        }
+    function showMenu() {
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('main-menu').style.display = 'flex';
     }
-    checkReady();
     
-    var tgScript = document.createElement('script');
-    tgScript.src = 'https://telegram.org/js/telegram-web-app.js';
-    tgScript.onload = function() {
-        if (typeof Telegram !== 'undefined' && Telegram.WebApp) {
-            try { Telegram.WebApp.ready(); Telegram.WebApp.expand(); } catch(e) {}
+    function checkPhaser() {
+        if (typeof Phaser !== 'undefined' && Phaser) {
+            console.log('Phaser OK');
+            showMenu();
+            return true;
         }
+        return false;
+    }
+    
+    if (!checkPhaser()) {
+        var attempts = 0;
+        var interval = setInterval(function() {
+            attempts++;
+            console.log('Attempt ' + attempts);
+            if (checkPhaser()) {
+                clearInterval(interval);
+            } else if (attempts > 20) {
+                clearInterval(interval);
+                var p = document.querySelector('#loading-screen p');
+                if (p) p.textContent = 'Ошибка загрузки. Обновите страницу.';
+            }
+        }, 300);
+    }
+    
+    var tg = document.createElement('script');
+    tg.src = 'https://telegram.org/js/telegram-web-app.js';
+    tg.onload = function() {
+        try { Telegram.WebApp.ready(); Telegram.WebApp.expand(); } catch(e) {}
     };
-    document.head.appendChild(tgScript);
+    document.head.appendChild(tg);
 };
 
-document.addEventListener('DOMContentLoaded', window.initApp);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.initApp);
+} else {
+    window.initApp();
+}
