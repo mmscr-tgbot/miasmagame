@@ -6,8 +6,10 @@ let firebaseReady = false;
 
 function initFirebaseDB() {
     return new Promise((resolve, reject) => {
+        console.log('Проверка firebase:', typeof firebase);
+        
         if (typeof firebase === 'undefined') {
-            console.warn('Firebase не загружен');
+            console.error('Firebase НЕ загружен!');
             reject(new Error('Firebase SDK не загружен'));
             return;
         }
@@ -35,11 +37,16 @@ function generateRoomCode() {
 }
 
 function createRoom(roomName, maxPlayers, hostId, hostName) {
+    console.log('createRoom вызвана, firebaseReady:', firebaseReady);
+    
     if (!firebaseReady) {
+        console.error('Firebase НЕ готова!');
         return Promise.reject(new Error('Firebase не готова'));
     }
     
     const roomCode = generateRoomCode();
+    console.log('Код комнаты:', roomCode);
+    
     const roomData = {
         code: roomCode,
         name: roomName || 'Комната',
@@ -52,14 +59,17 @@ function createRoom(roomName, maxPlayers, hostId, hostName) {
         gameState: null
     };
     
+    console.log('Данные комнаты:', roomData);
+    console.log('Запись в Firebase...');
+    
     return roomsRef.child(roomCode).set(roomData)
         .then(() => {
+            console.log('Комната создана в Firebase:', roomCode);
             currentRoomId = roomCode;
-            console.log('Комната создана:', roomCode);
             return { success: true, roomId: roomCode, roomData };
         })
         .catch((error) => {
-            console.error('Ошибка создания комнаты:', error);
+            console.error('Ошибка записи в Firebase:', error);
             return { success: false, error: error.message };
         });
 }

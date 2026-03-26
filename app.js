@@ -1,23 +1,32 @@
 async function loadScript(src) {
+    console.log('Загрузка скрипта:', src);
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = src;
-        script.onload = resolve;
-        script.onerror = () => reject(new Error('Failed to load: ' + src));
+        script.onload = () => {
+            console.log('Загружено:', src);
+            resolve();
+        };
+        script.onerror = () => {
+            console.error('Ошибка загрузки:', src);
+            reject(new Error('Failed to load: ' + src));
+        };
         document.head.appendChild(script);
     });
 }
 
 async function initApp() {
-    console.log('Инициализация приложения...');
+    console.log('=== Инициализация приложения ===');
     
     UI.init();
     UI.showScreen('loading');
     
     const statusEl = document.getElementById('loading-status');
-    if (statusEl) statusEl.textContent = 'Загрузка Firebase...';
     
     try {
+        statusEl.textContent = 'Загрузка Firebase SDK...';
+        console.log('Загрузка Firebase скриптов...');
+        
         await Promise.all([
             loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js'),
             loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js'),
@@ -25,25 +34,36 @@ async function initApp() {
         ]);
         
         console.log('Firebase скрипты загружены');
+        console.log('firebase объект:', typeof firebase);
         
-        if (typeof firebase !== 'undefined' && firebaseConfig) {
-            firebase.initializeApp(firebaseConfig);
-            await initFirebaseDB();
-            console.log('Firebase инициализирован');
-            if (statusEl) statusEl.textContent = 'Подключено!';
-        } else {
-            throw new Error('Firebase не определён');
+        if (typeof firebase === 'undefined') {
+            throw new Error('firebase не определён!');
         }
+        
+        if (!firebaseConfig) {
+            throw new Error('firebaseConfig не определён!');
+        }
+        
+        statusEl.textContent = 'Инициализация Firebase...';
+        console.log('Инициализация firebase...');
+        firebase.initializeApp(firebaseConfig);
+        console.log('firebase.initializeApp выполнен');
+        
+        statusEl.textContent = 'Подключение к базе...';
+        await initFirebaseDB();
+        
+        statusEl.textContent = 'Готово!';
+        console.log('=== Firebase полностью готов ===');
+        
     } catch (e) {
-        console.error('Ошибка инициализации:', e);
+        console.error('=== ОШИБКА ИНИЦИАЛИЗАЦИИ ===', e);
         if (statusEl) statusEl.textContent = 'Ошибка: ' + e.message;
     }
     
     initTelegramWebApp();
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 1500));
     UI.showScreen('mainMenu');
-    console.log('Приложение готово');
 }
 
 function initTelegramWebApp() {
