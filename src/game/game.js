@@ -21,10 +21,10 @@ function initApp() {
     console.log('Miasma Massacre start');
     
     UI.init();
-    UI.showScreen('loading');
     
     setTimeout(() => {
-        UI.showScreen('mainMenu');
+        document.getElementById('loading-screen').classList.remove('active');
+        document.getElementById('main-menu').classList.add('active');
     }, 500);
     
     initTelegram();
@@ -32,8 +32,13 @@ function initApp() {
 
 function initTelegram() {
     if (window.Telegram && Telegram.WebApp) {
-        Telegram.WebApp.ready();
-        Telegram.WebApp.expand();
+        try {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+            console.log('Telegram ready');
+        } catch(e) {
+            console.log('Telegram error:', e);
+        }
     }
 }
 
