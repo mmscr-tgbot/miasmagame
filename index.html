@@ -86,7 +86,7 @@
             width: window.innerWidth,
             height: window.innerHeight,
             backgroundColor: '#2d5a27',
-            physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
+            physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
             scene: { preload: preload, create: create, update: update }
         });
     }
@@ -94,26 +94,188 @@
     function preload() {
         var g = this.make.graphics();
         
-        // Tree
-        g.fillStyle(0x4a3728); g.fillRect(10, 30, 20, 40);
-        g.fillStyle(0x228b22); g.fillCircle(20, 25, 30); g.fillCircle(10, 20, 20); g.fillCircle(30, 20, 20);
-        g.generateTexture('tree', 40, 70); g.clear();
+        // ============ ДЕРЕВО ============
+        // Ствол
+        g.fillStyle(0x3E2723); g.fillRect(16, 30, 12, 45);
+        g.fillStyle(0x4E342E); g.fillRect(18, 32, 3, 40); g.fillRect(22, 35, 2, 35);
+        // Листва
+        g.fillStyle(0x1B5E20); g.fillCircle(22, 30, 28);
+        g.fillStyle(0x2E7D32); g.fillCircle(12, 25, 20); g.fillCircle(32, 25, 18);
+        g.fillStyle(0x388E3C); g.fillCircle(8, 35, 15); g.fillCircle(35, 30, 12);
+        g.fillStyle(0x43A047); g.fillCircle(22, 18, 15);
+        g.generateTexture('tree', 45, 75); g.clear();
         
-        // Bush
-        g.fillStyle(0x228b22); g.fillCircle(15, 15, 15); g.fillCircle(25, 15, 12); g.fillCircle(20, 22, 12);
-        g.generateTexture('bush', 40, 35); g.clear();
+        // ============ КУСТ ============
+        g.fillStyle(0x2E7D32); g.fillCircle(20, 20, 18);
+        g.fillStyle(0x388E3C); g.fillCircle(12, 18, 12); g.fillCircle(28, 16, 10);
+        g.fillStyle(0x43A047); g.fillCircle(16, 26, 10); g.fillCircle(24, 24, 8);
+        g.fillStyle(0x4CAF50); g.fillCircle(20, 18, 6);
+        g.generateTexture('bush', 40, 40); g.clear();
         
-        // Survivor 1
-        g.fillStyle(0x2d4a3e); g.fillRect(10, 22, 20, 28);
-        g.fillStyle(0x8B4513); g.fillRect(12, 45, 7, 18); g.fillRect(21, 45, 7, 18);
-        g.fillStyle(0xffdbac); g.fillCircle(20, 12, 10);
-        g.fillStyle(0x4a3728); g.fillCircle(20, 6, 9);
-        g.fillStyle(0x222222); g.fillRect(16, 10, 3, 3); g.fillRect(21, 10, 3, 3);
+        // ============ ЗДАНИЕ ============
+        // Фундамент
+        g.fillStyle(0x424242); g.fillRect(0, 55, 100, 15);
+        // Стены
+        g.fillStyle(0x795548); g.fillRect(5, 15, 90, 40);
+        g.fillStyle(0x8D6E63); g.fillRect(10, 20, 35, 30);
+        g.fillRect(55, 20, 35, 30);
+        // Крыша
+        g.fillStyle(0x5D4037); g.fillRect(0, 10, 100, 8);
+        g.fillStyle(0x4E342E); g.fillRect(0, 0, 100, 12);
+        // Окна
+        g.fillStyle(0x81D4FA); g.fillRect(15, 25, 12, 15);
+        g.fillStyle(0x4FC3F7); g.fillRect(17, 27, 8, 11);
+        g.fillRect(65, 25, 12, 15);
+        g.fillStyle(0x4FC3F7); g.fillRect(67, 27, 8, 11);
+        // Дверь
+        g.fillStyle(0x3E2723); g.fillRect(42, 35, 16, 20);
+        g.fillStyle(0x5D4037); g.fillCircle(54, 45, 2);
+        g.generateTexture('building', 100, 70); g.clear();
+        
+        // ============ ЗАБОР ============
+        g.fillStyle(0x5D4037); g.fillRect(0, 0, 4, 30); g.fillRect(26, 0, 4, 30);
+        g.fillRect(52, 0, 4, 30); g.fillRect(78, 0, 4, 30);
+        g.fillStyle(0x8D6E63); g.fillRect(4, 4, 22, 4); g.fillRect(4, 14, 22, 4);
+        g.fillRect(30, 4, 22, 4); g.fillRect(30, 14, 22, 4);
+        g.fillRect(56, 4, 22, 4); g.fillRect(56, 14, 22, 4);
+        g.fillRect(82, 4, 16, 4); g.fillRect(82, 14, 16, 4);
+        g.generateTexture('wall', 100, 30); g.clear();
+        
+        // ============ ЛАЧУГА ============
+        g.fillStyle(0x3E2723); g.fillRect(2, 25, 46, 20);
+        g.fillStyle(0x4E342E); g.fillRect(0, 20, 50, 8);
+        g.fillStyle(0x5D4037); g.fillRect(5, 30, 15, 15);
+        g.fillStyle(0x6D4C41); g.fillRect(30, 28, 12, 17);
+        g.fillStyle(0x2E7D32); g.fillRect(18, 45, 14, 3);
+        g.generateTexture('shack', 50, 48); g.clear();
+        
+        // ============ ЯЩИК ============
+        g.fillStyle(0x795548); g.fillRect(2, 2, 26, 26);
+        g.fillStyle(0x6D4C41); g.fillRect(0, 0, 30, 4);
+        g.fillRect(0, 26, 30, 4);
+        g.fillStyle(0x5D4037); g.fillRect(0, 12, 30, 4);
+        g.fillRect(12, 4, 4, 22);
+        g.generateTexture('crate', 30, 30); g.clear();
+        
+        // ============ ВЫЖИВШИЙ 1 - Парень в куртке ============
+        // Тело
+        g.fillStyle(0x1B5E20); g.fillRect(12, 25, 16, 22);
+        g.fillStyle(0x2E7D32); g.fillRect(14, 27, 5, 5); g.fillRect(21, 27, 5, 5);
+        // Штаны
+        g.fillStyle(0x37474F); g.fillRect(13, 45, 5, 18); g.fillRect(22, 45, 5, 18);
+        // Голова
+        g.fillStyle(0xFFCCBC); g.fillCircle(20, 14, 10);
+        // Волосы
+        g.fillStyle(0x3E2723); g.fillCircle(20, 8, 9);
+        g.fillCircle(14, 12, 5); g.fillCircle(26, 12, 5);
+        // Глаза
+        g.fillStyle(0x212121); g.fillRect(16, 12, 3, 3); g.fillRect(21, 12, 3, 3);
+        // Брови
+        g.fillStyle(0x3E2723); g.fillRect(15, 10, 4, 1); g.fillRect(21, 10, 4, 1);
         g.generateTexture('survivor1', 40, 65); g.clear();
         
-        // Survivor 2
-        g.fillStyle(0x8e44ad); g.fillRect(12, 22, 16, 30);
-        g.fillStyle(0xffdbac); g.fillCircle(20, 12, 9);
+        // ============ ВЫЖИВШАЯ 2 - Девушка ============
+        // Платье
+        g.fillStyle(0x9C27B0); g.fillRect(14, 25, 12, 25);
+        g.fillStyle(0xBA68C8); g.fillRect(16, 27, 3, 5); g.fillRect(21, 27, 3, 5);
+        // Ноги
+        g.fillStyle(0xFFCCBC); g.fillRect(15, 48, 3, 15); g.fillRect(22, 48, 3, 15);
+        // Волосы
+        g.fillStyle(0xFF8F00); g.fillCircle(20, 8, 10);
+        g.fillStyle(0xFF6F00); g.fillCircle(12, 14, 8); g.fillCircle(28, 14, 8);
+        // Голова
+        g.fillStyle(0xFFCCBC); g.fillCircle(20, 14, 9);
+        // Глаза
+        g.fillStyle(0x212121); g.fillCircle(17, 13, 2); g.fillCircle(23, 13, 2);
+        // Ресницы
+        g.fillStyle(0x212121); g.fillRect(15, 11, 4, 1); g.fillRect(21, 11, 4, 1);
+        // Губы
+        g.fillStyle(0xE91E63); g.fillCircle(20, 18, 2);
+        g.generateTexture('survivor2', 40, 65); g.clear();
+        
+        // ============ ВЫЖИВШИЙ 3 - Парень в футболке ============
+        // Футболка
+        g.fillStyle(0xD32F2F); g.fillRect(10, 25, 20, 20);
+        g.fillStyle(0xB71C1C); g.fillRect(10, 25, 20, 3);
+        // Штаны
+        g.fillStyle(0x1565C0); g.fillRect(13, 43, 5, 20); g.fillRect(22, 43, 5, 20);
+        // Голова
+        g.fillStyle(0xD7CCC8); g.fillCircle(20, 14, 10);
+        // Волосы
+        g.fillStyle(0x212121); g.fillCircle(20, 7, 10);
+        g.fillRect(12, 10, 3, 3); g.fillRect(25, 10, 3, 3);
+        // Глаза
+        g.fillStyle(0x212121); g.fillRect(16, 12, 3, 3); g.fillRect(21, 12, 3, 3);
+        // Серьга
+        g.fillStyle(0xFFD700); g.fillCircle(28, 16, 2);
+        g.generateTexture('survivor3', 40, 65); g.clear();
+        
+        // ============ ВЫЖИВШАЯ 4 - Девушка в худи ============
+        // Худи
+        g.fillStyle(0xFF9800); g.fillRect(12, 24, 16, 22);
+        g.fillStyle(0xF57C00); g.fillRect(12, 24, 16, 3);
+        // Юбка
+        g.fillStyle(0x5C6BC0); g.fillRect(14, 42, 12, 10);
+        // Ноги
+        g.fillStyle(0xD7CCC8); g.fillRect(15, 52, 3, 12); g.fillRect(22, 52, 3, 12);
+        // Волосы с хвостиком
+        g.fillStyle(0x5D4037); g.fillCircle(20, 7, 9);
+        g.fillCircle(30, 10, 6);
+        g.fillRect(28, 8, 8, 4);
+        // Голова
+        g.fillStyle(0xFFCCBC); g.fillCircle(20, 14, 9);
+        // Глаза
+        g.fillStyle(0x212121); g.fillCircle(17, 13, 2); g.fillCircle(23, 13, 2);
+        // Щёки
+        g.fillStyle(0xFFAB91); g.fillCircle(14, 16, 2); g.fillCircle(26, 16, 2);
+        g.generateTexture('survivor4', 40, 65); g.clear();
+        
+        // ============ УБИЙЦА ============
+        // Тело
+        g.fillStyle(0x212121); g.fillRect(10, 25, 20, 30);
+        // Куртка
+        g.fillStyle(0xB71C1C); g.fillRect(8, 22, 24, 15);
+        g.fillStyle(0xD32F2F); g.fillRect(10, 24, 6, 4); g.fillRect(24, 24, 6, 4);
+        // Пятна крови
+        g.fillStyle(0x7f0000); g.fillCircle(15, 32, 4); g.fillCircle(25, 35, 3); g.fillCircle(20, 40, 2);
+        // Ноги
+        g.fillStyle(0x212121); g.fillRect(12, 52, 6, 15); g.fillRect(22, 52, 6, 15);
+        // Голова
+        g.fillStyle(0xD7CCC8); g.fillCircle(20, 14, 11);
+        // Маска
+        g.fillStyle(0x37474F); g.fillRect(10, 8, 20, 14);
+        g.fillStyle(0x263238); g.fillRect(12, 10, 4, 4); g.fillRect(24, 10, 4, 4);
+        // Глаза маски
+        g.fillStyle(0xFF0000); g.fillCircle(15, 12, 3); g.fillCircle(25, 12, 3);
+        // Рот маски
+        g.fillStyle(0x000000); g.fillRect(15, 18, 10, 3);
+        g.generateTexture('killer_m', 40, 70); g.clear();
+        
+        // ============ ГЕНЕРАТОР ============
+        g.fillStyle(0x616161); g.fillRect(0, 0, 40, 30);
+        g.fillStyle(0x424242); g.fillRect(2, 2, 20, 26);
+        // Экраны
+        g.fillStyle(0x00E676); g.fillRect(4, 4, 6, 8);
+        g.fillRect(12, 4, 6, 8);
+        g.fillStyle(0x76FF03); g.fillRect(5, 5, 4, 6); g.fillRect(13, 5, 4, 6);
+        // Провода
+        g.lineStyle(2, 0x424242); g.lineBetween(26, 8, 35, 5); g.lineBetween(26, 15, 35, 12); g.lineBetween(26, 22, 35, 19);
+        // Лампочка
+        g.fillStyle(0xF44336); g.fillCircle(35, 15, 5);
+        g.fillStyle(0xFFCDD2); g.fillCircle(34, 14, 2);
+        g.generateTexture('generator', 40, 30); g.clear();
+        
+        // ============ ВЫХОД ============
+        g.fillStyle(0x5D4037); g.fillRect(0, 0, 70, 55);
+        g.fillStyle(0x4E342E); g.fillRect(5, 5, 25, 45);
+        g.fillRect(40, 5, 25, 45);
+        // Столбы
+        g.fillStyle(0x3E2723); g.fillRect(3, 0, 8, 10); g.fillRect(59, 0, 8, 10);
+        g.fillStyle(0xFFD54F); g.fillCircle(7, 3, 3); g.fillCircle(63, 3, 3);
+        // Лампочки
+        g.fillStyle(0xF44336); g.fillCircle(17, 25, 6); g.fillCircle(53, 25, 6);
+        g.fillStyle(0xFFCDD2); g.fillCircle(16, 24, 2); g.fillCircle(52, 24, 2);
+        g.generateTexture('exit', 70, 55); g.clear();
         g.fillStyle(0xd4a574); g.fillCircle(20, 6, 8); g.fillCircle(12, 10, 6); g.fillCircle(28, 10, 6);
         g.fillStyle(0x222222); g.fillCircle(17, 11, 2); g.fillCircle(23, 11, 2);
         g.fillStyle(0xffdbac); g.fillRect(14, 50, 4, 15); g.fillRect(22, 50, 4, 15);
@@ -181,23 +343,80 @@
             }
         }
         
-        var treePositions = [{x: 50, y: 50}, {x: 150, y: 80}, {x: 80, y: 150}, {x: 1100, y: 50}, {x: 1050, y: 120}, {x: 1150, y: 150}, {x: 50, y: 800}, {x: 120, y: 850}, {x: 80, y: 750}, {x: 1100, y: 800}, {x: 1050, y: 850}, {x: 1150, y: 750}, {x: 600, y: 50}, {x: 300, y: 300}, {x: 900, y: 300}, {x: 300, y: 600}, {x: 900, y: 600}];
-        treePositions.forEach(function(p) { this.add.image(p.x, p.y, 'tree').setDepth(p.y); }, this);
+        var trees = [{x: 50, y: 50}, {x: 150, y: 80}, {x: 80, y: 150}, {x: 1100, y: 50}, {x: 1050, y: 120}, {x: 1150, y: 150}, {x: 50, y: 800}, {x: 120, y: 850}, {x: 80, y: 750}, {x: 1100, y: 800}, {x: 1050, y: 850}, {x: 1150, y: 750}, {x: 600, y: 50}, {x: 300, y: 300}, {x: 900, y: 300}, {x: 300, y: 600}, {x: 900, y: 600}, {x: 200, y: 400}, {x: 1000, y: 500}, {x: 400, y: 700}, {x: 800, y: 700}];
+        trees.forEach(function(p) { this.add.image(p.x, p.y, 'tree').setDepth(p.y); }, this);
         
-        var bushPositions = [{x: 200, y: 200}, {x: 400, y: 150}, {x: 800, y: 200}, {x: 200, y: 700}, {x: 1000, y: 400}, {x: 600, y: 700}];
-        bushPositions.forEach(function(p) { this.add.image(p.x, p.y, 'bush').setDepth(p.y); }, this);
+        var bushes = [{x: 200, y: 200}, {x: 400, y: 150}, {x: 800, y: 200}, {x: 200, y: 700}, {x: 1000, y: 400}, {x: 600, y: 700}, {x: 350, y: 250}, {x: 850, y: 550}, {x: 550, y: 150}, {x: 650, y: 750}];
+        bushes.forEach(function(p) { this.add.image(p.x, p.y, 'bush').setDepth(p.y); }, this);
         
-        var walls = [{x: 600, y: 200}, {x: 300, y: 450}, {x: 900, y: 450}, {x: 600, y: 700}];
-        walls.forEach(function(w) { this.add.image(w.x, w.y, 'wall'); }, this);
+        // Buildings with collision
+        var buildings = [
+            {x: 200, y: 200, w: 80, h: 60},
+            {x: 900, y: 200, w: 80, h: 60},
+            {x: 200, y: 600, w: 80, h: 60},
+            {x: 900, y: 600, w: 80, h: 60},
+            {x: 550, y: 400, w: 80, h: 60}
+        ];
+        this.colliders = [];
+        buildings.forEach(function(b) {
+            var building = this.add.image(b.x, b.y, 'building');
+            building.setDepth(b.y);
+            this.colliders.push(building);
+        }, this);
+        
+        // Shacks
+        var shacks = [
+            {x: 100, y: 400}, {x: 1050, y: 300}, {x: 350, y: 650}, {x: 800, y: 100}
+        ];
+        shacks.forEach(function(p) {
+            var shack = this.add.image(p.x, p.y, 'shack');
+            shack.setDepth(p.y);
+            this.colliders.push(shack);
+        }, this);
+        
+        // Walls
+        var fences = [
+            {x: 300, y: 150}, {x: 300, y: 180}, {x: 850, y: 350}, {x: 850, y: 380},
+            {x: 150, y: 500}, {x: 200, y: 500}, {x: 1000, y: 650}, {x: 1050, y: 650}
+        ];
+        fences.forEach(function(p) {
+            var fence = this.add.image(p.x, p.y, 'wall');
+            fence.setDepth(p.y);
+            this.colliders.push(fence);
+        }, this);
+        
+        // Crates
+        var crates = [
+            {x: 280, y: 350}, {x: 285, y: 375}, {x: 920, y: 500}, {x: 400, y: 200}, {x: 750, y: 650}
+        ];
+        crates.forEach(function(p) {
+            var crate = this.add.image(p.x, p.y, 'crate');
+            crate.setDepth(p.y);
+            this.colliders.push(crate);
+        }, this);
+        
+        // Add collision group
+        this.physics.add.group(this.colliders);
+        this.physics.add.collider(player, this.colliders);
         
         var genPositions = [{x: 150, y: 150}, {x: 1050, y: 150}, {x: 600, y: 350}, {x: 150, y: 750}, {x: 1050, y: 750}];
         genPositions.forEach(function(p, i) {
             var gen = this.add.sprite(p.x, p.y, 'generator');
             gen.progress = 0; gen.repaired = false;
+            
+            // Progress bar
             var bar = this.add.graphics();
             bar.x = p.x - 20; bar.y = p.y - 20;
             gen.bar = bar;
+            
+            // Green light (hidden by default)
+            var light = this.add.circle(p.x + 15, p.y - 12, 5, 0x00ff00);
+            light.setAlpha(0);
+            light.setDepth(p.y + 1);
+            gen.light = light;
+            
             generators.push(gen);
+        }, this);
         }, this);
         
         this.exit = this.add.sprite(1150, 450, 'exit');
@@ -205,10 +424,11 @@
         
         player = isKiller ? this.add.sprite(600, 450, 'killer_m') : this.add.sprite(150, 150, 'survivor1');
         this.physics.add.existing(player);
-        player.body.setCollideWorldBounds(true);
+        player.body.setCollideWorldBounds(false);
         player.setDepth(1000);
         
-        if (!isKiller) {
+        // Only show killer survivors as bots
+        if (isKiller) {
             this.survivors = [];
             var survivorPositions = [{x: 1050, y: 150}, {x: 150, y: 750}, {x: 1050, y: 750}];
             var survivorTextures = ['survivor2', 'survivor3', 'survivor4'];
@@ -216,16 +436,19 @@
                 var s = this.add.sprite(p.x, p.y, survivorTextures[i]);
                 s.alive = true;
                 this.physics.add.existing(s);
-                s.body.setCollideWorldBounds(true);
+                s.body.setCollideWorldBounds(false);
                 s.setDepth(p.y);
+                this.physics.add.collider(s, this.colliders);
                 this.survivors.push(s);
             }, this);
+            this.physics.add.collider(player, this.colliders);
         } else {
             this.survivors = [];
+            this.physics.add.collider(player, this.colliders);
         }
         
-        this.cameras.main.setBounds(0, 0, mapW, mapH);
-        this.cameras.main.startFollow(player);
+        this.cameras.main.setBounds(0, 0, 0, 0);
+        this.cameras.main.setZoom(1);
         
         initInput(this);
     }
@@ -237,7 +460,8 @@
         var speed = isKiller ? CONFIG.KILLER_SPEED : CONFIG.PLAYER_SPEED;
         player.body.setVelocity(vec.x * speed, vec.y * speed);
         
-        if (!isKiller) {
+        // Only run AI when player is killer
+        if (isKiller) {
             this.survivors.forEach(function(s) {
                 if (s.alive) {
                     if (Math.random() < 0.02) s.body.setVelocity((Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60);
@@ -248,7 +472,9 @@
                     }
                 }
             });
-            
+        }
+        
+        if (!isKiller) {
             if (isActionPressed()) {
                 generators.forEach(function(gen) {
                     if (!gen.repaired) {
@@ -262,10 +488,20 @@
                             gen.bar.fillRect(-19, -19, 38 * (gen.progress / 100), 4);
                             if (gen.progress >= 100) {
                                 gen.repaired = true;
+                                gen.light.setAlpha(1);
+                                // Glow effect
                                 gen.setTint(0x00ff00);
                                 UI.showToast('Генератор починен!');
                             }
                         }
+                    }
+                });
+                
+                // Add shaking effect to repaired generators
+                generators.forEach(function(gen) {
+                    if (gen.repaired && gen.light) {
+                        gen.x += (Math.random() - 0.5) * 1.5;
+                        gen.y += (Math.random() - 0.5) * 1.5;
                     }
                 });
             }
