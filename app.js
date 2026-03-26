@@ -1,12 +1,9 @@
-let firebaseReady = false;
-let firebaseApp = null;
-
 async function loadScript(src) {
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
         script.src = src;
         script.onload = resolve;
-        script.onerror = reject;
+        script.onerror = () => reject(new Error('Failed to load: ' + src));
         document.head.appendChild(script);
     });
 }
@@ -17,6 +14,9 @@ async function initApp() {
     UI.init();
     UI.showScreen('loading');
     
+    const statusEl = document.getElementById('loading-status');
+    if (statusEl) statusEl.textContent = 'Загрузка Firebase...';
+    
     try {
         await Promise.all([
             loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js'),
@@ -24,26 +24,25 @@ async function initApp() {
             loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js')
         ]);
         
+        console.log('Firebase скрипты загружены');
+        
         if (typeof firebase !== 'undefined' && firebaseConfig) {
-            firebaseApp = firebase.initializeApp(firebaseConfig);
-            await initFirebaseAuth();
+            firebase.initializeApp(firebaseConfig);
             await initFirebaseDB();
-            firebaseReady = true;
-            console.log('Firebase готов');
+            console.log('Firebase инициализирован');
+            if (statusEl) statusEl.textContent = 'Подключено!';
         } else {
             throw new Error('Firebase не определён');
         }
     } catch (e) {
-        console.error('Ошибка Firebase:', e);
-        UI.showToast('Ошибка подключения');
+        console.error('Ошибка инициализации:', e);
+        if (statusEl) statusEl.textContent = 'Ошибка: ' + e.message;
     }
     
     initTelegramWebApp();
     
-    setTimeout(() => {
-        UI.showScreen('mainMenu');
-    }, 500);
-    
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    UI.showScreen('mainMenu');
     console.log('Приложение готово');
 }
 
@@ -60,7 +59,7 @@ function initTelegramWebApp() {
         
         if (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
             const user = Telegram.WebApp.initDataUnsafe.user;
-            console.log('Пользователь:', user.first_name, user.id);
+            console.log('Пользователь Telegram:', user.first_name);
             setUserDisplayName(user.first_name || 'Игрок');
         }
         
@@ -70,7 +69,7 @@ function initTelegramWebApp() {
         
         console.log('Telegram Web App готов');
     } else {
-        console.warn('Режим браузера');
+        console.log('Режим браузера');
     }
 }
 

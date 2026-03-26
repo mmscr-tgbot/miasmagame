@@ -20,3 +20,5 @@ const CONFIG = {
     CATCH_DISTANCE: 40,
     CATCH_COOLDOWN: 3
 };
+
+const FIREBASE_LOADED = false;

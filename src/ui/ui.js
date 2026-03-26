@@ -34,10 +34,10 @@ const UI = {
         });
         
         document.getElementById('btn-create').addEventListener('click', async () => {
-            console.log('Кнопка создания нажата, firebaseReady:', firebaseReady);
+            const ready = typeof isFirebaseReady === 'function' ? isFirebaseReady() : false;
             
-            if (!firebaseReady) {
-                this.showToast('Firebase загружается...');
+            if (!ready) {
+                this.showToast('Подождите, идёт подключение...');
                 return;
             }
             
@@ -48,31 +48,25 @@ const UI = {
             const userId = getTelegramUserId() || user?.uid || 'user_' + Date.now();
             const userName = 'Игрок' + userId.slice(-4);
             
-            console.log('Создаю комнату:', roomName, maxPlayers, userId);
+            this.showToast('Создаю комнату...');
             
-            try {
-                const result = await createRoom(roomName, maxPlayers, userId, userName);
-                console.log('Результат createRoom:', result);
-                
-                if (result.success) {
-                    console.log('Авто-присоединение к комнате:', result.roomId);
-                    await joinRoom(result.roomId, userId, userName);
-                    this.showScreen('lobby');
-                    this.updateLobby(result.roomData);
-                } else {
-                    this.showToast('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
-                }
-            } catch (e) {
-                console.error('Исключение при создании:', e);
-                this.showToast('Ошибка: ' + e.message);
+            const result = await createRoom(roomName, maxPlayers, userId, userName);
+            
+            if (result.success) {
+                await joinRoom(result.roomId, userId, userName);
+                this.showScreen('lobby');
+                this.updateLobby(result.roomData);
+                this.showToast('Комната создана!');
+            } else {
+                this.showToast('Ошибка: ' + (result.error || 'Неизвестная'));
             }
         });
         
         document.getElementById('btn-join').addEventListener('click', async () => {
-            console.log('Кнопка входа нажата, firebaseReady:', firebaseReady);
+            const ready = typeof isFirebaseReady === 'function' ? isFirebaseReady() : false;
             
-            if (!firebaseReady) {
-                this.showToast('Firebase загружается...');
+            if (!ready) {
+                this.showToast('Подождите, идёт подключение...');
                 return;
             }
             
@@ -87,15 +81,14 @@ const UI = {
             const userId = getTelegramUserId() || user?.uid || 'user_' + Date.now();
             const userName = 'Игрок' + userId.slice(-4);
             
-            console.log('Попытка присоединиться к:', roomCode);
+            this.showToast('Подключение...');
             
             const result = await joinRoom(roomCode, userId, userName);
-            console.log('Результат joinRoom:', result);
-            console.log('Результат join:', result);
             
             if (result.success) {
                 this.showScreen('lobby');
                 this.updateLobby(result.roomData);
+                this.showToast('Вы в комнате!');
             } else {
                 this.showToast('Ошибка: ' + (result.error || 'Неизвестная'));
             }
@@ -158,7 +151,8 @@ const UI = {
         const maxPlayers = roomData.maxPlayers || 4;
         
         for (let i = 0; i < maxPlayers; i++) {
-            const player = players[Object.keys(players)[i]];
+            const playerKeys = Object.keys(players);
+            const player = players[playerKeys[i]];
             
             if (player) {
                 const playerEl = document.createElement('div');
@@ -209,12 +203,14 @@ const UI = {
     
     showToast(message, duration = 3000) {
         const toast = document.getElementById('toast');
-        toast.textContent = message;
-        toast.classList.remove('hidden');
-        
-        setTimeout(() => {
-            toast.classList.add('hidden');
-        }, duration);
+        if (toast) {
+            toast.textContent = message;
+            toast.classList.remove('hidden');
+            
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, duration);
+        }
     },
     
     updateHUD(role, generators, exitOpen, aliveCount) {
@@ -227,18 +223,20 @@ const UI = {
         const playerListHud = document.getElementById('player-list-hud');
         const aliveCountEl = document.getElementById('alive-count');
         
-        roleIndicator.classList.remove('hidden');
-        playerRole.textContent = role === 'killer' ? 'Убийца' : 'Выживший';
+        if (roleIndicator) roleIndicator.classList.remove('hidden');
+        if (playerRole) playerRole.textContent = role === 'killer' ? 'Убийца' : 'Выживший';
         
-        genInfo.classList.remove('hidden');
-        const repairedGens = Object.values(generators || {}).filter(g => g.repaired).length;
-        genCount.textContent = `${repairedGens}/${CONFIG.GENERATOR_COUNT}`;
+        if (genInfo) genInfo.classList.remove('hidden');
+        if (genCount && generators) {
+            const repairedGens = Object.values(generators).filter(g => g && g.repaired).length;
+            genCount.textContent = `${repairedGens}/${CONFIG.GENERATOR_COUNT}`;
+        }
         
-        exitStatus.classList.remove('hidden');
-        exitState.textContent = exitOpen ? 'открыт' : 'закрыт';
+        if (exitStatus) exitStatus.classList.remove('hidden');
+        if (exitState) exitState.textContent = exitOpen ? 'открыт' : 'закрыт';
         
-        playerListHud.classList.remove('hidden');
-        aliveCountEl.textContent = `Выжившие: ${aliveCount}`;
+        if (playerListHud) playerListHud.classList.remove('hidden');
+        if (aliveCountEl) aliveCountEl.textContent = `Выжившие: ${aliveCount}`;
     },
     
     showGameOver(result, message) {
@@ -253,10 +251,9 @@ const UI = {
     
     showLoading(show) {
         const loading = document.getElementById('loading-screen');
-        if (show) {
-            loading.classList.add('active');
-        } else {
-            loading.classList.remove('active');
+        if (loading) {
+            if (show) loading.classList.add('active');
+            else loading.classList.remove('active');
         }
     }
 };

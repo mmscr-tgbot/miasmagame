@@ -1,31 +1,19 @@
-let auth;
 let currentUser = null;
 let userData = null;
 
-async function initFirebaseAuth() {
-    try {
-        if (typeof firebase === 'undefined') {
-            console.warn('Firebase SDK не загружен');
-            return null;
-        }
-        
-        auth = firebase.auth();
-        
-        const result = await auth.signInAnonymously();
-        currentUser = result.user;
-        
-        userData = {
-            uid: currentUser.uid,
-            displayName: 'Игрок',
-            createdAt: Date.now()
-        };
-        
-        console.log('Анонимная авторизация:', currentUser.uid);
-        return currentUser;
-    } catch (error) {
-        console.error('Ошибка авторизации:', error);
-        return null;
-    }
+function initFirebaseAuth() {
+    currentUser = {
+        uid: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
+    };
+    
+    userData = {
+        uid: currentUser.uid,
+        displayName: 'Игрок',
+        createdAt: Date.now()
+    };
+    
+    console.log('Пользователь:', currentUser.uid);
+    return Promise.resolve(currentUser);
 }
 
 function getCurrentUser() {
