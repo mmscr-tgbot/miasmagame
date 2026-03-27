@@ -52,8 +52,24 @@
             showToast: function(m){var t=document.getElementById('toast');if(t){t.textContent=m;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');}},
             showGameOver: function(won){var title=document.getElementById('game-result-title');var msg=document.getElementById('game-result-message');if(title)title.textContent=won?'ПОБЕДА!':'ПОРАЖЕНИЕ';if(msg)msg.textContent=won?'Ты сбежал!':isKiller?'Ты поймал всех!':'Тебя поймали!';UI.showScreen('game-over');}
         };
-        var CONFIG = { PLAYER_SPEED: 140, KILLER_SPEED: 160, GENERATOR_COUNT: 5, CATCH_DISTANCE: 45, CATCH_COOLDOWN: 2 };
+        var CONFIG = { 
+            PLAYER_SPEED: 155, 
+            KILLER_SPEED: 170, 
+            INJURED_SPEED: 185,
+            DYING_SPEED: 30,
+            GENERATOR_COUNT: 5, 
+            CATCH_DISTANCE: 50, 
+            CATCH_COOLDOWN: 1.5,
+            HIT_DISTANCE: 55,
+            STUN_TIME: 1.5,
+            HOOK_TIME: 60,
+            HEAL_TIME: 15,
+            GATE_OPEN_TIME: 20,
+            HATCH_APPEAR_CHANCE: 0.3
+        };
         var game = null, player = null, generators = [], isKiller = false, exitOpen = false, survivorsLeft = 4, catchCooldown = 0;
+        var killerStunned = 0;
+        var survivorSpeedBoost = 0;
 
         function startGame(km){ 
             isKiller = km; 
@@ -106,6 +122,8 @@
             
             g.fillStyle(0x388E3C);g.fillCircle(20,20,18);g.fillStyle(0x2E7D32);g.fillCircle(10,18,10);g.fillCircle(30,16,10);g.fillStyle(0x1B5E20);g.fillCircle(20,25,6);g.generateTexture('bush',40,40);g.clear();
             
+            g.fillStyle(0x607D8B);g.fillCircle(18,18,16);g.fillStyle(0x78909C);g.fillCircle(12,14,8);g.fillCircle(24,14,8);g.fillStyle(0x455A64);g.fillCircle(18,22,6);g.generateTexture('rock',40,40);g.clear();
+            
             g.fillStyle(0x4E342E);g.fillRect(0,55,100,15);g.fillStyle(0x6D4C41);g.fillRect(5,15,90,40);g.fillStyle(0x5D4037);g.fillRect(0,10,100,8);g.fillStyle(0x81D4FA);g.fillRect(15,25,12,15);g.fillRect(65,25,12,15);g.fillStyle(0x3E2723);g.fillRect(42,35,16,20);g.fillStyle(0xFFEB3B);g.fillRect(20,30,8,10);g.fillRect(70,30,8,10);g.generateTexture('building',100,70);g.clear();
             
             g.fillStyle(0x5D4037);g.fillRect(0,0,4,30);g.fillRect(26,0,4,30);g.fillRect(52,0,4,30);g.fillRect(78,0,4,30);g.fillStyle(0x8D6E63);g.fillRect(4,4,22,4);g.fillRect(4,14,22,4);g.fillRect(30,4,22,4);g.fillRect(30,14,22,4);g.fillStyle(0x6D4C41);g.fillRect(10,20,10,10);g.fillRect(60,20,10,10);g.generateTexture('wall',100,30);g.clear();
@@ -113,6 +131,10 @@
             g.fillStyle(0x4E342E);g.fillRect(2,25,46,20);g.fillStyle(0x5D4037);g.fillRect(0,20,50,8);g.fillStyle(0x6D4C41);g.fillRect(5,30,15,10);g.fillStyle(0x3E2723);g.fillRect(35,30,10,15);g.fillStyle(0xFFA726);g.fillRect(20,20,10,10);g.generateTexture('shack',50,48);g.clear();
             
             g.fillStyle(0x795548);g.fillRect(2,2,26,26);g.fillStyle(0x6D4C41);g.fillRect(0,0,30,4);g.fillRect(0,26,30,4);g.fillStyle(0x5D4037);g.fillRect(0,12,30,4);g.fillStyle(0x4E342E);g.fillRect(8,8,14,10);g.generateTexture('crate',30,30);g.clear();
+            
+            g.fillStyle(0x5D4037);g.fillRect(0,0,50,5);g.fillRect(0,55,50,5);g.fillRect(0,0,5,60);g.fillRect(45,0,5,60);g.fillStyle(0x8D6E63);g.fillRect(5,5,40,50);g.fillRect(15,25,20,10);g.generateTexture('fence',50,60);g.clear();
+            
+            g.fillStyle(0xB71C1C);g.fillRect(0,0,80,60);g.fillStyle(0x7f0000);g.fillRect(5,5,70,50);g.fillStyle(0x424242);g.fillRect(35,20,10,25);g.generateTexture('gate',80,60);g.clear();
             
             g.fillStyle(0xD32F2F);g.fillRect(10,28,20,25);g.fillStyle(0x1976D2);g.fillRect(10,53,8,12);g.fillRect(22,53,8,12);g.fillStyle(0xFFCCBC);g.fillCircle(20,16,11);g.fillStyle(0xFFAB91);g.fillCircle(16,14,3);g.fillCircle(24,14,3);g.fillStyle(0x5D4037);g.fillCircle(20,10,11);g.fillStyle(0x212121);g.fillRect(16,9,3,3);g.fillRect(21,9,3,3);g.fillStyle(0xFFFFFF);g.fillRect(18,12,4,2);g.generateTexture('survivor1',40,65);g.clear();
             
@@ -131,6 +153,8 @@
             g.fillStyle(0x2E7D32);g.fillRect(0,0,32,32);g.fillStyle(0x388E3C);g.fillCircle(8,8,5);g.fillCircle(24,20,4);g.fillCircle(16,28,3);g.fillStyle(0x1B5E20);g.fillCircle(12,16,3);g.generateTexture('ground',32,32);g.clear();
             
             g.fillStyle(0x424242);g.fillCircle(15,15,12);g.fillStyle(0x616161);g.fillCircle(15,15,8);g.fillStyle(0x757575);g.fillCircle(15,15,4);g.generateTexture('hook',30,30);g.clear();
+            
+            g.fillStyle(0x424242);g.fillCircle(15,15,14);g.fillStyle(0x616161);g.fillCircle(15,15,10);g.fillStyle(0xB71C1C);g.fillCircle(15,15,4);g.generateTexture('hatch',30,30);g.clear();
         }
 
         function create(){
@@ -142,57 +166,119 @@
                 }
             }
             
-            var trees = [{x:50,y:50},{x:150,y:80},{x:1100,y:50},{x:1050,y:120},{x:50,y:800},{x:120,y:850},{x:1100,y:800},{x:1050,y:850},{x:600,y:50},{x:300,y:300},{x:900,y:300},{x:300,y:600},{x:900,y:600}];
-            trees.forEach(function(p){this.add.image(p.x, p.y, 'tree').setDepth(p.y);}, this);
+            var colliders = [];
+            var solidColliders = [];
             
-            var bushes = [{x:200,y:200},{x:400,y:150},{x:800,y:200},{x:200,y:700},{x:1000,y:400},{x:600,y:700}];
-            bushes.forEach(function(p){this.add.image(p.x, p.y, 'bush').setDepth(p.y);}, this);
+            var borderFences = [];
+            for(var x = 30; x < mw; x += 50){
+                borderFences.push({x: x, y: 30});
+                borderFences.push({x: x, y: mh - 30});
+            }
+            for(var y = 30; y < mh; y += 50){
+                borderFences.push({x: 30, y: y});
+                borderFences.push({x: mw - 30, y: y});
+            }
+            borderFences.forEach(function(p){
+                var f = this.add.image(p.x, p.y, 'fence');
+                f.setDepth(p.y);
+                f.body = { immovable: true };
+                solidColliders.push(f);
+            }, this);
             
-            this.colliders = [];
-            var builds = [{x:200,y:200},{x:900,y:200},{x:200,y:600},{x:900,y:600},{x:550,y:400}];
+            var trees = [
+                {x:80,y:80},{x:180,y:100},{x:1100,y:60},{x:1050,y:140},
+                {x:60,y:820},{x:140,y:860},{x:1100,y:800},{x:1050,y:860},
+                {x:600,y:60},{x:320,y:320},{x:920,y:320},{x:320,y:620},{x:920,y:620},
+                {x:200,y:450},{x:1000,y:450},{x:450,y:200},{x:750,y:200}
+            ];
+            trees.forEach(function(p){
+                var t = this.add.image(p.x, p.y, 'tree');
+                t.setDepth(p.y);
+                colliders.push(t);
+            }, this);
+            
+            var rocks = [
+                {x:250,y:180},{x:450,y:150},{x:850,y:180},{x:250,y:700},
+                {x:950,y:500},{x:600,y:720},{x:400,y:450},{x:800,y:450}
+            ];
+            rocks.forEach(function(p){
+                var r = this.add.image(p.x, p.y, 'rock');
+                r.setDepth(p.y);
+                r.body = { immovable: true };
+                solidColliders.push(r);
+            }, this);
+            
+            var bushes = [
+                {x:180,y:280},{x:380,y:180},{x:780,y:220},{x:180,y:680},
+                {x:1020,y:420},{x:580,y:680},{x:450,y:350},{x:750,y:550}
+            ];
+            bushes.forEach(function(p){
+                var b = this.add.image(p.x, p.y, 'bush');
+                b.setDepth(p.y);
+                colliders.push(b);
+            }, this);
+            
+            var builds = [
+                {x:180,y:180},{x:1020,y:180},{x:180,y:720},{x:1020,y:720},{x:600,y:450}
+            ];
             builds.forEach(function(b){
                 var bl = this.add.image(b.x, b.y, 'building');
                 bl.setDepth(b.y);
-                this.colliders.push(bl);
+                bl.body = { immovable: true };
+                solidColliders.push(bl);
             }, this);
             
-            var shacks = [{x:100,y:400},{x:1050,y:300},{x:350,y:650},{x:800,y:100}];
+            var shacks = [
+                {x:80,y:350},{x:1120,y:280},{x:320,y:620},{x:780,y:80}
+            ];
             shacks.forEach(function(s){
                 var sh = this.add.image(s.x, s.y, 'shack');
                 sh.setDepth(s.y);
-                this.colliders.push(sh);
+                sh.body = { immovable: true };
+                solidColliders.push(sh);
             }, this);
             
-            var fences = [{x:300,y:150},{x:850,y:350},{x:150,y:500},{x:1000,y:650}];
+            var fences = [
+                {x:280,y:120},{x:920,y:320},{x:120,y:480},{x:1080,y:620}
+            ];
             fences.forEach(function(f){
                 var fe = this.add.image(f.x, f.y, 'wall');
                 fe.setDepth(f.y);
-                this.colliders.push(fe);
+                fe.body = { immovable: true };
+                solidColliders.push(fe);
             }, this);
             
-            var crates = [{x:280,y:350},{x:920,y:500},{x:400,y:200},{x:750,y:650}];
+            var crates = [
+                {x:260,y:330},{x:940,y:480},{x:380,y:180},{x:730,y:630}
+            ];
             crates.forEach(function(c){
                 var cr = this.add.image(c.x, c.y, 'crate');
                 cr.setDepth(c.y);
-                this.colliders.push(cr);
+                cr.body = { immovable: true };
+                solidColliders.push(cr);
             }, this);
             
             var group = this.physics.add.group();
-            this.colliders.forEach(function(obj){
-                obj.body = obj.body || {};
-                obj.body.immovable = true;
+            solidColliders.forEach(function(obj){
+                this.physics.add.existing(obj);
+                obj.body.setImmovable(true);
+                obj.body.setCollideWorldBounds(false);
                 group.add(obj);
-            });
+            }, this);
             group.setImmovable(true);
             
             this.physics.add.collider(player, group);
             
-            var genPos = [{x:150,y:150},{x:1050,y:150},{x:600,y:350},{x:150,y:750},{x:1050,y:750}];
+            var genPos = [
+                {x:120,y:120},{x:1080,y:120},{x:600,y:450},
+                {x:120,y:780},{x:1080,y:780}
+            ];
             genPos.forEach(function(p){
                 var gen = this.add.sprite(p.x, p.y, 'generator');
                 gen.progress = 0;
                 gen.repaired = false;
                 gen.beingRepaired = false;
+                gen.damageProgress = 0;
                 var bar = this.add.graphics();
                 bar.x = p.x - 20;
                 bar.y = p.y - 20;
@@ -207,35 +293,74 @@
                 generators.push(gen);
             }, this);
             
-            this.exit = this.add.sprite(1150, 450, 'exit');
-            this.exit.setTint(0x440000);
+            var gatePositions = [
+                {x:60,y:450},{x:1140,y:450}
+            ];
+            this.gates = [];
+            gatePositions.forEach(function(gp){
+                var gate = this.add.sprite(gp.x, gp.y, 'gate');
+                gate.progress = 0;
+                gate.opened = false;
+                gate.bar = null;
+                this.physics.add.existing(gate);
+                gate.body.setImmovable(true);
+                gate.body.setCollideWorldBounds(false);
+                this.gates.push(gate);
+            }, this);
             
-            var hookPositions = [{x:350,y:250},{x:800,y:250},{x:350,y:650},{x:800,y:650},{x:575,y:450}];
+            this.exit = this.add.sprite(600, 450, 'exit');
+            this.exit.setTint(0x440000);
+            this.exit.setVisible(false);
+            
+            var hookPositions = [
+                {x:300,y:200},{x:900,y:200},{x:300,y:700},{x:900,y:700},{x:600,y:450}
+            ];
             this.hooks = [];
             hookPositions.forEach(function(hp){
                 var hook = this.add.sprite(hp.x, hp.y, 'hook');
                 hook.setTint(0x888888);
                 hook.setScale(1.2);
                 hook.occupied = false;
+                hook.hookedPlayer = null;
+                hook.hookTimer = 0;
                 this.hooks.push(hook);
             }, this);
             
-            player = isKiller ? this.add.sprite(600, 450, 'killer_m') : this.add.sprite(150, 150, 'survivor1');
+            this.hatch = null;
+            
+            this.physics.add.collider(player, group);
+            
+            var killerSpawn = {x:600, y:450};
+            var survivorSpawns = [
+                {x:100,y:100},{x:1100,y:100},{x:100,y:800},{x:1100,y:800}
+            ];
+            
+            player = isKiller ? this.add.sprite(killerSpawn.x, killerSpawn.y, 'killer_m') : this.add.sprite(survivorSpawns[0].x, survivorSpawns[0].y, 'survivor1');
+            player.health = 100;
+            player.injured = false;
+            player.dying = false;
+            player.hooked = false;
+            player.carriedBy = null;
             this.physics.add.existing(player);
             player.body.setCollideWorldBounds(false);
             player.setDepth(1000);
             
-            this.physics.add.collider(player, group);
-            
             if(isKiller){
                 this.survivors = [];
-                var sp = [{x:1050,y:150},{x:150,y:750},{x:1050,y:750}];
+                var sp = [
+                    {x:survivorSpawns[1].x,y:survivorSpawns[1].y},
+                    {x:survivorSpawns[2].x,y:survivorSpawns[2].y},
+                    {x:survivorSpawns[3].x,y:survivorSpawns[3].y}
+                ];
                 var st = ['survivor2', 'survivor3', 'survivor4'];
                 sp.forEach(function(p, i){
                     var s = this.add.sprite(p.x, p.y, st[i]);
-                    s.alive = true;
+                    s.health = 100;
+                    s.injured = false;
                     s.dying = false;
                     s.hooked = false;
+                    s.carriedBy = null;
+                    s.alive = true;
                     this.physics.add.existing(s);
                     s.body.setCollideWorldBounds(false);
                     s.setDepth(p.y);
@@ -256,31 +381,55 @@
             if(!player) return;
             
             var vec = getInputVector();
-            var spd = isKiller ? CONFIG.KILLER_SPEED : CONFIG.PLAYER_SPEED;
-            player.body.setVelocity(vec.x * spd, vec.y * spd);
+            var spd = CONFIG.PLAYER_SPEED;
             
-            if(isKiller && isActionPressed()){
+            if(isKiller){
+                if(killerStunned > 0){
+                    killerStunned -= dt / 1000;
+                    player.body.setVelocity(0, 0);
+                } else {
+                    spd = CONFIG.KILLER_SPEED;
+                    player.body.setVelocity(vec.x * spd, vec.y * spd);
+                }
+            } else {
+                if(survivorSpeedBoost > 0){
+                    survivorSpeedBoost -= dt / 1000;
+                    spd = CONFIG.INJURED_SPEED;
+                }
+                if(player.injured) spd = CONFIG.INJURED_SPEED;
+                if(player.dying) spd = CONFIG.DYING_SPEED;
+                if(player.hooked) spd = 0;
+                
+                if(spd > 0){
+                    player.body.setVelocity(vec.x * spd, vec.y * spd);
+                }
+            }
+            
+            if(isKiller && isActionPressed() && killerStunned <= 0){
                 this.survivors.forEach(function(s){
-                    if(s.alive && !s.dying){
+                    if(s.alive && !s.hooked){
                         var d = Phaser.Math.Distance.Between(player.x, player.y, s.x, s.y);
-                        if(d < 50){
-                            s.alive = false;
-                            s.dying = true;
-                            s.setTint(0x888888);
-                            UI.showToast('Выживший сбит! Отнеси на крюк!');
+                        if(d < CONFIG.HIT_DISTANCE){
+                            if(s.injured){
+                                s.dying = true;
+                                s.setTint(0x666666);
+                                UI.showToast('Выживший сбит с ног!');
+                            } else {
+                                s.injured = true;
+                                s.setTint(0xff6666);
+                                survivorSpeedBoost = 2;
+                                killerStunned = CONFIG.STUN_TIME;
+                                UI.showToast('Выживший ранен! +Ускорение');
+                            }
                         }
-                    } else if(s.dying && !s.hooked){
+                    } else if(s.dying && !s.hooked && !s.carriedBy){
                         var d = Phaser.Math.Distance.Between(player.x, player.y, s.x, s.y);
-                        if(d < 50 && Math.abs(vec.x) < 0.3 && Math.abs(vec.y) < 0.3){
+                        if(d < CONFIG.HIT_DISTANCE && Math.abs(vec.x) < 0.3 && Math.abs(vec.y) < 0.3){
                             var hook = this.hooks.find(function(h){ return !h.occupied; });
                             if(hook){
-                                s.x = hook.x;
-                                s.y = hook.y;
-                                s.hooked = true;
-                                hook.occupied = true;
-                                hook.setTint(0xff0000);
-                                UI.showToast('Выживший повешен!');
-                                survivorsLeft--;
+                                s.carriedBy = player;
+                                s.x = player.x;
+                                s.y = player.y - 30;
                             }
                         }
                     }
@@ -289,38 +438,85 @@
                 generators.forEach(function(gen){
                     var d = Phaser.Math.Distance.Between(player.x, player.y, gen.x, gen.y);
                     if(d < 50 && gen.progress > 0){
-                        gen.progress = 0;
+                        gen.progress = Math.max(0, gen.progress - dt / 50);
                         gen.bar.clear();
-                        gen.setTint(0x444444);
-                        UI.showToast('Генератор сломан!');
-                    } else if(d < 50 && !gen.repaired){
-                        gen.beingRepaired = true;
+                        gen.bar.fillStyle(0x000000, 0.7);
+                        gen.bar.fillRect(-20, -20, 40, 6);
+                        gen.bar.fillStyle(0xff0000);
+                        gen.bar.fillRect(-19, -19, 38 * (gen.progress / 100), 4);
+                        if(gen.progress <= 0){
+                            gen.setTint(0x444444);
+                            UI.showToast('Генератор сломан!');
+                        }
                     }
                 });
-            } else if(isKiller) {
-                generators.forEach(function(gen){
-                    gen.beingRepaired = false;
-                });
+                
+                if(this.gates){
+                    this.gates.forEach(function(gate){
+                        var d = Phaser.Math.Distance.Between(player.x, player.y, gate.x, gate.y);
+                        if(d < 50 && !gate.opened){
+                            gate.progress += dt / 100;
+                            if(!gate.bar) gate.bar = this.add.graphics();
+                            gate.bar.clear();
+                            gate.bar.fillStyle(0x000000, 0.7);
+                            gate.bar.fillRect(-20, -30, 40, 6);
+                            gate.bar.fillStyle(0xff0000);
+                            gate.bar.fillRect(-19, -29, 38 * (gate.progress / 100), 4);
+                            if(gate.progress >= 100){
+                                gate.opened = true;
+                                gate.setTint(0x00ff00);
+                                UI.showToast('Ворота открыты!');
+                            }
+                        }
+                    }, this);
+                }
+                
+                if(this.hatch){
+                    var d = Phaser.Math.Distance.Between(player.x, player.y, this.hatch.x, this.hatch.y);
+                    if(d < 40 && this.hatch.active){
+                        this.hatch.destroy();
+                        this.hatch = null;
+                        UI.showToast('Люк закрыт!');
+                    }
+                }
             }
             
-            if(isKiller && this.survivors){
+            if(isKiller && player.carriedSurvivor){
+                player.carriedSurvivor.x = player.x;
+                player.carriedSurvivor.y = player.y - 30;
+                var hook = this.hooks.find(function(h){ return !h.occupied; });
+                if(hook && isActionPressed()){
+                    player.carriedSurvivor.hooked = true;
+                    player.carriedSurvivor.x = hook.x;
+                    player.carriedSurvivor.y = hook.y;
+                    hook.occupied = true;
+                    hook.hookedPlayer = player.carriedSurvivor;
+                    hook.hookTimer = CONFIG.HOOK_TIME;
+                    player.carriedSurvivor = null;
+                    UI.showToast('Выживший повешен!');
+                    survivorsLeft--;
+                }
+            }
+            
+            if(isKiller && killerStunned <= 0){
                 this.survivors.forEach(function(s){
-                    if(s.alive){
+                    if(s.alive && !s.hooked){
                         if(Math.random() < 0.02){
                             s.body.setVelocity((Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60);
                         }
                         var d = Phaser.Math.Distance.Between(s.x, s.y, player.x, player.y);
                         if(d < 150){
                             var a = Phaser.Math.Angle.Between(s.x, s.y, player.x, player.y);
-                            s.body.setVelocity(Math.cos(a) * 80, Math.sin(a) * 80);
+                            var runSpd = s.injured ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED;
+                            s.body.setVelocity(Math.cos(a) * runSpd, Math.sin(a) * runSpd);
                         }
-                    } else if(s.dying && !s.hooked && !isActionPressed()){
+                    } else if(s.dying && !s.hooked && !s.carriedBy && !isActionPressed()){
                         s.body.setVelocity(0, 0);
                     }
                 });
             }
             
-            if(!isKiller){
+            if(!isKiller && !player.dying && !player.hooked){
                 var nearGenerator = false;
                 if(isActionPressed()){
                     generators.forEach(function(gen){
@@ -343,34 +539,54 @@
                             }
                         }
                     });
+                    
+                    if(this.hatch && !player.injured && !player.dying){
+                        var d = Phaser.Math.Distance.Between(player.x, player.y, this.hatch.x, this.hatch.y);
+                        if(d < 40){
+                            UI.showGameOver(true);
+                            stopGame();
+                            return;
+                        }
+                    }
                 }
                 
                 if(nearGenerator){
                     player.body.setVelocity(0, 0);
                 }
                 
+                this.survivors.forEach(function(s){
+                    if(s && s.hooked && s.hookTimer > 0){
+                        s.hookTimer -= dt / 1000;
+                        if(s.hookTimer <= 0){
+                            UI.showGameOver(false);
+                            stopGame();
+                        }
+                    }
+                }, this);
+                
                 var rep = generators.filter(function(g){ return g.repaired; }).length;
-                if(rep >= CONFIG.GENERATOR_COUNT && !exitOpen){
+                if(rep >= CONFIG.GENERATOR_COUNT && !exitOpen && !this.hatch){
+                    if(Math.random() < CONFIG.HATCH_APPEAR_CHANCE){
+                        var hx = 100 + Math.random() * 1000;
+                        var hy = 100 + Math.random() * 700;
+                        this.hatch = this.add.sprite(hx, hy, 'hatch');
+                        this.hatch.setTint(0xffaa00);
+                        this.hatch.active = true;
+                        UI.showToast('Появился ЛЮК!');
+                    }
                     exitOpen = true;
                     this.exit.setTint(0x00ff00);
+                    this.exit.setVisible(true);
                     UI.showToast('ВЫХОД ОТКРЫТ!');
-                }
-                
-                if(exitOpen){
-                    var d = Phaser.Math.Distance.Between(player.x, player.y, this.exit.x, this.exit.y);
-                    if(d < 50){
-                        UI.showGameOver(true);
-                        stopGame();
-                        return;
-                    }
                 }
             }
             
-            if(isKiller && catchCooldown > 0) catchCooldown -= dt / 1000;
+            if(killerStunned > 0) killerStunned -= dt / 1000;
+            if(survivorSpeedBoost > 0) survivorSpeedBoost -= dt / 1000;
             
             if(isKiller && this.survivors){
-                var allDead = this.survivors.every(function(s){ return s.hooked; });
-                if(allDead && this.survivors.length > 0){
+                var allHooked = this.survivors.every(function(s){ return s.hooked; });
+                if(allHooked && this.survivors.length > 0){
                     UI.showGameOver(false);
                     stopGame();
                     return;
@@ -385,7 +601,7 @@
             var exitEl = document.getElementById('exit-state');
             var aliveEl = document.getElementById('alive-count');
             
-            if(roleEl) roleEl.textContent = isKiller ? 'Убийца' : 'Выживший';
+            if(roleEl) roleEl.textContent = isKiller ? 'Убийца' : (player.injured ? 'Ранен' : (player.dying ? 'Падает' : 'Выживший'));
             if(genEl) genEl.textContent = rep + '/5';
             if(exitEl) exitEl.textContent = exitOpen ? 'открыт' : 'закрыт';
             if(aliveEl) aliveEl.textContent = 'Выжившие: ' + survivorsLeft;
