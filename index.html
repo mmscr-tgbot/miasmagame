@@ -3,13 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://telegram.org data: blob:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org;">
     <title>Miasma Massacre</title>
     <link rel="stylesheet" href="styles.css">
+    <script>
+        window.phaserLoaded = false;
+        window.phaserLoadError = false;
+        
+        function loadPhaser() {
+            var script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js';
+            script.onload = function() { window.phaserLoaded = true; };
+            script.onerror = function() {
+                var backup = document.createElement('script');
+                backup.src = 'https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js';
+                backup.onload = function() { window.phaserLoaded = true; };
+                backup.onerror = function() { window.phaserLoadError = true; };
+                document.head.appendChild(backup);
+            };
+            document.head.appendChild(script);
+        }
+        
+        if(document.readyState === 'loading'){
+            document.addEventListener('DOMContentLoaded', loadPhaser);
+        } else {
+            loadPhaser();
+        }
+    </script>
 </head>
 <body>
     <div id="app">
-        <div id="loading-screen"><div class="loader"></div><p>Загрузка...</p></div>
+        <div id="loading-screen" class="screen active"><div class="loader"></div><p>Загрузка...</p></div>
         <div id="main-menu" class="screen"><h1>Miasma Massacre</h1><button id="btn-single" class="btn primary">Играть (Solo)</button><div class="version">v1.0.0</div></div>
         <div id="role-select" class="screen"><h2>Выбери роль</h2><button id="btn-play-killer" class="btn primary">Убийца</button><button id="btn-play-survivor" class="btn secondary">Выживший</button></div>
         <div id="game-screen" class="screen"><div id="game-container"></div><div id="hud"><div id="role-indicator">Роль: <span id="player-role">---</span></div><div id="generators-info">Генераторы: <span id="gen-count">0/5</span></div><div id="exit-status">Выход: <span id="exit-state">закрыт</span></div></div><div id="player-list-hud"><div id="alive-count">Выжившие: 4/4</div></div></div>
@@ -17,7 +41,6 @@
     </div>
     <div id="toast"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script>
     (function(){
         var UI = { 
@@ -556,35 +579,47 @@
         var attempts = 0;
         
         function initApp(){
-            if(typeof Phaser !== 'undefined'){
+            if(window.phaserLoaded && typeof Phaser !== 'undefined' && typeof Phaser.Game !== 'undefined'){
                 document.getElementById('loading-screen').classList.remove('active');
                 document.getElementById('main-menu').classList.add('active');
                 setupButtons();
+                initTelegram();
                 return true;
             }
             return false;
         }
         
-        if(!initApp()){
-            var checkInt = setInterval(function(){
-                attempts++;
-                if(initApp() || attempts > 30){
-                    clearInterval(checkInt);
-                    if(attempts > 30){
-                        var p = document.querySelector('#loading-screen p');
-                        if(p) p.textContent = 'Ошибка загрузки';
-                    }
-                }
-            }, 200);
+        function tryInit(){
+            if(initApp()) return;
+            attempts++;
+            var loadingText = document.querySelector('#loading-screen p');
+            if(attempts <= 30){
+                if(loadingText) loadingText.textContent = 'Загрузка... (' + attempts + ')';
+                setTimeout(tryInit, 150);
+            } else if(window.phaserLoadError){
+                if(loadingText) loadingText.textContent = 'Ошибка загрузки. Проверьте соединение.';
+            } else {
+                if(loadingText) loadingText.textContent = 'Загрузка...';
+                setTimeout(tryInit, 300);
+            }
         }
+        
+        function initTelegram(){
+            var tg = document.createElement('script');
+            tg.src = 'https://telegram.org/js/telegram-web-app.js';
+            tg.onload = function(){
+                try{ Telegram.WebApp.ready(); Telegram.WebApp.expand(); }catch(e){}
+            };
+            document.head.appendChild(tg);
+        }
+        
+        tryInit();
         
         function setupButtons(){
             var btnSingle = document.getElementById('btn-single');
             var btnKiller = document.getElementById('btn-play-killer');
             var btnSurvivor = document.getElementById('btn-play-survivor');
             var btnBack = document.getElementById('btn-back-menu');
-            
-            console.log('Buttons found:', !!btnSingle, !!btnKiller, !!btnSurvivor, !!btnBack);
             
             if(btnSingle) btnSingle.onclick = function(){
                 UI.showScreen('role-select');
@@ -603,16 +638,6 @@
                 UI.showScreen('main-menu');
             };
         }
-        
-        var tg = document.createElement('script');
-        tg.src = 'https://telegram.org/js/telegram-web-app.js';
-        tg.onload = function(){
-            try{
-                Telegram.WebApp.ready();
-                Telegram.WebApp.expand();
-            } catch(e){}
-        };
-        document.head.appendChild(tg);
     })();
     </script>
 </body>

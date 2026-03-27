@@ -71,6 +71,8 @@ h2 {
     cursor: pointer;
     background: #333;
     color: #fff;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .btn.primary {
