@@ -556,11 +556,12 @@
             
             var searchInterval = setInterval(function(){
                 var roomsRef = firebase.database().ref('rooms');
-                roomsRef.orderByChild('status').equalTo('waiting').once('value').then(function(snapshot){
+                roomsRef.once('value').then(function(snapshot){
                     var found = false;
                     var count = 0;
                     snapshot.forEach(function(child){
                         var room = child.val();
+                        if(room.status !== 'waiting') return;
                         var players = room.players || {};
                         var pCount = Object.keys(players).length;
                         count++;
@@ -581,7 +582,7 @@
                         }
                     });
                     if(!found){
-                        document.getElementById('search-status').textContent = 'Поиск лобби... (' + count + ' проверено)';
+                        document.getElementById('search-status').textContent = 'Поиск лобби... (' + count + ' комнат)';
                     }
                 }).catch(function(err){
                     document.getElementById('search-status').textContent = 'Ошибка: ' + err.message;
