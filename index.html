@@ -3,60 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseio.com https://*.firebase.com https://www.gstatic.com https://gstatic.com https://telegram.org data: blob:; connect-src 'self' https://*.firebaseio.com https://*.firebase.com wss://*.firebaseio.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseio.com https://*.firebase.com https://www.gstatic.com https://gstatic.com https://telegram.org;">
     <title>Miasma Massacre</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script>
-        window.phaserLoaded = false;
-        window.phaserLoadError = false;
-        window.firebaseLoaded = false;
-        
-        function loadScripts() {
-            var firebaseScript = document.createElement('script');
-            firebaseScript.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
-            firebaseScript.onload = function() {
-                var firebaseDB = document.createElement('script');
-                firebaseDB.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js';
-                firebaseDB.onload = function() {
-                    try {
-                        firebase.initializeApp({
-                            apiKey: "AIzaSyClnLMd7bt99ngZU7UzSxnStvYD3WXdkew",
-                            authDomain: "dbdtg-d24d7.firebaseapp.com",
-                            databaseURL: "https://dbdtg-d24d7.firebaseio.com",
-                            projectId: "dbdtg-d24d7",
-                            storageBucket: "dbdtg-d24d7.firebasestorage.app",
-                            messagingSenderId: "48938774159",
-                            appId: "1:48938774159:web:3beaea874e68ed07104afa"
-                        });
-                        window.firebaseLoaded = true;
-                        console.log('Firebase loaded');
-                    } catch(e) { console.error('Firebase init error:', e); }
-                };
-                firebaseDB.onerror = function() { console.error('Firebase DB load error'); };
-                document.head.appendChild(firebaseDB);
-            };
-            firebaseScript.onerror = function() { console.error('Firebase core load error'); };
-            document.head.appendChild(firebaseScript);
-            
-            var phaserScript = document.createElement('script');
-            phaserScript.src = 'https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js';
-            phaserScript.onload = function() { window.phaserLoaded = true; };
-            phaserScript.onerror = function() {
-                var backup = document.createElement('script');
-                backup.src = 'https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js';
-                backup.onload = function() { window.phaserLoaded = true; };
-                backup.onerror = function() { window.phaserLoadError = true; };
-                document.head.appendChild(backup);
-            };
-            document.head.appendChild(phaserScript);
-        }
-        
-        if(document.readyState === 'loading'){
-            document.addEventListener('DOMContentLoaded', loadScripts);
-        } else {
-            loadScripts();
-        }
+        try {
+            firebase.initializeApp({
+                apiKey: "AIzaSyClnLMd7bt99ngZU7UzSxnStvYD3WXdkew",
+                authDomain: "dbdtg-d24d7.firebaseapp.com",
+                databaseURL: "https://dbdtg-d24d7.firebaseio.com",
+                projectId: "dbdtg-d24d7",
+                storageBucket: "dbdtg-d24d7.firebasestorage.app",
+                messagingSenderId: "48938774159",
+                appId: "1:48938774159:web:3beaea874e68ed07104afa"
+            });
+            window.firebaseLoaded = true;
+        } catch(e) { console.error('Firebase init error:', e); }
     </script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <div id="app">
@@ -523,11 +489,11 @@
         var attempts = 0;
         
         function initApp(){
-            if(window.phaserLoaded && typeof Phaser !== 'undefined' && typeof Phaser.Game !== 'undefined'){
+            if(typeof Phaser !== 'undefined' && typeof Phaser.Game !== 'undefined'){
                 document.getElementById('loading-screen').classList.remove('active');
                 document.getElementById('main-menu').classList.add('active');
                 setupButtons();
-                initTelegram();
+                try { Telegram.WebApp.ready(); Telegram.WebApp.expand(); } catch(e) {}
                 return true;
             }
             return false;
@@ -537,24 +503,12 @@
             if(initApp()) return;
             attempts++;
             var loadingText = document.querySelector('#loading-screen p');
-            if(attempts <= 30){
-                if(loadingText) loadingText.textContent = 'Загрузка... (' + attempts + ')';
-                setTimeout(tryInit, 150);
-            } else if(window.phaserLoadError){
-                if(loadingText) loadingText.textContent = 'Ошибка загрузки. Проверьте соединение.';
-            } else {
+            if(attempts <= 50){
                 if(loadingText) loadingText.textContent = 'Загрузка...';
-                setTimeout(tryInit, 300);
+                setTimeout(tryInit, 100);
+            } else {
+                if(loadingText) loadingText.textContent = 'Ошибка загрузки';
             }
-        }
-        
-        function initTelegram(){
-            var tg = document.createElement('script');
-            tg.src = 'https://telegram.org/js/telegram-web-app.js';
-            tg.onload = function(){
-                try{ Telegram.WebApp.ready(); Telegram.WebApp.expand(); }catch(e){}
-            };
-            document.head.appendChild(tg);
         }
         
         tryInit();
