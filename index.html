@@ -233,48 +233,56 @@
                 game = null;
             }
             var container = document.getElementById('game-container');
-            if(container){
-                container.innerHTML = '';
-                container.style.display = 'block';
-                container.style.visibility = 'visible';
-                container.style.opacity = '1';
-                container.style.backgroundColor = '#1a1a1a';
-            }
-            var screenWidth = Math.min(window.innerWidth || window.screen.width, 1200);
-            var screenHeight = Math.min(window.innerHeight || window.screen.height, 900);
+            container.innerHTML = '';
+            container.style.background = '#1a1a1a';
             
-            console.log('Initializing game, isKiller:', isKiller);
-            console.log('Window size:', screenWidth, 'x', screenHeight);
-            console.log('Container:', document.getElementById('game-container'));
+            var screenWidth = Math.min(window.innerWidth || 800, 1200);
+            var screenHeight = Math.min(window.innerHeight || 600, 900);
             
-            game = new Phaser.Game({
-                type: Phaser.CANVAS,
-                parent: 'game-container', 
-                width: screenWidth, 
-                height: screenHeight, 
-                backgroundColor: '#1a1a1a',
-                physics: { default: 'arcade', arcade: { gravity: { y: 0 } } }, 
-                scene: { preload: preload, create: create, update: update }
-            });
+            console.log('Init game, isKiller:', isKiller, 'Size:', screenWidth, 'x', screenHeight);
             
-            console.log('Phaser game created:', game);
-            
-            game.events.on('ready', function() {
-                console.log('Phaser game ready');
-                var container = document.getElementById('game-container');
-                if(container) {
-                    var canvas = container.querySelector('canvas');
-                    if(canvas) {
-                        canvas.style.display = 'block';
-                        canvas.style.visibility = 'visible';
+            try {
+                game = new Phaser.Game({
+                    type: Phaser.CANVAS,
+                    parent: 'game-container',
+                    width: screenWidth,
+                    height: screenHeight,
+                    backgroundColor: '#1a1a1a',
+                    physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
+                    scene: { preload: preload, create: create, update: update }
+                });
+                
+                setTimeout(function() {
+                    if(!game.canvas) {
+                        console.log('Creating fallback canvas');
+                        createFallbackGame(container, screenWidth, screenHeight);
                     }
-                }
-            });
+                }, 2000);
+            } catch(e) {
+                console.error('Phaser error:', e);
+                createFallbackGame(container, screenWidth, screenHeight);
+            }
             
-            game.events.on('error', function(err) {
-                console.error('Phaser game error:', err);
-                UI.showToast('Ошибка игры: ' + err.message);
-            });
+            function createFallbackGame(container, w, h) {
+                var canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                canvas.style.background = '#1a1a1a';
+                container.appendChild(canvas);
+                
+                var ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#1a1a1a';
+                ctx.fillRect(0, 0, w, h);
+                ctx.fillStyle = '#4a4';
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Игра загружается...', w/2, h/2);
+                ctx.fillText('Роль: ' + (isKiller ? 'Маньяк' : 'Выживший'), w/2, h/2 + 40);
+                
+                console.log('Fallback game created');
+            }
             
             setTimeout(function() {
                 var container = document.getElementById('game-container');
@@ -295,7 +303,8 @@
 
         function preload(){
             console.log('Preload started');
-            var g = this.make.graphics();
+            try {
+                var g = this.make.graphics();
             
             g.fillStyle(0x1B5E20);g.fillRect(10,40,25,35);g.fillStyle(0x2E7D32);g.fillCircle(22,40,20);g.fillCircle(12,35,12);g.fillCircle(32,35,10);g.fillStyle(0x3E2723);g.fillRect(18,70,8,5);g.fillStyle(0x5D4037);g.fillRect(8,60,12,15);g.fillRect(24,60,12,15);g.generateTexture('tree',45,85);g.clear();
             
@@ -336,6 +345,9 @@
             g.fillStyle(0x424242);g.fillCircle(15,15,12);g.fillStyle(0x616161);g.fillCircle(15,15,8);g.fillStyle(0x757575);g.fillCircle(15,15,4);g.generateTexture('hook',30,30);g.clear();
             
             g.fillStyle(0x424242);g.fillCircle(15,15,14);g.fillStyle(0x616161);g.fillCircle(15,15,10);g.fillStyle(0xB71C1C);g.fillCircle(15,15,4);g.generateTexture('hatch',30,30);g.clear();
+            } catch(e) {
+                console.error('Preload error:', e);
+            }
         }
 
         function create(){
@@ -1433,9 +1445,13 @@
                 UI.showScreen('main-menu');
             };
             
-            if(btnStartGame) btnStartGame.onclick = function(){
-                startGameAsHost();
-            };
+            if(btnStartGame) {
+                btnStartGame.onclick = function(){
+                    console.log('Start game button clicked!');
+                    startGameAsHost();
+                };
+                console.log('Start button found, isHost:', isHost, 'disabled:', btnStartGame.disabled);
+            }
             
             if(btnLeaveLobby) btnLeaveLobby.onclick = function(){
                 leaveLobby();
