@@ -6,19 +6,19 @@
     <title>Miasma Massacre</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
     <script>
         try {
             firebase.initializeApp({
                 apiKey: "AIzaSyClnLMd7bt99ngZU7UzSxnStvYD3WXdkew",
                 authDomain: "dbdtg-d24d7.firebaseapp.com",
-                databaseURL: "https://dbdtg-d24d7.firebaseio.com",
                 projectId: "dbdtg-d24d7",
                 storageBucket: "dbdtg-d24d7.firebasestorage.app",
                 messagingSenderId: "48938774159",
                 appId: "1:48938774159:web:3beaea874e68ed07104afa"
             });
+            window.db = firebase.firestore();
             window.firebaseLoaded = true;
         } catch(e) { console.error('Firebase init error:', e); }
     </script>
@@ -512,7 +512,7 @@
         }
         
         tryInit();
-        
+         
         var currentPlayerId = 'player_' + Math.random().toString(36).substr(2, 9);
         var currentRoomId = null;
         var isHost = false;
@@ -527,22 +527,28 @@
             var code = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
             currentRoomId = code;
             isHost = true;
-            document.getElementById('lobby-status').textContent = 'Ожидание игроков...';
+            document.getElementById('lobby-status').textContent = 'Создание лобби...';
             document.getElementById('lobby-players').innerHTML = '<div class="player-slot host">👹 Маньяк (Вы)</div>';
             UI.showScreen('lobby-create');
-            UI.showToast('Лобби создано');
+            UI.showToast('Создание лобби...');
             
-            var roomRef = firebase.database().ref('rooms/' + code);
-            roomRef.set({
+            console.log('Creating room:', code);
+            
+            window.db.collection('rooms').doc(code).set({
                 code: code,
                 hostId: currentPlayerId,
                 status: 'waiting',
                 createdAt: Date.now(),
                 players: {}
             }).then(function(){
+                console.log('Room created:', code);
+                UI.showToast('Лобби создано!');
+                document.getElementById('lobby-status').textContent = 'Ожидание игроков...';
                 listenToRoom(code);
             }).catch(function(err){
+                console.error('Room create error:', err);
                 document.getElementById('lobby-status').textContent = 'Ошибка: ' + err.message;
+                UI.showToast('Ошибка: ' + err.message);
             });
         }
         
@@ -555,22 +561,21 @@
             document.getElementById('search-status').textContent = 'Поиск лобби...';
             
             var searchInterval = setInterval(function(){
-                var roomsRef = firebase.database().ref('rooms');
-                roomsRef.once('value').then(function(snapshot){
+                window.db.collection('rooms').get().then(function(snapshot){
                     var found = false;
                     var count = 0;
-                    snapshot.forEach(function(child){
-                        var room = child.val();
+                    snapshot.forEach(function(doc){
+                        var room = doc.data();
                         if(room.status !== 'waiting') return;
                         var players = room.players || {};
                         var pCount = Object.keys(players).length;
                         count++;
                         if(pCount < 4 && !found){
-                            currentRoomId = child.key;
+                            currentRoomId = doc.id;
                             isHost = false;
                             found = true;
                             players[currentPlayerId] = { id: currentPlayerId, role: 'survivor', joinedAt: Date.now() };
-                            firebase.database().ref('rooms/' + currentRoomId + '/players').set(players).then(function(){
+                            window.db.collection('rooms').doc(currentRoomId).update({players: players}).then(function(){
                                 clearInterval(searchInterval);
                                 UI.showScreen('lobby-create');
                                 document.getElementById('lobby-status').textContent = 'Подключено к лобби';
@@ -578,7 +583,6 @@
                                 listenToRoom(currentRoomId);
                                 UI.showToast('Подключился к лобби');
                             });
-                            return true;
                         }
                     });
                     if(!found){
@@ -597,10 +601,9 @@
         }
         
         function listenToRoom(roomCode){
-            var roomRef = firebase.database().ref('rooms/' + roomCode);
-            roomUnsubscribe = roomRef.on('value', function(snapshot){
-                var data = snapshot.val();
-                if(!data) return;
+            roomUnsubscribe = window.db.collection('rooms').doc(roomCode).onSnapshot(function(doc){
+                if(!doc.exists) return;
+                var data = doc.data();
                 lobbyData = data;
                 var players = data.players || {};
                 var playerList = document.getElementById('lobby-players');
@@ -625,21 +628,32 @@
                     btnStart.textContent = 'Начать (нужно 2+ игрока)';
                 }
                 if(data.status === 'playing'){
-                    if(roomUnsubscribe) roomRef.off('value', roomUnsubscribe);
+                    if(roomUnsubscribe) roomUnsubscribe();
                     startMultiplayerGame(data);
                 }
+            }, function(err){
+                console.error('Error listening to room:', err);
             });
         }
         
         function leaveLobby(){
-            if(roomUnsubscribe && currentRoomId){
-                firebase.database().ref('rooms/' + currentRoomId).off('value', roomUnsubscribe);
+            if(roomUnsubscribe){
+                roomUnsubscribe();
+                roomUnsubscribe = null;
             }
-            if(currentRoomId && !isHost){
-                firebase.database().ref('rooms/' + currentRoomId + '/players/' + currentPlayerId).remove();
-            }
-            if(isHost && currentRoomId){
-                firebase.database().ref('rooms/' + currentRoomId).remove();
+            if(currentRoomId){
+                if(!isHost){
+                    window.db.collection('rooms').doc(currentRoomId).get().then(function(doc){
+                        if(doc.exists){
+                            var data = doc.data();
+                            var players = data.players || {};
+                            delete players[currentPlayerId];
+                            window.db.collection('rooms').doc(currentRoomId).update({players: players});
+                        }
+                    });
+                } else {
+                    window.db.collection('rooms').doc(currentRoomId).delete();
+                }
             }
             currentRoomId = null;
             isHost = false;
@@ -649,7 +663,7 @@
         
         function startGameAsHost(){
             if(!currentRoomId || !isHost) return;
-            firebase.database().ref('rooms/' + currentRoomId + '/status').set('playing').then(function(){
+            window.db.collection('rooms').doc(currentRoomId).update({status: 'playing'}).then(function(){
                 UI.showToast('Игра началась!');
             });
         }
