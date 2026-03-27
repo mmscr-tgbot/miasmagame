@@ -29,7 +29,7 @@
         <div id="loading-screen" class="screen active"><div class="loader"></div><p>Загрузка...</p></div>
         <div id="main-menu" class="screen"><h1>Miasma Massacre</h1><div class="menu-buttons"><button id="btn-solo" class="btn primary">Играть (Solo)</button><button id="btn-multi" class="btn secondary">Мультиплеер</button></div><div class="version">v1.0.0</div></div>
         <div id="role-select" class="screen"><h2>Выбери роль</h2><button id="btn-play-killer" class="btn primary">Убийца</button><button id="btn-play-survivor" class="btn secondary">Выживший</button></div>
-        <div id="lobby-create" class="screen"><h2>Лобби</h2><div id="lobby-status">Создание лобби...</div><div id="lobby-players"></div><button id="btn-start-game" class="btn primary" disabled>Начать игру</button><button id="btn-leave-lobby" class="btn secondary">Выйти</button></div>
+        <div id="lobby-create" class="screen"><h2>Лобби</h2><div id="lobby-status">Создание лобби...</div><div id="lobby-players"></div><button id="btn-start-game" class="btn" disabled style="background:#666;">Начать (ждём игроков)</button><button id="btn-leave-lobby" class="btn secondary">Выйти</button></div>
         <div id="lobby-join" class="screen"><h2>Поиск игры</h2><div id="search-status">Поиск доступных лобби...</div><div id="search-count"></div><button id="btn-leave-search" class="btn secondary">Назад</button></div>
         <div id="game-screen" class="screen"><div id="game-container"></div><div id="hud"><div id="role-indicator">Роль: <span id="player-role">---</span></div><div id="generators-info">Генераторы: <span id="gen-count">0/5</span></div><div id="exit-status">Выход: <span id="exit-state">закрыт</span></div></div><div id="player-list-hud"><div id="alive-count">Выжившие: 4/4</div></div></div>
         <div id="game-over" class="screen"><h2 id="game-result-title">Победа!</h2><p id="game-result-message"></p><button id="btn-back-menu" class="btn primary">В меню</button></div>
@@ -840,9 +840,11 @@
                 if(isHost && count >= 2){
                     btnStart.disabled = false;
                     btnStart.textContent = 'Начать игру (' + count + '/4)';
+                    btnStart.style.background = '#ff3333';
                 } else if(isHost) {
                     btnStart.disabled = true;
-                    btnStart.textContent = 'Начать (нужно 2+ игрока)';
+                    btnStart.textContent = 'Начать (ждём игроков)';
+                    btnStart.style.background = '#666';
                 }
                 if(data.status === 'playing'){
                     if(roomUnsubscribe) roomUnsubscribe();
