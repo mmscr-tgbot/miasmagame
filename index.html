@@ -198,15 +198,20 @@
             
             var gameScreen = document.getElementById('game-screen');
             var gameContainer = document.getElementById('game-container');
-            if(gameScreen) gameScreen.style.display = 'block';
+            
+            if(gameScreen) {
+                gameScreen.classList.add('active');
+                gameScreen.style.cssText = 'display:block !important; position:fixed !important; top:0 !important; left:0 !important; width:100% !important; height:100% !important; background:transparent !important; z-index:1000 !important;';
+            }
             if(gameContainer) {
-                gameContainer.style.display = 'block';
-                gameContainer.style.visibility = 'visible';
-                gameContainer.style.opacity = '1';
+                gameContainer.style.cssText = 'display:block !important; position:fixed !important; top:0 !important; left:0 !important; width:100% !important; height:100% !important; background:#1a1a1a !important; z-index:1 !important; visibility:visible !important;';
             }
             
-            UI.showScreen('game-screen'); 
             UI.showToast(isKiller ? 'Поймай всех!' : 'Найди генераторы!'); 
+            
+            var gameContainer = document.getElementById('game-container');
+            gameContainer.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#1a1a1a;color:#fff;font-family:system-ui,sans-serif;"><div class="loader"></div><p>Загрузка игры...</p></div>';
+            
             initGame(); 
         }
 
@@ -235,41 +240,35 @@
                 container.style.opacity = '1';
                 container.style.backgroundColor = '#1a1a1a';
             }
+            var screenWidth = Math.min(window.innerWidth || window.screen.width, 1200);
+            var screenHeight = Math.min(window.innerHeight || window.screen.height, 900);
+            
             console.log('Initializing game, isKiller:', isKiller);
-            console.log('Window size:', window.innerWidth, 'x', window.innerHeight);
-            console.log('Device pixel ratio:', window.devicePixelRatio);
-            var renderer = Phaser.AUTO;
-            try {
-                var testCanvas = document.createElement('canvas');
-                var gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
-                if(!gl) {
-                    renderer = Phaser.CANVAS;
-                    console.log('WebGL not supported, using Canvas renderer');
-                }
-            } catch(e) {
-                renderer = Phaser.CANVAS;
-                console.log('WebGL check failed, using Canvas renderer');
-            }
+            console.log('Window size:', screenWidth, 'x', screenHeight);
+            console.log('Container:', document.getElementById('game-container'));
             
             game = new Phaser.Game({
-                type: renderer,
+                type: Phaser.CANVAS,
                 parent: 'game-container', 
-                width: window.innerWidth || window.screen.width, 
-                height: window.innerHeight || window.screen.height, 
+                width: screenWidth, 
+                height: screenHeight, 
                 backgroundColor: '#1a1a1a',
-                render: { pixelArt: false, antialias: true, clearBeforeRender: true },
-                physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } }, 
-                scene: { preload: preload, create: create, update: update },
-                scale: {
-                    mode: Phaser.Scale.RESIZE,
-                    autoCenter: Phaser.Scale.CENTER_BOTH,
-                    width: window.innerWidth || window.screen.width,
-                    height: window.innerHeight || window.screen.height
-                }
+                physics: { default: 'arcade', arcade: { gravity: { y: 0 } } }, 
+                scene: { preload: preload, create: create, update: update }
             });
+            
+            console.log('Phaser game created:', game);
             
             game.events.on('ready', function() {
                 console.log('Phaser game ready');
+                var container = document.getElementById('game-container');
+                if(container) {
+                    var canvas = container.querySelector('canvas');
+                    if(canvas) {
+                        canvas.style.display = 'block';
+                        canvas.style.visibility = 'visible';
+                    }
+                }
             });
             
             game.events.on('error', function(err) {
@@ -282,16 +281,20 @@
                 var canvas = container ? container.querySelector('canvas') : null;
                 if(!canvas) {
                     console.error('Canvas not created!');
-                    UI.showToast('Ошибка: канва не создана');
-                    container.innerHTML = '<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;">Ошибка загрузки игры</div>';
+                    if(container) {
+                        container.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#1a1a1a;color:#fff;font-size:18px;"><div style="width:40px;height:40px;border:3px solid #333;border-top-color:#ff3333;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:15px;"></div><p>Загрузка...</p></div>';
+                    }
                 } else {
                     console.log('Canvas size:', canvas.width, 'x', canvas.height);
+                    canvas.style.display = 'block';
+                    canvas.style.visibility = 'visible';
                     canvas.style.backgroundColor = '#1a1a1a';
                 }
-            }, 3000);
+            }, 2000);
         }
 
         function preload(){
+            console.log('Preload started');
             var g = this.make.graphics();
             
             g.fillStyle(0x1B5E20);g.fillRect(10,40,25,35);g.fillStyle(0x2E7D32);g.fillCircle(22,40,20);g.fillCircle(12,35,12);g.fillCircle(32,35,10);g.fillStyle(0x3E2723);g.fillRect(18,70,8,5);g.fillStyle(0x5D4037);g.fillRect(8,60,12,15);g.fillRect(24,60,12,15);g.generateTexture('tree',45,85);g.clear();
@@ -552,6 +555,7 @@
             this.cameras.main.setBounds(0, 0, 1200, 900);
             this.cameras.main.setZoom(1);
             this.cameras.main.centerOn(600, 450);
+            this.cameras.main.setBackgroundColor('#1a1a1a');
             
             var fogParticles = [];
             for(var i = 0; i < 30; i++){
@@ -870,17 +874,19 @@
         var actionPressed = false;
         
         function initInput(scene){
+            var gameScreen = document.getElementById('game-screen');
+            
             var joystick = document.createElement('div');
             joystick.setAttribute('data-joystick', 'true');
-            joystick.style.cssText = 'position:fixed;bottom:30px;left:30px;width:110px;height:110px;z-index:200;touch-action:none;';
+            joystick.style.cssText = 'position:absolute;bottom:30px;left:30px;width:110px;height:110px;z-index:1000;touch-action:none;';
             joystick.innerHTML = '<div style="width:100%;height:100%;background:rgba(255,255,255,0.15);border:3px solid rgba(255,255,255,0.4);border-radius:50%;position:relative;"><div style="width:45px;height:45px;background:rgba(255,50,50,0.9);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div></div>';
-            document.body.appendChild(joystick);
+            if(gameScreen) gameScreen.appendChild(joystick);
             
             var actionBtn = document.createElement('div');
             actionBtn.setAttribute('data-action-btn', 'true');
             actionBtn.textContent = 'ДЕЙСТВИЕ';
-            actionBtn.style.cssText = 'position:fixed;bottom:50px;right:30px;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#ff3300);border:3px solid rgba(255,255,255,0.5);color:#fff;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:200;touch-action:none;';
-            document.body.appendChild(actionBtn);
+            actionBtn.style.cssText = 'position:absolute;bottom:50px;right:30px;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#ff3300);border:3px solid rgba(255,255,255,0.5);color:#fff;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:1000;touch-action:none;';
+            if(gameScreen) gameScreen.appendChild(actionBtn);
             
             var joystickInner = joystick.firstChild;
             var knob = joystickInner.firstChild;
@@ -1326,30 +1332,51 @@
         }
         
         function leaveLobby(){
+            var roomIdToLeave = currentRoomId;
+            var playerIdToRemove = currentPlayerId;
+            var wasHost = isHost;
+            
             if(roomUnsubscribe){
                 roomUnsubscribe();
                 roomUnsubscribe = null;
             }
-            if(currentRoomId){
-                if(!isHost){
-                    window.db.collection('rooms').doc(currentRoomId).get().then(function(doc){
-                        if(doc.exists){
-                            var data = doc.data();
-                            var players = data.players || {};
-                            delete players[currentPlayerId];
-                            window.db.collection('rooms').doc(currentRoomId).update({players: players});
-                        }
-                    });
-                } else {
-                    window.db.collection('rooms').doc(currentRoomId).delete();
-                }
+            
+            if(roomIdToLeave){
+                window.db.collection('rooms').doc(roomIdToLeave).get().then(function(doc){
+                    if(!doc.exists) return;
+                    
+                    var data = doc.data();
+                    var players = data.players || {};
+                    var playerKeys = Object.keys(players);
+                    
+                    delete players[playerIdToRemove];
+                    
+                    window.db.collection('rooms').doc(roomIdToLeave).collection('players').doc(playerIdToRemove).delete();
+                    
+                    if(playerKeys.length <= 1){
+                        window.db.collection('rooms').doc(roomIdToLeave).delete().then(function(){
+                            console.log('Room deleted - no players left');
+                        });
+                    } else {
+                        window.db.collection('rooms').doc(roomIdToLeave).update({players: players}).then(function(){
+                            console.log('Player removed from room');
+                            if(wasHost && playerKeys.length > 1){
+                                console.log('Host left, remaining players:', playerKeys.length - 1);
+                            }
+                        });
+                    }
+                }).catch(function(error){
+                    console.error('Error leaving lobby:', error);
+                });
             }
+            
             clearRoomState();
             clearGameState();
             currentRoomId = null;
             isHost = false;
             lobbyData = null;
             UI.showScreen('main-menu');
+            UI.showToast('Вы вышли из лобби');
         }
         
         function startGameAsHost(){
