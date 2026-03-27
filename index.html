@@ -3,39 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://telegram.org;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseio.com https://*.firebase.com https://telegram.org data: blob:; connect-src 'self' https://*.firebaseio.com https://*.firebase.com wss://*.firebaseio.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseio.com https://*.firebase.com https://telegram.org;">
     <title>Miasma Massacre</title>
     <link rel="stylesheet" href="styles.css">
     <script>
         window.phaserLoaded = false;
         window.phaserLoadError = false;
+        window.firebaseLoaded = false;
         
-        function loadPhaser() {
-            var script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js';
-            script.onload = function() { window.phaserLoaded = true; };
-            script.onerror = function() {
+        function loadScripts() {
+            var firebaseScript = document.createElement('script');
+            firebaseScript.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
+            firebaseScript.onload = function() {
+                var firebaseDB = document.createElement('script');
+                firebaseDB.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js';
+                firebaseDB.onload = function() {
+                    try {
+                        firebase.initializeApp({
+                            apiKey: "AIzaSyClnLMd7bt99ngZU7UzSxnStvYD3WXdkew",
+                            authDomain: "dbdtg-d24d7.firebaseapp.com",
+                            databaseURL: "https://dbdtg-d24d7.firebaseio.com",
+                            projectId: "dbdtg-d24d7",
+                            storageBucket: "dbdtg-d24d7.firebasestorage.app",
+                            messagingSenderId: "48938774159",
+                            appId: "1:48938774159:web:3beaea874e68ed07104afa"
+                        });
+                        window.firebaseLoaded = true;
+                        console.log('Firebase loaded');
+                    } catch(e) { console.error('Firebase init error:', e); }
+                };
+                firebaseDB.onerror = function() { console.error('Firebase DB load error'); };
+                document.head.appendChild(firebaseDB);
+            };
+            firebaseScript.onerror = function() { console.error('Firebase core load error'); };
+            document.head.appendChild(firebaseScript);
+            
+            var phaserScript = document.createElement('script');
+            phaserScript.src = 'https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js';
+            phaserScript.onload = function() { window.phaserLoaded = true; };
+            phaserScript.onerror = function() {
                 var backup = document.createElement('script');
                 backup.src = 'https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js';
                 backup.onload = function() { window.phaserLoaded = true; };
                 backup.onerror = function() { window.phaserLoadError = true; };
                 document.head.appendChild(backup);
             };
-            document.head.appendChild(script);
+            document.head.appendChild(phaserScript);
         }
         
         if(document.readyState === 'loading'){
-            document.addEventListener('DOMContentLoaded', loadPhaser);
+            document.addEventListener('DOMContentLoaded', loadScripts);
         } else {
-            loadPhaser();
+            loadScripts();
         }
     </script>
 </head>
 <body>
     <div id="app">
         <div id="loading-screen" class="screen active"><div class="loader"></div><p>Загрузка...</p></div>
-        <div id="main-menu" class="screen"><h1>Miasma Massacre</h1><button id="btn-single" class="btn primary">Играть (Solo)</button><div class="version">v1.0.0</div></div>
+        <div id="main-menu" class="screen"><h1>Miasma Massacre</h1><div class="menu-buttons"><button id="btn-solo" class="btn primary">Играть (Solo)</button><button id="btn-multi" class="btn secondary">Мультиплеер</button></div><div class="version">v1.0.0</div></div>
         <div id="role-select" class="screen"><h2>Выбери роль</h2><button id="btn-play-killer" class="btn primary">Убийца</button><button id="btn-play-survivor" class="btn secondary">Выживший</button></div>
+        <div id="lobby-create" class="screen"><h2>Лобби</h2><div id="lobby-status">Создание лобби...</div><div id="lobby-players"></div><button id="btn-start-game" class="btn primary" disabled>Начать игру</button><button id="btn-leave-lobby" class="btn secondary">Выйти</button></div>
+        <div id="lobby-join" class="screen"><h2>Поиск игры</h2><div id="search-status">Поиск доступных лобби...</div><div id="search-count"></div><button id="btn-leave-search" class="btn secondary">Назад</button></div>
         <div id="game-screen" class="screen"><div id="game-container"></div><div id="hud"><div id="role-indicator">Роль: <span id="player-role">---</span></div><div id="generators-info">Генераторы: <span id="gen-count">0/5</span></div><div id="exit-status">Выход: <span id="exit-state">закрыт</span></div></div><div id="player-list-hud"><div id="alive-count">Выжившие: 4/4</div></div></div>
         <div id="game-over" class="screen"><h2 id="game-result-title">Победа!</h2><p id="game-result-message"></p><button id="btn-back-menu" class="btn primary">В меню</button></div>
     </div>
@@ -45,7 +74,7 @@
     (function(){
         var UI = { 
             showScreen: function(n){
-                var s = ['loading-screen', 'main-menu', 'role-select', 'game-screen', 'game-over'];
+                var s = ['loading-screen', 'main-menu', 'role-select', 'lobby-create', 'lobby-join', 'game-screen', 'game-over'];
                 s.forEach(function(x){
                     var el = document.getElementById(x);
                     if(el) el.classList.remove('active');
@@ -615,26 +644,198 @@
         
         tryInit();
         
+        var currentPlayerId = 'player_' + Math.random().toString(36).substr(2, 9);
+        var currentRoomId = null;
+        var isHost = false;
+        var roomUnsubscribe = null;
+        var lobbyData = null;
+        
+        function createLobby(){
+            if(!window.firebaseLoaded){
+                UI.showToast('Firebase не загружена');
+                return;
+            }
+            var code = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            currentRoomId = code;
+            isHost = true;
+            document.getElementById('lobby-status').textContent = 'Ожидание игроков...';
+            document.getElementById('lobby-players').innerHTML = '<div class="player-slot host">👹 Маньяк (Вы)</div>';
+            UI.showScreen('lobby-create');
+            UI.showToast('Лобби создано');
+            
+            var roomRef = firebase.database().ref('rooms/' + code);
+            roomRef.set({
+                code: code,
+                hostId: currentPlayerId,
+                status: 'waiting',
+                createdAt: Date.now(),
+                players: {}
+            }).then(function(){
+                listenToRoom(code);
+            }).catch(function(err){
+                document.getElementById('lobby-status').textContent = 'Ошибка: ' + err.message;
+            });
+        }
+        
+        function joinLobby(){
+            if(!window.firebaseLoaded){
+                UI.showToast('Firebase не загружена');
+                return;
+            }
+            UI.showScreen('lobby-join');
+            document.getElementById('search-status').textContent = 'Поиск лобби...';
+            
+            var searchInterval = setInterval(function(){
+                var roomsRef = firebase.database().ref('rooms');
+                roomsRef.orderByChild('status').equalTo('waiting').once('value').then(function(snapshot){
+                    var found = false;
+                    var count = 0;
+                    snapshot.forEach(function(child){
+                        var room = child.val();
+                        var players = room.players || {};
+                        var pCount = Object.keys(players).length;
+                        count++;
+                        if(pCount < 4 && !found){
+                            currentRoomId = child.key;
+                            isHost = false;
+                            found = true;
+                            players[currentPlayerId] = { id: currentPlayerId, role: 'survivor', joinedAt: Date.now() };
+                            firebase.database().ref('rooms/' + currentRoomId + '/players').set(players).then(function(){
+                                clearInterval(searchInterval);
+                                UI.showScreen('lobby-create');
+                                document.getElementById('lobby-status').textContent = 'Подключено к лобби';
+                                document.getElementById('btn-start-game').style.display = 'none';
+                                listenToRoom(currentRoomId);
+                                UI.showToast('Подключился к лобби');
+                            });
+                            return true;
+                        }
+                    });
+                    if(!found){
+                        document.getElementById('search-status').textContent = 'Поиск лобби... (' + count + ' проверено)';
+                    }
+                }).catch(function(err){
+                    document.getElementById('search-status').textContent = 'Ошибка: ' + err.message;
+                    clearInterval(searchInterval);
+                });
+            }, 2000);
+            
+            document.getElementById('btn-leave-search').onclick = function(){
+                clearInterval(searchInterval);
+                UI.showScreen('main-menu');
+            };
+        }
+        
+        function listenToRoom(roomCode){
+            var roomRef = firebase.database().ref('rooms/' + roomCode);
+            roomUnsubscribe = roomRef.on('value', function(snapshot){
+                var data = snapshot.val();
+                if(!data) return;
+                lobbyData = data;
+                var players = data.players || {};
+                var playerList = document.getElementById('lobby-players');
+                var html = '<div class="player-slot host">👹 Маньяк</div>';
+                var count = 1;
+                for(var pid in players){
+                    if(pid !== data.hostId){
+                        html += '<div class="player-slot">🏃 Выживший ' + count + '</div>';
+                        count++;
+                    }
+                }
+                for(var i = count; i <= 4; i++){
+                    html += '<div class="player-slot empty">⏳ Ожидание...</div>';
+                }
+                playerList.innerHTML = html;
+                var btnStart = document.getElementById('btn-start-game');
+                if(isHost && count >= 2){
+                    btnStart.disabled = false;
+                    btnStart.textContent = 'Начать игру (' + count + '/4)';
+                } else if(isHost) {
+                    btnStart.disabled = true;
+                    btnStart.textContent = 'Начать (нужно 2+ игрока)';
+                }
+                if(data.status === 'playing'){
+                    if(roomUnsubscribe) roomRef.off('value', roomUnsubscribe);
+                    startMultiplayerGame(data);
+                }
+            });
+        }
+        
+        function leaveLobby(){
+            if(roomUnsubscribe && currentRoomId){
+                firebase.database().ref('rooms/' + currentRoomId).off('value', roomUnsubscribe);
+            }
+            if(currentRoomId && !isHost){
+                firebase.database().ref('rooms/' + currentRoomId + '/players/' + currentPlayerId).remove();
+            }
+            if(isHost && currentRoomId){
+                firebase.database().ref('rooms/' + currentRoomId).remove();
+            }
+            currentRoomId = null;
+            isHost = false;
+            lobbyData = null;
+            UI.showScreen('main-menu');
+        }
+        
+        function startGameAsHost(){
+            if(!currentRoomId || !isHost) return;
+            firebase.database().ref('rooms/' + currentRoomId + '/status').set('playing').then(function(){
+                UI.showToast('Игра началась!');
+            });
+        }
+        
+        function startMultiplayerGame(roomData){
+            isKiller = (currentPlayerId === roomData.hostId);
+            exitOpen = false;
+            survivorsLeft = 4;
+            catchCooldown = 0;
+            generators = [];
+            UI.showScreen('game-screen');
+            UI.showToast(isKiller ? 'Поймай всех!' : 'Найди генераторы!');
+            initGame();
+        }
+        
         function setupButtons(){
-            var btnSingle = document.getElementById('btn-single');
+            var btnSolo = document.getElementById('btn-solo');
+            var btnMulti = document.getElementById('btn-multi');
             var btnKiller = document.getElementById('btn-play-killer');
             var btnSurvivor = document.getElementById('btn-play-survivor');
             var btnBack = document.getElementById('btn-back-menu');
+            var btnStartGame = document.getElementById('btn-start-game');
+            var btnLeaveLobby = document.getElementById('btn-leave-lobby');
+            var btnLeaveSearch = document.getElementById('btn-leave-search');
             
-            if(btnSingle) btnSingle.onclick = function(){
+            if(btnSolo) btnSolo.onclick = function(){
+                UI.showScreen('role-select');
+            };
+            
+            if(btnMulti) btnMulti.onclick = function(){
                 UI.showScreen('role-select');
             };
             
             if(btnKiller) btnKiller.onclick = function(){
-                startGame(true);
+                createLobby();
             };
             
             if(btnSurvivor) btnSurvivor.onclick = function(){
-                startGame(false);
+                joinLobby();
             };
             
             if(btnBack) btnBack.onclick = function(){
                 stopGame();
+                leaveLobby();
+                UI.showScreen('main-menu');
+            };
+            
+            if(btnStartGame) btnStartGame.onclick = function(){
+                startGameAsHost();
+            };
+            
+            if(btnLeaveLobby) btnLeaveLobby.onclick = function(){
+                leaveLobby();
+            };
+            
+            if(btnLeaveSearch) btnLeaveSearch.onclick = function(){
                 UI.showScreen('main-menu');
             };
         }

@@ -92,6 +92,53 @@ h2 {
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 10px;
+}
+
+.lobby-code {
+    display: none;
+}
+
+#lobby-players {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 20px 0;
+    width: 100%;
+    max-width: 300px;
+}
+
+.player-slot {
+    padding: 12px 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 6px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.2);
+    font-size: 16px;
+}
+
+.player-slot.host {
+    background: rgba(255,51,51,0.3);
+    border-color: #ff3333;
+    color: #ff6666;
+}
+
+.player-slot.empty {
+    background: rgba(255,255,255,0.05);
+    color: #666;
+    font-style: italic;
+}
+
+#lobby-status, #search-status {
+    font-size: 16px;
+    color: #aaa;
+    margin-bottom: 10px;
+}
+
+#search-count {
+    font-size: 14px;
+    color: #888;
+    margin-bottom: 20px;
 }
 
 .version {
