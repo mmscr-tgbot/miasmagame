@@ -27,12 +27,13 @@
 <body>
     <div id="app">
         <div id="loading-screen" class="screen active"><div class="loader"></div><p>Загрузка...</p></div>
-        <div id="main-menu" class="screen"><h1 class="neon-text">Miasma Massacre</h1><div class="menu-buttons"><button id="btn-solo" class="btn primary">Играть (Solo)</button><button id="btn-multi" class="btn secondary">Мультиплеер</button></div><div class="version">v1.0.0</div></div>
+        <div id="main-menu" class="screen"><h1>Miasma Massacre</h1><div class="menu-buttons"><button id="btn-solo" class="btn primary">Играть (Solo)</button><button id="btn-multi" class="btn secondary">Мультиплеер</button></div><div class="version">v1.0.0</div></div>
         <div id="role-select" class="screen"><h2>Выбери роль</h2><button id="btn-play-killer" class="btn primary">Убийца</button><button id="btn-play-survivor" class="btn secondary">Выживший</button></div>
         <div id="lobby-create" class="screen"><h2>Лобби</h2><div id="lobby-status">Создание лобби...</div><div id="lobby-players"></div><button id="btn-start-game" class="btn primary" disabled>Начать игру</button><button id="btn-leave-lobby" class="btn secondary">Выйти</button></div>
         <div id="lobby-join" class="screen"><h2>Поиск игры</h2><div id="search-status">Поиск доступных лобби...</div><div id="search-count"></div><button id="btn-leave-search" class="btn secondary">Назад</button></div>
         <div id="game-screen" class="screen"><div id="game-container"></div><div id="hud"><div id="role-indicator">Роль: <span id="player-role">---</span></div><div id="generators-info">Генераторы: <span id="gen-count">0/5</span></div><div id="exit-status">Выход: <span id="exit-state">закрыт</span></div></div><div id="player-list-hud"><div id="alive-count">Выжившие: 4/4</div></div></div>
         <div id="game-over" class="screen"><h2 id="game-result-title">Победа!</h2><p id="game-result-message"></p><button id="btn-back-menu" class="btn primary">В меню</button></div>
+        <div id="browser-warning" class="screen"><h2>Доступно только в Telegram</h2><p>Эта игра работает только в Telegram Web Apps</p><p>Откройте игру через бота @YourBotName</p></div>
     </div>
     <div id="toast"></div>
 
@@ -40,7 +41,7 @@
     (function(){
         var UI = { 
             showScreen: function(n){
-                var s = ['loading-screen', 'main-menu', 'role-select', 'lobby-create', 'lobby-join', 'game-screen', 'game-over'];
+                var s = ['loading-screen', 'main-menu', 'role-select', 'lobby-create', 'lobby-join', 'game-screen', 'game-over', 'browser-warning'];
                 s.forEach(function(x){
                     var el = document.getElementById(x);
                     if(el) el.classList.remove('active');
@@ -493,6 +494,24 @@
         function getInputVector(){ return inputVector; }
         function isActionPressed(){ return actionPressed; }
         
+        function checkTelegramEnvironment(){
+            var isInTelegram = false;
+            try{
+                isInTelegram = !!(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user);
+            } catch(e){}
+            
+            if(!isInTelegram){
+                document.getElementById('loading-screen').classList.remove('active');
+                document.getElementById('browser-warning').classList.add('active');
+                return false;
+            }
+            return true;
+        }
+        
+        if(!checkTelegramEnvironment()){
+            // Show warning, don't initialize
+        } else {
+        
         var attempts = 0;
         
         function initApp(){
@@ -547,14 +566,66 @@
                     return 'tg_' + Telegram.WebApp.initDataUnsafe.user.id;
                 }
             } catch(e){}
-            var saved = localStorage.getItem('telegramId');
+            var saved = localStorage.getItem('userId');
             if(saved) return saved;
-            var newId = 'tg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-            localStorage.setItem('telegramId', newId);
+            var newId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            localStorage.setItem('userId', newId);
             return newId;
         }
         
+        function isTelegram(){
+            try{
+                return !!(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user);
+            } catch(e){}
+            return false;
+        }
+        
+        function initUserData(){
+            if(!isTelegram()) return;
+            if(localStorage.getItem('userInitialized') === 'true') return;
+            if(!window.firebaseLoaded) return;
+            
+            var userId = getTelegramId();
+            var userName = 'Игрок';
+            var avatarUrl = '';
+            var isTG = isTelegram();
+            
+            if(isTG){
+                try{
+                    var u = Telegram.WebApp.initDataUnsafe.user;
+                    userName = u.first_name || u.username || 'Игрок';
+                    avatarUrl = u.photo_url || '';
+                } catch(e){}
+            }
+            
+            window.db.collection('users').doc(userId).get().then(function(doc){
+                if(doc.exists){
+                    localStorage.setItem('userInitialized', 'true');
+                    window.db.collection('users').doc(userId).update({
+                        lastSeen: Date.now(),
+                        lastRoom: localStorage.getItem('roomId') || null
+                    });
+                } else {
+                    localStorage.setItem('userInitialized', 'true');
+                    window.db.collection('users').doc(userId).set({
+                        id: userId,
+                        name: userName,
+                        avatar: avatarUrl,
+                        isTelegram: isTG,
+                        createdAt: Date.now(),
+                        lastSeen: Date.now(),
+                        gamesPlayed: 0,
+                        gamesWon: 0,
+                        gamesLost: 0
+                    });
+                }
+            }).catch(function(err){
+                console.log('User init error:', err);
+            });
+        }
+        
         tryInit();
+        setTimeout(initUserData, 1000);
          
         var currentPlayerId = getTelegramId();
         var currentRoomId = null;
@@ -876,6 +947,9 @@
                 UI.showScreen('main-menu');
             };
         }
+        
+        } // end of Telegram check
+        
     })();
     </script>
 </body>

@@ -58,52 +58,6 @@ h1 {
     text-align: center;
 }
 
-.neon-text {
-    font-family: 'Arial Black', sans-serif;
-    font-size: 42px;
-    color: #fff;
-    text-transform: uppercase;
-    text-align: center;
-    animation: neonGlow 2s ease-in-out forwards;
-    text-shadow:
-        0 0 5px #fff,
-        0 0 10px #fff,
-        0 0 20px #ff00de,
-        0 0 30px #ff00de,
-        0 0 40px #ff00de,
-        0 0 50px #ff00de,
-        0 0 60px #ff00de;
-    letter-spacing: 3px;
-}
-
-@keyframes neonGlow {
-    0% {
-        text-shadow:
-            0 0 5px #fff,
-            0 0 10px #fff,
-            0 0 20px #ff00de,
-            0 0 30px #ff00de;
-    }
-    50% {
-        text-shadow:
-            0 0 10px #fff,
-            0 0 20px #fff,
-            0 0 40px #ff00de,
-            0 0 60px #ff00de,
-            0 0 80px #ff00de;
-    }
-    100% {
-        text-shadow:
-            0 0 5px #fff,
-            0 0 10px #fff,
-            0 0 20px #ff00de,
-            0 0 30px #ff00de,
-            0 0 40px #ff00de,
-            0 0 50px #ff00de,
-            0 0 60px #ff00de;
-    }
-}
-
 h2 {
     font-size: 22px;
     color: #ff3333;
