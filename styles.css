@@ -42,6 +42,11 @@ html, body {
     display: flex;
 }
 
+#game-screen {
+    padding: 0;
+    background: #2d5a27;
+}
+
 #loading-screen.active {
     display: flex;
 }
@@ -51,6 +56,52 @@ h1 {
     color: #ff3333;
     margin-bottom: 40px;
     text-align: center;
+}
+
+.neon-text {
+    font-family: 'Arial Black', sans-serif;
+    font-size: 42px;
+    color: #fff;
+    text-transform: uppercase;
+    text-align: center;
+    animation: neonGlow 2s ease-in-out forwards;
+    text-shadow:
+        0 0 5px #fff,
+        0 0 10px #fff,
+        0 0 20px #ff00de,
+        0 0 30px #ff00de,
+        0 0 40px #ff00de,
+        0 0 50px #ff00de,
+        0 0 60px #ff00de;
+    letter-spacing: 3px;
+}
+
+@keyframes neonGlow {
+    0% {
+        text-shadow:
+            0 0 5px #fff,
+            0 0 10px #fff,
+            0 0 20px #ff00de,
+            0 0 30px #ff00de;
+    }
+    50% {
+        text-shadow:
+            0 0 10px #fff,
+            0 0 20px #fff,
+            0 0 40px #ff00de,
+            0 0 60px #ff00de,
+            0 0 80px #ff00de;
+    }
+    100% {
+        text-shadow:
+            0 0 5px #fff,
+            0 0 10px #fff,
+            0 0 20px #ff00de,
+            0 0 30px #ff00de,
+            0 0 40px #ff00de,
+            0 0 50px #ff00de,
+            0 0 60px #ff00de;
+    }
 }
 
 h2 {
@@ -191,6 +242,15 @@ h2 {
 #game-container {
     width: 100%;
     height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+#game-container canvas {
+    width: 100% !important;
+    height: 100% !important;
 }
 
 #hud {

@@ -27,7 +27,7 @@
 <body>
     <div id="app">
         <div id="loading-screen" class="screen active"><div class="loader"></div><p>Загрузка...</p></div>
-        <div id="main-menu" class="screen"><h1>Miasma Massacre</h1><div class="menu-buttons"><button id="btn-solo" class="btn primary">Играть (Solo)</button><button id="btn-multi" class="btn secondary">Мультиплеер</button></div><div class="version">v1.0.0</div></div>
+        <div id="main-menu" class="screen"><h1 class="neon-text">Miasma Massacre</h1><div class="menu-buttons"><button id="btn-solo" class="btn primary">Играть (Solo)</button><button id="btn-multi" class="btn secondary">Мультиплеер</button></div><div class="version">v1.0.0</div></div>
         <div id="role-select" class="screen"><h2>Выбери роль</h2><button id="btn-play-killer" class="btn primary">Убийца</button><button id="btn-play-survivor" class="btn secondary">Выживший</button></div>
         <div id="lobby-create" class="screen"><h2>Лобби</h2><div id="lobby-status">Создание лобби...</div><div id="lobby-players"></div><button id="btn-start-game" class="btn primary" disabled>Начать игру</button><button id="btn-leave-lobby" class="btn secondary">Выйти</button></div>
         <div id="lobby-join" class="screen"><h2>Поиск игры</h2><div id="search-status">Поиск доступных лобби...</div><div id="search-count"></div><button id="btn-leave-search" class="btn secondary">Назад</button></div>
@@ -78,8 +78,15 @@
         }
 
         function initGame(){ 
+            if(game){
+                game.destroy(true);
+                game = null;
+            }
             var container = document.getElementById('game-container');
-            if(container) container.innerHTML = '';
+            if(container){
+                container.innerHTML = '';
+            }
+            console.log('Initializing game, isKiller:', isKiller);
             game = new Phaser.Game({
                 type: Phaser.AUTO, 
                 parent: 'game-container', 
@@ -494,6 +501,9 @@
                 document.getElementById('main-menu').classList.add('active');
                 setupButtons();
                 try { Telegram.WebApp.ready(); Telegram.WebApp.expand(); } catch(e) {}
+                if(window.firebaseLoaded){
+                    setTimeout(restoreRoomOrGame, 500);
+                }
                 return true;
             }
             return false;
@@ -511,22 +521,123 @@
             }
         }
         
+        function saveRoomState(roomId, host){
+            localStorage.setItem('roomId', roomId);
+            localStorage.setItem('isHost', host ? 'true' : 'false');
+        }
+        
+        function clearRoomState(){
+            localStorage.removeItem('roomId');
+            localStorage.removeItem('isHost');
+        }
+        
+        function clearGameState(){
+            localStorage.removeItem('gameState');
+        }
+        
+        function getSavedRoomState(){
+            var roomId = localStorage.getItem('roomId');
+            var host = localStorage.getItem('isHost') === 'true';
+            return roomId ? {roomId: roomId, isHost: host} : null;
+        }
+        
+        function getTelegramId(){
+            try{
+                if(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user){
+                    return 'tg_' + Telegram.WebApp.initDataUnsafe.user.id;
+                }
+            } catch(e){}
+            var saved = localStorage.getItem('telegramId');
+            if(saved) return saved;
+            var newId = 'tg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            localStorage.setItem('telegramId', newId);
+            return newId;
+        }
+        
         tryInit();
          
-        var currentPlayerId = 'player_' + Math.random().toString(36).substr(2, 9);
+        var currentPlayerId = getTelegramId();
         var currentRoomId = null;
         var isHost = false;
         var roomUnsubscribe = null;
         var lobbyData = null;
+        var currentGameState = null;
+        
+        function saveGameState(state){
+            localStorage.setItem('gameState', JSON.stringify(state));
+        }
+        
+        function getSavedGameState(){
+            var saved = localStorage.getItem('gameState');
+            return saved ? JSON.parse(saved) : null;
+        }
+        
+        function restoreRoomOrGame(){
+            var savedGame = getSavedGameState();
+            if(savedGame && savedGame.status === 'playing' && window.firebaseLoaded){
+                window.db.collection('rooms').doc(savedGame.roomId).get().then(function(doc){
+                    if(doc.exists){
+                        var data = doc.data();
+                        if(data.status === 'playing'){
+                            currentRoomId = savedGame.roomId;
+                            isHost = (savedGame.role === 'killer');
+                            clearRoomState();
+                            saveGameState({roomId: savedGame.roomId, status: 'playing', role: savedGame.role});
+                            UI.showScreen('game-screen');
+                            UI.showToast('Восстановление игры...');
+                            setTimeout(function(){
+                                initGame();
+                            }, 100);
+                            return;
+                        }
+                    }
+                    restoreLobby();
+                }).catch(function(){
+                    restoreLobby();
+                });
+            } else {
+                restoreLobby();
+            }
+        }
+        
+        function restoreLobby(){
+            var saved = getSavedRoomState();
+            if(saved && window.firebaseLoaded){
+                currentRoomId = saved.roomId;
+                isHost = saved.isHost;
+                window.db.collection('rooms').doc(saved.roomId).get().then(function(doc){
+                    if(doc.exists && doc.data().status === 'waiting'){
+                        UI.showScreen('lobby-create');
+                        if(isHost){
+                            document.getElementById('lobby-status').textContent = 'Ожидание игроков...';
+                            document.getElementById('lobby-players').innerHTML = '<div class="player-slot host">👹 Маньяк (Вы)</div>';
+                            document.getElementById('btn-start-game').style.display = 'block';
+                        } else {
+                            document.getElementById('lobby-status').textContent = 'Подключено к лобби';
+                            document.getElementById('lobby-players').innerHTML = '<div class="player-slot">Загрузка...</div>';
+                            document.getElementById('btn-start-game').style.display = 'none';
+                        }
+                        listenToRoom(currentRoomId);
+                        UI.showToast('Восстановлено подключение');
+                    } else {
+                        clearRoomState();
+                    }
+                }).catch(function(){
+                    clearRoomState();
+                });
+            }
+        }
         
         function createLobby(){
             if(!window.firebaseLoaded){
                 UI.showToast('Firebase не загружена');
                 return;
             }
+            clearGameState();
             var code = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
             currentRoomId = code;
             isHost = true;
+            saveRoomState(code, true);
             document.getElementById('lobby-status').textContent = 'Создание лобби...';
             document.getElementById('lobby-players').innerHTML = '<div class="player-slot host">👹 Маньяк (Вы)</div>';
             UI.showScreen('lobby-create');
@@ -534,12 +645,29 @@
             
             console.log('Creating room:', code);
             
+            var hostName = 'Маньяк';
+            try{
+                if(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user){
+                    hostName = Telegram.WebApp.initDataUnsafe.user.first_name || 'Маньяк';
+                }
+            } catch(e){}
+            
             window.db.collection('rooms').doc(code).set({
                 code: code,
                 hostId: currentPlayerId,
+                hostName: hostName,
                 status: 'waiting',
                 createdAt: Date.now(),
                 players: {}
+            }).then(function(){
+                var playersRef = window.db.collection('rooms').doc(code).collection('players').doc(currentPlayerId);
+                return playersRef.set({
+                    id: currentPlayerId,
+                    name: hostName,
+                    role: 'killer',
+                    isHost: true,
+                    joinedAt: Date.now()
+                });
             }).then(function(){
                 console.log('Room created:', code);
                 UI.showToast('Лобби создано!');
@@ -557,8 +685,16 @@
                 UI.showToast('Firebase не загружена');
                 return;
             }
+            clearGameState();
             UI.showScreen('lobby-join');
             document.getElementById('search-status').textContent = 'Поиск лобби...';
+            
+            var survivorName = 'Выживший';
+            try{
+                if(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user){
+                    survivorName = Telegram.WebApp.initDataUnsafe.user.first_name || 'Выживший';
+                }
+            } catch(e){}
             
             var searchInterval = setInterval(function(){
                 window.db.collection('rooms').get().then(function(snapshot){
@@ -575,7 +711,16 @@
                             isHost = false;
                             found = true;
                             players[currentPlayerId] = { id: currentPlayerId, role: 'survivor', joinedAt: Date.now() };
+                            saveRoomState(doc.id, false);
                             window.db.collection('rooms').doc(currentRoomId).update({players: players}).then(function(){
+                                return window.db.collection('rooms').doc(currentRoomId).collection('players').doc(currentPlayerId).set({
+                                    id: currentPlayerId,
+                                    name: survivorName,
+                                    role: 'survivor',
+                                    isHost: false,
+                                    joinedAt: Date.now()
+                                });
+                            }).then(function(){
                                 clearInterval(searchInterval);
                                 UI.showScreen('lobby-create');
                                 document.getElementById('lobby-status').textContent = 'Подключено к лобби';
@@ -611,7 +756,8 @@
                 var count = 1;
                 for(var pid in players){
                     if(pid !== data.hostId){
-                        html += '<div class="player-slot">🏃 Выживший ' + count + '</div>';
+                        var playerName = players[pid].name || ('Выживший ' + count);
+                        html += '<div class="player-slot">🏃 ' + playerName + '</div>';
                         count++;
                     }
                 }
@@ -629,6 +775,7 @@
                 }
                 if(data.status === 'playing'){
                     if(roomUnsubscribe) roomUnsubscribe();
+                    saveGameState({roomId: roomCode, status: 'playing', role: isHost ? 'killer' : 'survivor'});
                     startMultiplayerGame(data);
                 }
             }, function(err){
@@ -655,6 +802,8 @@
                     window.db.collection('rooms').doc(currentRoomId).delete();
                 }
             }
+            clearRoomState();
+            clearGameState();
             currentRoomId = null;
             isHost = false;
             lobbyData = null;
@@ -669,14 +818,18 @@
         }
         
         function startMultiplayerGame(roomData){
+            clearRoomState();
             isKiller = (currentPlayerId === roomData.hostId);
+            saveGameState({roomId: currentRoomId, status: 'playing', role: isKiller ? 'killer' : 'survivor'});
             exitOpen = false;
             survivorsLeft = 4;
             catchCooldown = 0;
             generators = [];
             UI.showScreen('game-screen');
             UI.showToast(isKiller ? 'Поймай всех!' : 'Найди генераторы!');
-            initGame();
+            setTimeout(function(){
+                initGame();
+            }, 100);
         }
         
         function setupButtons(){
