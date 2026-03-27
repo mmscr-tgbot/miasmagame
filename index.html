@@ -109,7 +109,7 @@
                 parent: 'game-container', 
                 width: window.innerWidth, 
                 height: window.innerHeight, 
-                backgroundColor: '#2d5a27', 
+                backgroundColor: '#1a1a1a', 
                 physics: { default: 'arcade', arcade: { gravity: { y: 0 } } }, 
                 scene: { preload: preload, create: create, update: update }
             }); 
@@ -150,7 +150,9 @@
             
             g.fillStyle(0x4E342E);g.fillRect(0,0,70,55);g.fillStyle(0x3E2723);g.fillRect(5,5,25,45);g.fillRect(40,5,25,45);g.fillStyle(0x2E1B15);g.fillRect(3,0,8,10);g.fillRect(59,0,8,10);g.fillStyle(0xF44336);g.fillCircle(17,25,8);g.fillCircle(53,25,8);g.fillStyle(0x212121);g.fillRect(30,35,10,15);g.fillStyle(0x4CAF50);g.fillRect(15,15,40,20);g.generateTexture('exit',70,55);g.clear();
             
-            g.fillStyle(0x2E7D32);g.fillRect(0,0,32,32);g.fillStyle(0x388E3C);g.fillCircle(8,8,5);g.fillCircle(24,20,4);g.fillCircle(16,28,3);g.fillStyle(0x1B5E20);g.fillCircle(12,16,3);g.generateTexture('ground',32,32);g.clear();
+            g.fillStyle(0x1B1B1B);g.fillRect(0,0,32,32);g.fillStyle(0x2D2D2D);g.fillCircle(8,8,5);g.fillCircle(24,20,4);g.fillCircle(16,28,3);g.fillStyle(0x151515);g.fillCircle(12,16,3);g.generateTexture('ground',32,32);g.clear();
+            
+            g.fillStyle(0x555555);g.fillCircle(15,15,12);g.fillStyle(0x666666);g.fillCircle(10,12,4);g.fillCircle(20,10,3);g.generateTexture('fog',32,32);g.clear();
             
             g.fillStyle(0x424242);g.fillCircle(15,15,12);g.fillStyle(0x616161);g.fillCircle(15,15,8);g.fillStyle(0x757575);g.fillCircle(15,15,4);g.generateTexture('hook',30,30);g.clear();
             
@@ -371,8 +373,25 @@
                 this.survivors = [];
             }
             
-            this.cameras.main.setBounds(0, 0, 0, 0);
+            this.cameras.main.setBounds(0, 0, 1200, 900);
             this.cameras.main.setZoom(1);
+            this.cameras.main.centerOn(600, 450);
+            
+            var fogParticles = [];
+            for(var i = 0; i < 30; i++){
+                var fx = Phaser.Math.Between(0, 1200);
+                var fy = Phaser.Math.Between(0, 900);
+                var fog = this.add.image(fx, fy, 'fog');
+                fog.setAlpha(Phaser.Math.FloatBetween(0.1, 0.3));
+                fog.setScale(Phaser.Math.FloatBetween(1.5, 3));
+                fog.setDepth(1000);
+                fog.origX = fx;
+                fog.origY = fy;
+                fog.speedX = Phaser.Math.FloatBetween(-5, 5);
+                fog.speedY = Phaser.Math.FloatBetween(-3, 3);
+                fogParticles.push(fog);
+            }
+            this.fogParticles = fogParticles;
             
             initInput(this);
         }
@@ -605,6 +624,17 @@
             if(genEl) genEl.textContent = rep + '/5';
             if(exitEl) exitEl.textContent = exitOpen ? 'открыт' : 'закрыт';
             if(aliveEl) aliveEl.textContent = 'Выжившие: ' + survivorsLeft;
+            
+            if(this.fogParticles){
+                this.fogParticles.forEach(function(fog){
+                    fog.x += fog.speedX * (dt / 100);
+                    fog.y += fog.speedY * (dt / 100);
+                    if(fog.x < -50) fog.x = 1250;
+                    if(fog.x > 1250) fog.x = -50;
+                    if(fog.y < -50) fog.y = 950;
+                    if(fog.y > 950) fog.y = -50;
+                });
+            }
         }
 
         UI.showGameOver = function(won){
