@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseio.com https://*.firebase.com https://telegram.org data: blob:; connect-src 'self' https://*.firebaseio.com https://*.firebase.com wss://*.firebaseio.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseio.com https://*.firebase.com https://telegram.org;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseio.com https://*.firebase.com https://www.gstatic.com https://gstatic.com https://telegram.org data: blob:; connect-src 'self' https://*.firebaseio.com https://*.firebase.com wss://*.firebaseio.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.firebaseio.com https://*.firebase.com https://www.gstatic.com https://gstatic.com https://telegram.org;">
     <title>Miasma Massacre</title>
     <link rel="stylesheet" href="styles.css">
     <script>
@@ -416,97 +416,12 @@
             if(exitEl) exitEl.textContent = exitOpen ? 'открыт' : 'закрыт';
             if(aliveEl) aliveEl.textContent = 'Выжившие: ' + survivorsLeft;
         }
-                        var d = Phaser.Math.Distance.Between(s.x, s.y, player.x, player.y);
-                        if(d < 150){
-                            var a = Phaser.Math.Angle.Between(s.x, s.y, player.x, player.y);
-                            s.body.setVelocity(Math.cos(a) * 80, Math.sin(a) * 80);
-                        }
-                    }
-                });
-            }
-            
-            if(!isKiller){
-                if(isActionPressed()){
-                    generators.forEach(function(gen){
-                        if(!gen.repaired){
-                            var d = Phaser.Math.Distance.Between(player.x, player.y, gen.x, gen.y);
-                            if(d < 50){
-                                gen.progress += dt / 100;
-                                gen.bar.clear();
-                                gen.bar.fillStyle(0x000000, 0.7);
-                                gen.bar.fillRect(-20, -20, 40, 6);
-                                gen.bar.fillStyle(0xffff00);
-                                gen.bar.fillRect(-19, -19, 38 * (gen.progress / 100), 4);
-                                if(gen.progress >= 100){
-                                    gen.repaired = true;
-                                    gen.light.setAlpha(1);
-                                    gen.setTint(0x00ff00);
-                                    UI.showToast('Генератор починен!');
-                                }
-                            }
-                        }
-                    });
-                }
-                
-                generators.forEach(function(gen){
-                    if(gen.repaired && gen.light){
-                        gen.x += (Math.random() - 0.5) * 1.5;
-                        gen.y += (Math.random() - 0.5) * 1.5;
-                    }
-                });
-                
-                var rep = generators.filter(function(g){ return g.repaired; }).length;
-                if(rep >= CONFIG.GENERATOR_COUNT && !exitOpen){
-                    exitOpen = true;
-                    this.exit.setTint(0x00ff00);
-                    UI.showToast('ВЫХОД ОТКРЫТ!');
-                }
-                
-                if(exitOpen){
-                    var d = Phaser.Math.Distance.Between(player.x, player.y, this.exit.x, this.exit.y);
-                    if(d < 50){
-                        UI.showGameOver(true);
-                        stopGame();
-                        return;
-                    }
-                }
-            }
-            
-            if(isKiller && catchCooldown > 0) catchCooldown -= dt / 1000;
-            
-            if(isKiller && this.survivors){
-                this.survivors.forEach(function(s){
-                    if(s.alive){
-                        var d = Phaser.Math.Distance.Between(player.x, player.y, s.x, s.y);
-                        if(d < CONFIG.CATCH_DISTANCE && catchCooldown <= 0){
-                            s.alive = false;
-                            s.setAlpha(0.3);
-                            survivorsLeft--;
-                            catchCooldown = CONFIG.CATCH_COOLDOWN;
-                            UI.showToast('Пойман!');
-                        }
-                    }
-                });
-                if(survivorsLeft <= 0){
-                    UI.showGameOver(false);
-                    stopGame();
-                    return;
-                }
-            }
-            
-            player.setDepth(player.y + 1000);
-            
-            var rep = generators.filter(function(g){ return g.repaired; }).length;
-            var roleEl = document.getElementById('player-role');
-            var genEl = document.getElementById('gen-count');
-            var exitEl = document.getElementById('exit-state');
-            var aliveEl = document.getElementById('alive-count');
-            
-            if(roleEl) roleEl.textContent = isKiller ? 'Ужийца' : 'Выживший';
-            if(genEl) genEl.textContent = rep + '/5';
-            if(exitEl) exitEl.textContent = exitOpen ? 'открыт' : 'закрыт';
-            if(aliveEl) aliveEl.textContent = 'Выжившие: ' + survivorsLeft;
-        }
+
+        UI.showGameOver = function(won){
+            document.getElementById('game-result-title').textContent = won ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ';
+            document.getElementById('game-result-message').textContent = won ? 'Ты сбежал!' : isKiller ? 'Ты поймал всех!' : 'Тебя поймали!';
+            UI.showScreen('game-over');
+        };
 
         var inputVector = {x: 0, y: 0};
         var actionPressed = false;
