@@ -2,7 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#111111">
     <title>Miasma Massacre</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -52,7 +55,7 @@
             showToast: function(m){var t=document.getElementById('toast');if(t){t.textContent=m;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');}},
             showGameOver: function(won){var title=document.getElementById('game-result-title');var msg=document.getElementById('game-result-message');if(title)title.textContent=won?'ПОБЕДА!':'ПОРАЖЕНИЕ';if(msg)msg.textContent=won?'Ты сбежал!':isKiller?'Ты поймал всех!':'Тебя поймали!';UI.showScreen('game-over');}
         };
-        var CONFIG = { 
+        var CONFIG = Object.freeze({ 
             PLAYER_SPEED: 155, 
             KILLER_SPEED: 170, 
             INJURED_SPEED: 185,
@@ -66,10 +69,124 @@
             HEAL_TIME: 15,
             GATE_OPEN_TIME: 20,
             HATCH_APPEAR_CHANCE: 0.3
-        };
+        });
+        
+        var CONSTANTS = Object.freeze({
+            MAP_WIDTH: 1200,
+            MAP_HEIGHT: 900,
+            MAX_VIOLATIONS: 5,
+            ACTION_COOLDOWN: 500,
+            MAX_SPEED_MULTIPLIER: 2
+        });
         var game = null, player = null, generators = [], isKiller = false, exitOpen = false, survivorsLeft = 4, catchCooldown = 0;
         var killerStunned = 0;
         var survivorSpeedBoost = 0;
+        
+        var AntiCheat = {
+            lastPosition: {x: 0, y: 0},
+            lastTimestamp: 0,
+            violations: 0,
+            lastActionTime: {},
+            actionCooldowns: {hit: 0, heal: 0, hook: 0, sabo: 0, gate: 0},
+            maxViolations: 5,
+            
+            reset: function(){
+                this.lastPosition = {x: 0, y: 0};
+                this.lastTimestamp = 0;
+                this.violations = 0;
+                this.lastActionTime = {};
+                this.actionCooldowns = {hit: 0, heal: 0, hook: 0, sabo: 0, gate: 0};
+            },
+            
+            checkConfigIntegrity: function(){
+                if(CONFIG.PLAYER_SPEED !== 155 || CONFIG.KILLER_SPEED !== 170 || CONFIG.INJURED_SPEED !== 185){
+                    this.violations += 10;
+                    this.logViolation('CONFIG_MODIFIED', {});
+                    return false;
+                }
+                return true;
+            },
+            
+            validatePosition: function(x, y, scene){
+                if(x < -100 || x > 1300 || y < -100 || y > 1000){
+                    this.violations++;
+                    this.logViolation('OUT_OF_BOUNDS', {x: x, y: y});
+                    return false;
+                }
+                return true;
+            },
+            
+            validateSpeed: function(oldX, oldY, newX, newY, dt){
+                if(this.lastTimestamp > 0){
+                    var dist = Math.sqrt(Math.pow(newX - oldX, 2) + Math.pow(newY - oldY, 2));
+                    var time = dt / 1000;
+                    var speed = dist / time;
+                    var maxSpeed = isKiller ? CONFIG.KILLER_SPEED * 2 : CONFIG.PLAYER_SPEED * 2;
+                    
+                    if(speed > maxSpeed && time > 0.01){
+                        this.violations++;
+                        this.logViolation('SPEED_HACK', {speed: Math.round(speed), max: maxSpeed});
+                        return false;
+                    }
+                }
+                this.lastPosition = {x: newX, y: newY};
+                this.lastTimestamp = Date.now();
+                return true;
+            },
+            
+            validateAction: function(actionType){
+                var now = Date.now();
+                var minInterval = 500;
+                
+                if(this.lastActionTime[actionType]){
+                    if(now - this.lastActionTime[actionType] < minInterval){
+                        this.violations++;
+                        this.logViolation('ACTION_FLOOD', {action: actionType});
+                        return false;
+                    }
+                }
+                this.lastActionTime[actionType] = now;
+                return true;
+            },
+            
+            validateGeneratorProgress: function(progress){
+                if(progress < 0 || progress > 100){
+                    this.violations++;
+                    this.logViolation('INVALID_GEN_PROGRESS', {progress: progress});
+                    return false;
+                }
+                return true;
+            },
+            
+            logViolation: function(type, data){
+                console.warn('[ANTICHEAT] ' + type, data);
+                if(this.violations >= this.maxViolations){
+                    this.banPlayer(type);
+                }
+            },
+            
+            banPlayer: function(reason){
+                UI.showToast('Обнаружена подозрительная активность!');
+                console.error('[ANTICHEAT] Player banned for:', reason);
+                stopGame();
+                UI.showScreen('main-menu');
+            }
+        };
+        
+        var GameState = {
+            roomId: null,
+            isHost: false,
+            
+            syncToServer: function(state){
+                if(!this.roomId || !window.db) return;
+                window.db.collection('rooms').doc(this.roomId).collection('gameState').doc('current').set(state, {merge: true}).catch(function(e){ console.error('Sync error:', e); });
+            },
+            
+            validateAction: function(action, data){
+                if(!this.roomId || !window.db) return true;
+                return true;
+            }
+        };
 
         function startGame(km){ 
             isKiller = km; 
@@ -77,6 +194,17 @@
             survivorsLeft = 4; 
             catchCooldown = 0; 
             generators = []; 
+            AntiCheat.reset();
+            
+            var gameScreen = document.getElementById('game-screen');
+            var gameContainer = document.getElementById('game-container');
+            if(gameScreen) gameScreen.style.display = 'block';
+            if(gameContainer) {
+                gameContainer.style.display = 'block';
+                gameContainer.style.visibility = 'visible';
+                gameContainer.style.opacity = '1';
+            }
+            
             UI.showScreen('game-screen'); 
             UI.showToast(isKiller ? 'Поймай всех!' : 'Найди генераторы!'); 
             initGame(); 
@@ -102,17 +230,65 @@
             var container = document.getElementById('game-container');
             if(container){
                 container.innerHTML = '';
+                container.style.display = 'block';
+                container.style.visibility = 'visible';
+                container.style.opacity = '1';
+                container.style.backgroundColor = '#1a1a1a';
             }
             console.log('Initializing game, isKiller:', isKiller);
+            console.log('Window size:', window.innerWidth, 'x', window.innerHeight);
+            console.log('Device pixel ratio:', window.devicePixelRatio);
+            var renderer = Phaser.AUTO;
+            try {
+                var testCanvas = document.createElement('canvas');
+                var gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+                if(!gl) {
+                    renderer = Phaser.CANVAS;
+                    console.log('WebGL not supported, using Canvas renderer');
+                }
+            } catch(e) {
+                renderer = Phaser.CANVAS;
+                console.log('WebGL check failed, using Canvas renderer');
+            }
+            
             game = new Phaser.Game({
-                type: Phaser.AUTO, 
+                type: renderer,
                 parent: 'game-container', 
-                width: window.innerWidth, 
-                height: window.innerHeight, 
-                backgroundColor: '#1a1a1a', 
-                physics: { default: 'arcade', arcade: { gravity: { y: 0 } } }, 
-                scene: { preload: preload, create: create, update: update }
-            }); 
+                width: window.innerWidth || window.screen.width, 
+                height: window.innerHeight || window.screen.height, 
+                backgroundColor: '#1a1a1a',
+                render: { pixelArt: false, antialias: true, clearBeforeRender: true },
+                physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } }, 
+                scene: { preload: preload, create: create, update: update },
+                scale: {
+                    mode: Phaser.Scale.RESIZE,
+                    autoCenter: Phaser.Scale.CENTER_BOTH,
+                    width: window.innerWidth || window.screen.width,
+                    height: window.innerHeight || window.screen.height
+                }
+            });
+            
+            game.events.on('ready', function() {
+                console.log('Phaser game ready');
+            });
+            
+            game.events.on('error', function(err) {
+                console.error('Phaser game error:', err);
+                UI.showToast('Ошибка игры: ' + err.message);
+            });
+            
+            setTimeout(function() {
+                var container = document.getElementById('game-container');
+                var canvas = container ? container.querySelector('canvas') : null;
+                if(!canvas) {
+                    console.error('Canvas not created!');
+                    UI.showToast('Ошибка: канва не создана');
+                    container.innerHTML = '<div style="width:100%;height:100%;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;">Ошибка загрузки игры</div>';
+                } else {
+                    console.log('Canvas size:', canvas.width, 'x', canvas.height);
+                    canvas.style.backgroundColor = '#1a1a1a';
+                }
+            }, 3000);
         }
 
         function preload(){
@@ -399,6 +575,10 @@
         function update(time, dt){
             if(!player) return;
             
+            if(!AntiCheat.checkConfigIntegrity()){
+                return;
+            }
+            
             var vec = getInputVector();
             var spd = CONFIG.PLAYER_SPEED;
             
@@ -424,7 +604,21 @@
                 }
             }
             
+            if(player && player.x && player.y){
+                if(!AntiCheat.validatePosition(player.x, player.y, this)){
+                    player.body.setVelocity(0, 0);
+                    player.x = 600;
+                    player.y = 450;
+                }
+                if(!AntiCheat.validateSpeed(AntiCheat.lastPosition.x, AntiCheat.lastPosition.y, player.x, player.y, dt)){
+                    player.body.setVelocity(0, 0);
+                }
+            }
+            
             if(isKiller && isActionPressed() && killerStunned <= 0){
+                if(!AntiCheat.validateAction('hit')){
+                    return;
+                }
                 this.survivors.forEach(function(s){
                     if(s.alive && !s.hooked){
                         var d = Phaser.Math.Distance.Between(player.x, player.y, s.x, s.y);
@@ -474,7 +668,12 @@
                     this.gates.forEach(function(gate){
                         var d = Phaser.Math.Distance.Between(player.x, player.y, gate.x, gate.y);
                         if(d < 50 && !gate.opened){
-                            gate.progress += dt / 100;
+                            if(AntiCheat.validateAction('gate')){
+                                gate.progress += dt / 100;
+                            }
+                            if(!AntiCheat.validateGeneratorProgress(gate.progress)){
+                                gate.progress = Math.max(0, Math.min(100, gate.progress));
+                            }
                             if(!gate.bar) gate.bar = this.add.graphics();
                             gate.bar.clear();
                             gate.bar.fillStyle(0x000000, 0.7);
@@ -543,7 +742,14 @@
                             var d = Phaser.Math.Distance.Between(player.x, player.y, gen.x, gen.y);
                             if(d < 50){
                                 nearGenerator = true;
-                                gen.progress += dt / 100;
+                                if(!AntiCheat.validateAction('repair')){
+                                    gen.progress += 0;
+                                } else {
+                                    gen.progress += dt / 100;
+                                }
+                                if(!AntiCheat.validateGeneratorProgress(gen.progress)){
+                                    gen.progress = Math.max(0, Math.min(100, gen.progress));
+                                }
                                 gen.bar.clear();
                                 gen.bar.fillStyle(0x000000, 0.7);
                                 gen.bar.fillRect(-20, -20, 40, 6);
@@ -634,6 +840,23 @@
                     if(fog.y < -50) fog.y = 950;
                     if(fog.y > 950) fog.y = -50;
                 });
+            }
+            
+            if(!this.serverSyncTimer) this.serverSyncTimer = 0;
+            this.serverSyncTimer += dt;
+            if(this.serverSyncTimer > 1000 && GameState.roomId){
+                this.serverSyncTimer = 0;
+                var state = {
+                    playerId: window.userId || 'guest',
+                    role: isKiller ? 'killer' : 'survivor',
+                    x: player ? Math.round(player.x) : 0,
+                    y: player ? Math.round(player.y) : 0,
+                    generatorsRepaired: rep,
+                    exitOpen: exitOpen,
+                    survivorsLeft: survivorsLeft,
+                    timestamp: Date.now()
+                };
+                GameState.syncToServer(state);
             }
         }
 
