@@ -204,18 +204,121 @@ function preload() {
     g.generateTexture('fence_rail', 64, 12);
     g.clear();
 
-    // Brick
-    g.fillStyle(0x8B4513); g.fillRect(0, 0, 48, 24);
-    g.fillStyle(0x6B3008); g.fillRect(0, 0, 48, 2); g.fillRect(0, 11, 48, 2); g.fillRect(0, 22, 48, 2);
-    g.fillStyle(0x9a5520, 0.4); g.fillRect(3, 3, 18, 6); g.fillRect(26, 3, 18, 6);
-    g.generateTexture('brick', 48, 24);
+    // Brick wall tile - detailed DBD-style
+    // Background mortar
+    g.fillStyle(0x4a4a4a); g.fillRect(0, 0, 96, 48);
+    // Brick variations for realism
+    const brickColors = [0x8B4513, 0x7a3a10, 0x9a5520, 0x6B3008, 0x854015];
+    // Row 1 - bottom
+    for (let i = 0; i < 3; i++) {
+        const c = brickColors[(i * 2) % brickColors.length];
+        g.fillStyle(c); g.fillRect(2 + i * 32, 34, 30, 12);
+        g.fillStyle(c + 0x111111); g.fillRect(2 + i * 32, 34, 30, 2);
+        g.fillStyle(c - 0x111111); g.fillRect(2 + i * 32, 44, 30, 2);
+    }
+    // Mortar line
+    g.fillStyle(0x3a3a3a); g.fillRect(0, 32, 96, 2);
+    g.fillStyle(0x5a5a5a); g.fillRect(0, 32, 96, 1);
+    // Row 2 - middle (offset)
+    g.fillStyle(brickColors[1]); g.fillRect(-14, 17, 30, 13);
+    g.fillStyle(brickColors[2]); g.fillRect(18, 17, 30, 13);
+    g.fillStyle(brickColors[3]); g.fillRect(50, 17, 30, 13);
+    g.fillStyle(brickColors[4]); g.fillRect(82, 17, 28, 13);
+    g.fillStyle(0x3a3a3a); g.fillRect(0, 16, 96, 2);
+    g.fillStyle(0x5a5a5a); g.fillRect(0, 16, 96, 1);
+    // Row 3 - top
+    for (let i = 0; i < 3; i++) {
+        const c = brickColors[(i + 1) % brickColors.length];
+        g.fillStyle(c); g.fillRect(2 + i * 32, 2, 30, 12);
+        g.fillStyle(c + 0x111111); g.fillRect(2 + i * 32, 2, 30, 2);
+        g.fillStyle(c - 0x111111); g.fillRect(2 + i * 32, 12, 30, 2);
+    }
+    g.fillStyle(0x3a3a3a); g.fillRect(0, 0, 96, 2);
+    // Vertical mortar lines
+    g.fillStyle(0x3a3a3a); g.fillRect(30, 0, 2, 16); g.fillRect(62, 0, 2, 16);
+    g.fillStyle(0x3a3a3a); g.fillRect(14, 16, 2, 16); g.fillRect(46, 16, 2, 16); g.fillRect(78, 16, 2, 16);
+    g.fillStyle(0x3a3a3a); g.fillRect(30, 32, 2, 16); g.fillRect(62, 32, 2, 16);
+    // Random cracks and wear
+    g.fillStyle(0x2a2a2a, 0.5); g.fillRect(10, 36, 8, 1); g.fillRect(50, 38, 12, 1);
+    g.fillStyle(0x2a2a2a, 0.5); g.fillRect(70, 5, 10, 1); g.fillRect(25, 20, 6, 1);
+    // Dark spots / aging
+    g.fillStyle(0x3a2a1a, 0.3); g.fillCircle(50, 40, 4);
+    g.fillStyle(0x3a2a1a, 0.25); g.fillCircle(20, 8, 3);
+    g.generateTexture('brick', 96, 48);
     g.clear();
 
-    // Stone
-    g.fillStyle(0x696969); g.fillEllipse(22, 18, 42, 34);
-    g.fillStyle(0x808080); g.fillEllipse(22, 20, 38, 30);
-    g.fillStyle(0x909090); g.fillCircle(13, 12, 8); g.fillCircle(28, 9, 6);
-    g.generateTexture('stone', 44, 38);
+    // Stone 1 - large gray boulder
+    g.fillStyle(0x5a5a5a); g.fillRect(4, 8, 36, 28);
+    g.fillStyle(0x696969); g.fillRect(2, 12, 32, 24);
+    g.fillStyle(0x787878); g.fillRect(6, 16, 24, 18);
+    g.fillStyle(0x878787); g.fillRect(10, 20, 16, 12);
+    // Highlights
+    g.fillStyle(0x959595); g.fillRect(8, 10, 12, 6);
+    g.fillStyle(0x707070); g.fillRect(2, 28, 36, 6);
+    // Cracks
+    g.fillStyle(0x3a3a3a); g.fillRect(14, 18, 1, 14);
+    g.fillStyle(0x4a4a4a); g.fillRect(24, 12, 1, 10);
+    // Moss spots
+    g.fillStyle(0x3a4a2a, 0.4); g.fillCircle(8, 32, 4);
+    g.fillStyle(0x3a4a2a, 0.3); g.fillCircle(28, 30, 3);
+    g.generateTexture('stone1', 40, 38);
+    g.clear();
+
+    // Stone 2 - medium brownish rock
+    g.fillStyle(0x6a5a4a); g.fillRect(2, 6, 34, 26);
+    g.fillStyle(0x7a6a5a); g.fillRect(4, 8, 28, 22);
+    g.fillStyle(0x8a7a6a); g.fillRect(6, 12, 20, 16);
+    // Highlights
+    g.fillStyle(0x9a8a7a); g.fillRect(8, 10, 10, 6);
+    g.fillStyle(0x5a4a3a); g.fillRect(2, 26, 34, 6);
+    // Cracks
+    g.fillStyle(0x4a3a2a); g.fillRect(18, 14, 1, 12);
+    g.fillStyle(0x4a3a2a); g.fillRect(10, 20, 8, 1);
+    // Dark spots
+    g.fillStyle(0x3a2a1a, 0.5); g.fillCircle(26, 28, 4);
+    g.fillStyle(0x4a3a2a, 0.4); g.fillCircle(12, 30, 3);
+    g.generateTexture('stone2', 38, 34);
+    g.clear();
+
+    // Stone 3 - small dark granite
+    g.fillStyle(0x4a4a4a); g.fillRect(6, 4, 28, 22);
+    g.fillStyle(0x5a5a5a); g.fillRect(8, 6, 22, 18);
+    g.fillStyle(0x6a6a6a); g.fillRect(10, 10, 14, 12);
+    // Highlights
+    g.fillStyle(0x7a7a7a); g.fillRect(10, 8, 8, 4);
+    g.fillStyle(0x3a3a3a); g.fillRect(6, 20, 28, 6);
+    // Cracks
+    g.fillStyle(0x2a2a2a); g.fillRect(16, 12, 1, 10);
+    g.fillStyle(0x3a3a3a); g.fillRect(12, 16, 6, 1);
+    g.generateTexture('stone3', 36, 28);
+    g.clear();
+
+    // Stone 4 - flat limestone
+    g.fillStyle(0x7a7a72); g.fillRect(2, 12, 44, 16);
+    g.fillStyle(0x8a8a82); g.fillRect(4, 14, 38, 12);
+    g.fillStyle(0x9a9a92); g.fillRect(8, 16, 24, 8);
+    // Highlights
+    g.fillStyle(0xaaaaa2); g.fillRect(8, 14, 16, 4);
+    g.fillStyle(0x6a6a62); g.fillRect(2, 24, 44, 4);
+    // Texture dots
+    g.fillStyle(0x5a5a52, 0.5); g.fillCircle(14, 22, 2);
+    g.fillStyle(0x5a5a52, 0.5); g.fillCircle(30, 20, 2);
+    g.fillStyle(0x5a5a52, 0.5); g.fillCircle(38, 24, 1.5);
+    // Crack
+    g.fillStyle(0x5a5a52); g.fillRect(20, 18, 1, 8);
+    g.generateTexture('stone4', 48, 30);
+    g.clear();
+
+    // Stone 5 - small rounded pebble
+    g.fillStyle(0x5a5a5a); g.fillCircle(14, 14, 12);
+    g.fillStyle(0x6a6a6a); g.fillCircle(14, 14, 10);
+    g.fillStyle(0x7a7a7a); g.fillCircle(12, 12, 7);
+    // Highlight
+    g.fillStyle(0x8a8a8a); g.fillCircle(10, 10, 4);
+    g.fillStyle(0x4a4a4a); g.fillCircle(14, 14, 10);
+    // Crack
+    g.fillStyle(0x3a3a3a); g.fillRect(12, 16, 4, 1);
+    g.generateTexture('stone5', 28, 28);
     g.clear();
 
     // Tree
@@ -239,21 +342,93 @@ function preload() {
     g.generateTexture('shack_wall', 48, 20);
     g.clear();
 
-    // Generator
-    g.fillStyle(0x3a3a40); g.fillRect(0, 0, 48, 36);
-    g.fillStyle(0x4a4a52); g.fillRect(2, 2, 28, 32);
-    g.fillStyle(0x222228); g.fillRect(32, 4, 14, 14);
-    g.fillStyle(0x00ff44); g.fillRect(34, 6, 4, 6);
-    g.fillStyle(0xff2222); g.fillRect(40, 6, 4, 6);
-    g.generateTexture('gen', 48, 36);
+    // Generator - detailed DBD-style with poles and flickering lights
+    // Main generator body
+    g.fillStyle(0x2a2a30); g.fillRect(4, 20, 56, 52);
+    g.fillStyle(0x3a3a42); g.fillRect(6, 22, 52, 48);
+    // Metal panel texture
+    g.fillStyle(0x4a4a52); g.fillRect(8, 24, 48, 44);
+    g.fillStyle(0x3a3a42); g.fillRect(8, 24, 48, 2);
+    // Bolts/rivets
+    g.fillStyle(0x5a5a62); g.fillCircle(12, 28, 3); g.fillCircle(52, 28, 3);
+    g.fillStyle(0x5a5a62); g.fillCircle(12, 64, 3); g.fillCircle(52, 64, 3);
+    // Engine vents
+    g.fillStyle(0x222228); g.fillRect(12, 30, 40, 6);
+    g.fillStyle(0x222228); g.fillRect(12, 40, 40, 6);
+    g.fillStyle(0x222228); g.fillRect(12, 50, 40, 6);
+    // Vent slats
+    g.fillStyle(0x1a1a20); g.fillRect(12, 31, 40, 1);
+    g.fillStyle(0x1a1a20); g.fillRect(12, 41, 40, 1);
+    g.fillStyle(0x1a1a20); g.fillRect(12, 51, 40, 1);
+    // Control panel box
+    g.fillStyle(0x3a3a40); g.fillRect(14, 58, 24, 14);
+    g.fillStyle(0x2a2a30); g.fillRect(16, 60, 20, 10);
+    // Indicator lights on panel (will flicker)
+    g.fillStyle(0x00ff44); g.fillCircle(22, 65, 3);
+    g.fillStyle(0xff2222); g.fillCircle(30, 65, 3);
+    // Wires/cables
+    g.fillStyle(0x1a1a20); g.fillRect(38, 58, 4, 14);
+    g.fillStyle(0x8B0000); g.fillRect(42, 58, 3, 8);
+    g.fillStyle(0x00aa00); g.fillRect(45, 58, 3, 10);
+    // Rust and wear
+    g.fillStyle(0x4a3a2a, 0.3); g.fillCircle(50, 62, 4);
+    g.fillStyle(0x3a2a1a, 0.25); g.fillCircle(20, 68, 3);
+    g.generateTexture('gen', 64, 76);
     g.clear();
 
-    // Hook
-    g.fillStyle(0x444450); g.fillCircle(16, 16, 14);
-    g.fillStyle(0x666670); g.fillCircle(16, 13, 10);
-    g.fillStyle(0x333340); g.fillRect(13, 4, 6, 12);
-    g.fillStyle(0x888890); g.fillCircle(16, 4, 4);
-    g.generateTexture('hook', 32, 32);
+    // Generator light pole
+    g.fillStyle(0x4a4a52); g.fillRect(28, 0, 8, 48);
+    g.fillStyle(0x5a5a62); g.fillRect(29, 0, 3, 48);
+    // Pole base
+    g.fillStyle(0x3a3a42); g.fillRect(24, 44, 16, 6);
+    g.fillStyle(0x2a2a32); g.fillRect(24, 48, 16, 4);
+    // Rust on pole
+    g.fillStyle(0x5a3a2a, 0.4); g.fillRect(29, 20, 2, 12);
+    g.fillStyle(0x5a3a2a, 0.3); g.fillRect(30, 36, 2, 6);
+    g.generateTexture('gen_pole', 64, 56);
+    g.clear();
+
+    // Generator light fixture
+    g.fillStyle(0x3a3a40); g.fillRect(20, 0, 24, 14);
+    g.fillStyle(0x2a2a32); g.fillRect(20, 0, 24, 3);
+    g.fillStyle(0x1a1a22); g.fillRect(22, 2, 20, 10);
+    // Light bulb socket
+    g.fillStyle(0x5a5a62); g.fillRect(28, 10, 8, 6);
+    g.fillStyle(0x4a4a52); g.fillRect(29, 11, 6, 4);
+    // The actual light (will be tinted for flicker effect)
+    g.fillStyle(0xffee88); g.fillCircle(32, 8, 6);
+    g.generateTexture('gen_light', 64, 20);
+    g.clear();
+
+    // Hook - detailed DBD-style meat hook
+    // Pole base
+    g.fillStyle(0x2a2a30); g.fillRect(14, 18, 6, 46);
+    g.fillStyle(0x3a3a42); g.fillRect(15, 18, 2, 46);
+    // Base plate
+    g.fillStyle(0x4a4a52); g.fillRect(10, 58, 14, 6);
+    g.fillStyle(0x3a3a42); g.fillRect(10, 58, 14, 2);
+    // Rust spots on base
+    g.fillStyle(0x5a3020, 0.6); g.fillCircle(12, 62, 2);
+    g.fillStyle(0x5a3020, 0.5); g.fillCircle(20, 61, 1.5);
+    // Curved hook arm
+    g.fillStyle(0x555560); g.fillRect(14, 4, 5, 16);
+    // Hook curve
+    g.fillStyle(0x606068); g.fillCircle(18, 14, 6);
+    g.fillStyle(0x505058); g.fillCircle(18, 14, 4);
+    g.fillStyle(0x4a4a52); g.fillRect(12, 8, 6, 6);
+    // Sharp hook point
+    g.fillStyle(0x707078); g.fillCircle(13, 10, 3);
+    g.fillStyle(0x888890); g.fillCircle(12, 9, 1.5);
+    // Chain at top
+    g.fillStyle(0x484850); g.fillCircle(17, 2, 3);
+    g.fillStyle(0x585860); g.fillCircle(17, 2, 2);
+    // Metal highlights
+    g.fillStyle(0x888890, 0.4); g.fillRect(15, 20, 1, 40);
+    g.fillStyle(0x707078, 0.3); g.fillCircle(16, 12, 2);
+    // Rust streaks
+    g.fillStyle(0x6a3a28, 0.4); g.fillRect(14, 30, 2, 8);
+    g.fillStyle(0x6a3a28, 0.3); g.fillRect(15, 42, 1, 6);
+    g.generateTexture('hook', 32, 64);
     g.clear();
 
     // Gate
@@ -276,14 +451,61 @@ function preload() {
     createSurvivorTextures(g, 's3', 0x27ae60, 0x1a1a1a);
     createSurvivorTextures(g, 's4', 0xf1c40f, 0x8B4513);
 
-    // Killer
-    g.fillStyle(0x1a1a1a); g.fillRect(6, 28, 30, 26);
-    g.fillStyle(0x8B0000); g.fillRect(10, 32, 22, 18);
-    g.fillStyle(0x2a2a2a); g.fillCircle(20, 14, 13);
-    g.fillStyle(0xeeeeee); g.fillRect(9, 7, 24, 14);
-    g.fillStyle(0x000000); g.fillRect(11, 10, 7, 6); g.fillRect(24, 10, 7, 6);
-    g.fillStyle(0xff0000); g.fillCircle(14, 13, 3); g.fillCircle(26, 13, 3);
-    g.generateTexture('killer', 40, 72);
+    // Repairing textures for survivors
+    createRepairingTextures(g, 's1', 0xc0392b, 0x3d2314);
+    createRepairingTextures(g, 's2', 0x8e44ad, 0x4a3020);
+    createRepairingTextures(g, 's3', 0x27ae60, 0x1a1a1a);
+    createRepairingTextures(g, 's4', 0xf1c40f, 0x8B4513);
+
+    // Killer - detailed DBD-style killer
+    // Shadow
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(24, 76, 32, 10);
+    // Legs
+    g.fillStyle(0x1a1a1a); g.fillRect(12, 50, 10, 28);
+    g.fillStyle(0x2a2a2a); g.fillRect(13, 50, 3, 28);
+    g.fillStyle(0x1a1a1a); g.fillRect(28, 50, 10, 28);
+    g.fillStyle(0x2a2a2a); g.fillRect(29, 50, 3, 28);
+    // Boots
+    g.fillStyle(0x0a0a0a); g.fillRect(10, 70, 14, 8);
+    g.fillStyle(0x1a1a1a); g.fillRect(26, 70, 14, 8);
+    // Body - dark robe
+    g.fillStyle(0x1a1a1a); g.fillRect(8, 24, 34, 30);
+    g.fillStyle(0x2a2a2a); g.fillRect(8, 24, 8, 30);
+    g.fillStyle(0x8B0000); g.fillRect(14, 28, 22, 22); // Red chest
+    g.fillStyle(0x6a0000); g.fillRect(14, 28, 6, 22);
+    // Robe details
+    g.fillStyle(0x2a2a2a); g.fillRect(8, 40, 34, 4);
+    g.fillStyle(0x0f0f0f); g.fillRect(36, 24, 4, 30);
+    // Arms
+    g.fillStyle(0x1a1a1a); g.fillRect(0, 26, 10, 20);
+    g.fillStyle(0x1a1a1a); g.fillRect(40, 26, 10, 20);
+    g.fillStyle(0x3a3a3a); g.fillRect(0, 26, 3, 20);
+    g.fillStyle(0x3a3a3a); g.fillRect(40, 26, 3, 20);
+    // Clawed hands
+    g.fillStyle(0x4a4a4a); g.fillCircle(4, 48, 5);
+    g.fillStyle(0x3a3a3a); g.fillCircle(4, 48, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(1, 52, 2, 6); g.fillRect(4, 52, 2, 7); g.fillRect(7, 52, 2, 6);
+    g.fillStyle(0x4a4a4a); g.fillCircle(44, 48, 5);
+    g.fillStyle(0x3a3a3a); g.fillCircle(44, 48, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(41, 52, 2, 6); g.fillRect(44, 52, 2, 7); g.fillRect(47, 52, 2, 6);
+    // Head - mask
+    g.fillStyle(0x2a2a2a); g.fillCircle(24, 14, 14);
+    g.fillStyle(0x1a1a1a); g.fillCircle(24, 14, 12);
+    // White mask
+    g.fillStyle(0xeeeeee); g.fillRect(12, 6, 26, 16);
+    g.fillStyle(0xdddddd); g.fillRect(12, 6, 26, 3);
+    // Eye holes
+    g.fillStyle(0x000000); g.fillRect(14, 10, 8, 6);
+    g.fillStyle(0x000000); g.fillRect(28, 10, 8, 6);
+    // Glowing red eyes
+    g.fillStyle(0xff0000); g.fillCircle(18, 13, 3);
+    g.fillStyle(0xff3333); g.fillCircle(18, 12, 2);
+    g.fillStyle(0xff0000); g.fillCircle(32, 13, 3);
+    g.fillStyle(0xff3333); g.fillCircle(32, 12, 2);
+    // Mouth slit
+    g.fillStyle(0x1a1a1a); g.fillRect(20, 18, 10, 3);
+    g.generateTexture('killer', 48, 80);
+    g.clear();
     g.clear();
 
     g.destroy();
@@ -291,23 +513,136 @@ function preload() {
 
 function createSurvivorTextures(g, name, shirtColor, hairColor) {
     // Shadow
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(20, 60, 24, 8);
-    // Legs
-    g.fillStyle(0x2c3e70); g.fillRect(12, 44, 8, 20); g.fillRect(22, 44, 8, 20);
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(22, 80, 28, 10);
+    // Legs - two separate legs with jeans color
+    g.fillStyle(0x2c3e70); g.fillRect(12, 48, 9, 34);
+    g.fillStyle(0x1a2a50); g.fillRect(12, 48, 3, 34);
+    g.fillStyle(0x2c3e70); g.fillRect(25, 48, 9, 34);
+    g.fillStyle(0x1a2a50); g.fillRect(25, 48, 3, 34);
+    // Boots
+    g.fillStyle(0x4a3a2a); g.fillRect(10, 76, 12, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(10, 76, 4, 8);
+    g.fillStyle(0x4a3a2a); g.fillRect(24, 76, 12, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(24, 76, 4, 8);
     // Body
-    g.fillStyle(shirtColor); g.fillRect(10, 26, 22, 20);
-    g.fillStyle(shirtColor + 0x222222); g.fillRect(11, 27, 20, 18);
+    g.fillStyle(shirtColor); g.fillRect(8, 26, 28, 24);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(8, 26, 6, 24);
+    g.fillStyle(shirtColor + 0x222222); g.fillRect(30, 26, 4, 24);
+    // Collar
+    g.fillStyle(shirtColor - 0x222222); g.fillRect(18, 26, 8, 4);
+    // Arms - two separate arms
+    g.fillStyle(0xffccaa); g.fillRect(0, 28, 9, 18);
+    g.fillStyle(0xeeaa88); g.fillRect(0, 28, 3, 18);
+    g.fillStyle(0xffccaa); g.fillRect(35, 28, 9, 18);
+    g.fillStyle(0xeeaa88); g.fillRect(35, 28, 3, 18);
+    // Hands
+    g.fillStyle(0xffccaa); g.fillCircle(4, 48, 5);
+    g.fillStyle(0xffccaa); g.fillCircle(40, 48, 5);
+    // Shirt sleeves
+    g.fillStyle(shirtColor); g.fillRect(0, 26, 10, 8);
+    g.fillStyle(shirtColor); g.fillRect(34, 26, 10, 8);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(0, 26, 4, 8);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(34, 26, 4, 8);
     // Head
-    g.fillStyle(0xffccaa); g.fillCircle(20, 14, 11);
-    g.fillStyle(hairColor); g.fillCircle(20, 8, 10);
+    g.fillStyle(0xffccaa); g.fillCircle(22, 14, 12);
+    g.fillStyle(0xeebb99); g.fillCircle(22, 16, 10);
+    // Hair
+    g.fillStyle(hairColor); g.fillCircle(22, 10, 11);
+    g.fillStyle(hairColor - 0x222222); g.fillCircle(22, 7, 8);
+    g.fillStyle(hairColor); g.fillRect(10, 6, 24, 8);
     // Eyes
-    g.fillStyle(0x222222); g.fillCircle(16, 13, 2.5); g.fillCircle(24, 13, 2.5);
-    g.fillStyle(0xffffff); g.fillCircle(15, 12, 1); g.fillCircle(23, 12, 1);
+    g.fillStyle(0x222222); g.fillCircle(17, 13, 3);
+    g.fillStyle(0x222222); g.fillCircle(27, 13, 3);
+    g.fillStyle(0xffffff); g.fillCircle(16, 12, 1.5);
+    g.fillStyle(0xffffff); g.fillCircle(26, 12, 1.5);
+    // Eyebrows
+    g.fillStyle(hairColor - 0x333333); g.fillRect(14, 9, 7, 2);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(24, 9, 7, 2);
+    // Nose
+    g.fillStyle(0xddaa88); g.fillRect(20, 15, 4, 3);
     // Mouth
-    g.fillStyle(0xcc8877); g.fillRect(17, 18, 6, 2);
-    g.generateTexture(name, 40, 64);
+    g.fillStyle(0xcc8877); g.fillRect(18, 20, 8, 3);
+    g.fillStyle(0xaa6655); g.fillRect(18, 20, 8, 1);
+    // Ears
+    g.fillStyle(0xffccaa); g.fillRect(9, 12, 4, 6);
+    g.fillStyle(0xffccaa); g.fillRect(33, 12, 4, 6);
+    g.generateTexture(name, 44, 88);
     g.clear();
 }
+
+// Create repairing (crouching) textures for survivors
+function createRepairingTextures(g, name, shirtColor, hairColor) {
+    // Shadow (larger, more spread out for crouching)
+    g.fillStyle(0x000000, 0.4); g.fillEllipse(22, 72, 36, 12);
+    // Crouched legs (bent at knees)
+    g.fillStyle(0x2c3e70); g.fillRect(6, 50, 10, 18);
+    g.fillStyle(0x1a2a50); g.fillRect(6, 50, 3, 18);
+    g.fillStyle(0x2c3e70); g.fillRect(28, 50, 10, 18);
+    g.fillStyle(0x1a2a50); g.fillRect(28, 50, 3, 18);
+    // Knees bent
+    g.fillStyle(0x2c3e70); g.fillRect(8, 62, 10, 8);
+    g.fillStyle(0x2c3e70); g.fillRect(26, 62, 10, 8);
+    // Boots
+    g.fillStyle(0x4a3a2a); g.fillRect(4, 68, 12, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(4, 68, 4, 8);
+    g.fillStyle(0x4a3a2a); g.fillRect(26, 68, 12, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(26, 68, 4, 8);
+    // Crouched body (leaning forward)
+    g.fillStyle(shirtColor); g.fillRect(8, 32, 28, 22);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(8, 32, 6, 22);
+    g.fillStyle(shirtColor + 0x222222); g.fillRect(30, 32, 4, 22);
+    // Back bent
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(14, 32, 16, 4);
+    // Arms reaching forward (for repair animation - frame 1)
+    g.fillStyle(0xffccaa); g.fillRect(-4, 36, 14, 7);
+    g.fillStyle(0xeeaa88); g.fillRect(-4, 36, 4, 7);
+    g.fillStyle(0xffccaa); g.fillRect(34, 36, 14, 7);
+    g.fillStyle(0xeeaa88); g.fillRect(42, 36, 4, 7);
+    // Hands reaching to generator
+    g.fillStyle(0xffccaa); g.fillCircle(-8, 40, 5);
+    g.fillStyle(0xffccaa); g.fillCircle(48, 40, 5);
+    // Sleeves
+    g.fillStyle(shirtColor); g.fillRect(-2, 34, 10, 6);
+    g.fillStyle(shirtColor); g.fillRect(36, 34, 10, 6);
+    // Head (slightly tilted)
+    g.fillStyle(0xffccaa); g.fillCircle(24, 18, 11);
+    g.fillStyle(0xeebb99); g.fillCircle(24, 19, 9);
+    // Hair
+    g.fillStyle(hairColor); g.fillCircle(24, 14, 10);
+    g.fillStyle(hairColor - 0x222222); g.fillCircle(24, 11, 7);
+    g.fillStyle(hairColor); g.fillRect(12, 10, 24, 7);
+    // Eyes (focused on work)
+    g.fillStyle(0x222222); g.fillCircle(19, 17, 2.5);
+    g.fillStyle(0x222222); g.fillCircle(29, 17, 2.5);
+    g.fillStyle(0xffffff); g.fillCircle(18, 16, 1);
+    g.fillStyle(0xffffff); g.fillCircle(28, 16, 1);
+    // Eyebrows (concentrated)
+    g.fillStyle(hairColor - 0x333333); g.fillRect(16, 13, 7, 2);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(26, 13, 7, 2);
+    // Nose
+    g.fillStyle(0xddaa88); g.fillRect(22, 19, 4, 3);
+    // Mouth (slightly open, concentrated)
+    g.fillStyle(0xcc8877); g.fillRect(20, 24, 8, 2);
+    // Ears
+    g.fillStyle(0xffccaa); g.fillRect(11, 16, 4, 5);
+    g.fillStyle(0xffccaa); g.fillRect(35, 16, 4, 5);
+    g.generateTexture(name + '_repair', 56, 80);
+    g.clear();
+
+    // Repair arm texture (will be animated separately)
+    // Left arm reaching out
+    g.fillStyle(0xffccaa); g.fillRect(0, 0, 20, 7);
+    g.fillStyle(0xeeaa88); g.fillRect(0, 0, 5, 7);
+    g.fillStyle(0xffccaa); g.fillCircle(22, 3, 5);
+    g.generateTexture(name + '_arm_l', 28, 14);
+    g.clear();
+
+    // Right arm reaching out
+    g.fillStyle(0xffccaa); g.fillRect(0, 0, 20, 7);
+    g.fillStyle(0xeeaa88); g.fillRect(0, 0, 5, 7);
+    g.fillStyle(0xffccaa); g.fillCircle(22, 3, 5);
+    g.generateTexture(name + '_arm_r', 28, 14);
+    g.clear();
 
 // ═══════ CREATE SCENE ═══════
 
@@ -345,14 +680,35 @@ function create() {
         }
     });
 
-    // Generators
+    // Generators with poles and flickering lights
     [{ x: 300, y: 200 }, { x: 2100, y: 200 }, { x: 1200, y: 900 }, { x: 300, y: 1600 }, { x: 2100, y: 1600 }]
         .forEach((p, i) => {
+            // Light glow (outer) - will flicker
+            const lightGlow = this.add.graphics();
+            lightGlow.fillStyle(0xffee88, 0.15);
+            lightGlow.fillCircle(p.x, p.y - 50, 60);
+            lightGlow.setDepth(p.y - 50 + 1);
+
+            // Light glow (inner, brighter)
+            const lightGlowInner = this.add.graphics();
+            lightGlowInner.fillStyle(0xffee88, 0.3);
+            lightGlowInner.fillCircle(p.x, p.y - 50, 30);
+            lightGlowInner.setDepth(p.y - 50 + 2);
+
+            // Light fixture (on top of pole)
+            const light = this.add.sprite(p.x, p.y - 50, 'gen_light').setDepth(p.y - 50 + 3);
+
+            // Light pole
+            const pole = this.add.sprite(p.x, p.y - 26, 'gen_pole').setDepth(p.y - 26 + 1);
+            pole.setScale(0.8);
+
+            // Generator body glow
             const glow = this.add.graphics();
-            glow.fillStyle(0x00ff44, 0.1);
-            glow.fillCircle(p.x, p.y, 40);
+            glow.fillStyle(0x00ff44, 0.08);
+            glow.fillCircle(p.x, p.y, 50);
             glow.setDepth(p.y + 1);
 
+            // Generator body
             const sp = this.add.sprite(p.x, p.y, 'gen').setDepth(p.y + 2);
             sp.genId = i;
             sp.progress = 0;
@@ -361,6 +717,10 @@ function create() {
             sp.bx = p.x;
             sp.by = p.y;
             sp.glowGfx = glow;
+            sp.lightGlowGfx = lightGlow;
+            sp.lightGlowInnerGfx = lightGlowInner;
+            sp.lightSprite = light;
+            sp.lightFlickerPhase = Math.random() * Math.PI * 2; // Random start phase for flicker
             generators.push(sp);
         }, this);
 
@@ -427,8 +787,8 @@ function buildFence(W, H) {
 function getMapObstacles() {
     const obs = [];
 
-    function addBrickRow(sx, sy, n) { for (let i = 0; i < n; i++) obs.push({ t: 'brick', x: sx + i * 50, y: sy, sw: 46, sh: 22, solid: true }); }
-    function addBrickCol(sx, sy, n) { for (let i = 0; i < n; i++) obs.push({ t: 'brick', x: sx, y: sy + i * 26, sw: 46, sh: 22, solid: true }); }
+    function addBrickRow(sx, sy, n) { for (let i = 0; i < n; i++) obs.push({ t: 'brick', x: sx + i * 96, y: sy, sw: 94, sh: 46, solid: true }); }
+    function addBrickCol(sx, sy, n) { for (let i = 0; i < n; i++) obs.push({ t: 'brick', x: sx, y: sy + i * 50, sw: 94, sh: 46, solid: true }); }
 
     // Brick walls
     addBrickRow(280, 260, 5); addBrickCol(280, 260, 6);
@@ -439,13 +799,24 @@ function getMapObstacles() {
     addBrickRow(1080, 1480, 6);
     addBrickCol(680, 820, 5); addBrickRow(680, 820, 4);
 
-    // Stones
-    [[200, 400], [500, 200], [1200, 300], [1800, 200], [2200, 500],
-    [300, 1000], [600, 1400], [1400, 900], [2000, 1100], [1700, 1600],
-    [800, 1600], [1100, 700], [1500, 400], [2100, 1400], [450, 700],
-    [950, 1200], [1700, 350], [2300, 900], [400, 1550], [1600, 250],
-    [1050, 1600], [750, 450], [1800, 1000], [2200, 1200]
-    ].forEach(p => obs.push({ t: 'stone', x: p[0], y: p[1], sw: 44, sh: 38, solid: true }));
+    // Stones - varied types with different shapes and colors
+    const stoneTypes = ['stone1', 'stone2', 'stone3', 'stone4', 'stone5'];
+    const stoneSizes = {
+        stone1: { sw: 40, sh: 38 },
+        stone2: { sw: 38, sh: 34 },
+        stone3: { sw: 36, sh: 28 },
+        stone4: { sw: 48, sh: 30 },
+        stone5: { sw: 28, sh: 28 }
+    };
+    [[200, 400, 'stone1'], [500, 200, 'stone3'], [1200, 300, 'stone2'], [1800, 200, 'stone4'], [2200, 500, 'stone5'],
+    [300, 1000, 'stone2'], [600, 1400, 'stone1'], [1400, 900, 'stone5'], [2000, 1100, 'stone3'], [1700, 1600, 'stone4'],
+    [800, 1600, 'stone1'], [1100, 700, 'stone2'], [1500, 400, 'stone3'], [2100, 1400, 'stone1'], [450, 700, 'stone5'],
+    [950, 1200, 'stone4'], [1700, 350, 'stone2'], [2300, 900, 'stone1'], [400, 1550, 'stone3'], [1600, 250, 'stone5'],
+    [1050, 1600, 'stone2'], [750, 450, 'stone4'], [1800, 1000, 'stone1'], [2200, 1200, 'stone3']
+    ].forEach(p => {
+        const st = stoneSizes[p[2]];
+        obs.push({ t: p[2], x: p[0], y: p[1], sw: st.sw, sh: st.sh, solid: true });
+    });
 
     // Trees
     [[150, 150], [600, 100], [1100, 150], [1600, 100], [2200, 200],
@@ -470,26 +841,36 @@ function spawnPlayers() {
         player = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', true);
         this.physics.add.collider(player.sprite, staticGroup);
 
-        // AI survivors
-        const sTex = ['s1', 's2', 's3'];
-        sTex.forEach((t, i) => {
-            const ai = makePlayer(this, sSpawns[i].x, sSpawns[i].y, t, false);
-            ai.aiDir = { x: 0, y: 0 }; ai.aiTimer = 0;
-            this.physics.add.collider(ai.sprite, staticGroup);
-            player.aiPlayers = player.aiPlayers || [];
-            player.aiPlayers.push(ai);
-        });
+        // AI survivors - only in singleplayer mode
+        if (!isMultiplayer) {
+            const sTex = ['s1', 's2', 's3'];
+            sTex.forEach((t, i) => {
+                const ai = makePlayer(this, sSpawns[i].x, sSpawns[i].y, t, false);
+                ai.aiDir = { x: 0, y: 0 }; ai.aiTimer = 0;
+                this.physics.add.collider(ai.sprite, staticGroup);
+                player.aiPlayers = player.aiPlayers || [];
+                player.aiPlayers.push(ai);
+            });
+        } else {
+            player.aiPlayers = [];
+            survivorsAlive = 0; // Real players will be counted via multiplayer sync
+        }
     } else {
         player = makePlayer(this, sSpawns[0].x, sSpawns[0].y, 's1', true);
         this.physics.add.collider(player.sprite, staticGroup);
 
-        // AI killer
-        const aiK = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', false);
-        aiK.isAIKiller = true; aiK.aiTimer = 0; aiK.aiHitCooldown = 0;
-        this.physics.add.collider(aiK.sprite, staticGroup);
-        this.physics.add.collider(player.sprite, aiK.sprite);
-        player.aiPlayers = [aiK];
-        survivorsAlive = 1;
+        // AI killer - only in singleplayer mode
+        if (!isMultiplayer) {
+            const aiK = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', false);
+            aiK.isAIKiller = true; aiK.aiTimer = 0; aiK.aiHitCooldown = 0;
+            this.physics.add.collider(aiK.sprite, staticGroup);
+            this.physics.add.collider(player.sprite, aiK.sprite);
+            player.aiPlayers = [aiK];
+            survivorsAlive = 1;
+        } else {
+            player.aiPlayers = [];
+            survivorsAlive = 1; // Counting self only, real killer comes via multiplayer
+        }
     }
 }
 
@@ -534,11 +915,33 @@ function update(time, dt) {
 
     gameTime += dt;
 
-    // Animate glows
+    // Animate generator lights flickering and player glows
     generators.forEach(gen => {
+        // Body glow pulse
         if (gen.glowGfx && !gen.repaired) {
             const pulse = 0.8 + Math.sin(gameTime * 0.003) * 0.3;
             gen.glowGfx.setAlpha(pulse * 0.15);
+        }
+
+        // Flickering light effect (slow, smooth pulsing like a dying fluorescent light)
+        if (gen.lightGlowGfx && !gen.repaired) {
+            // Slow sine wave flicker
+            const slowFlicker = 0.4 + Math.sin(gameTime * 0.001 + gen.lightFlickerPhase) * 0.35;
+            // Occasional stronger flicker
+            const fastFlicker = Math.sin(gameTime * 0.008 + gen.lightFlickerPhase * 2) * 0.15;
+            // Random intensity variation
+            const randomFlicker = Math.sin(gameTime * 0.02 + gen.lightFlickerPhase * 3) * 0.1;
+            const totalIntensity = Math.max(0.15, slowFlicker + fastFlicker + randomFlicker);
+
+            gen.lightGlowGfx.setAlpha(totalIntensity);
+            gen.lightGlowInnerGfx.setAlpha(totalIntensity * 1.5);
+            gen.lightSprite.setAlpha(0.7 + totalIntensity * 0.5);
+        }
+        // When repaired, turn off light
+        if (gen.repaired && gen.lightGlowGfx) {
+            gen.lightGlowGfx.setAlpha(0);
+            gen.lightGlowInnerGfx.setAlpha(0);
+            gen.lightSprite.setAlpha(0.3);
         }
     });
 
@@ -662,6 +1065,9 @@ function killerAction(dt) {
             if (gen.progress <= 0) {
                 gen.setTint(0x444444);
                 if (gen.glowGfx) gen.glowGfx.setAlpha(0);
+                if (gen.lightGlowGfx) gen.lightGlowGfx.setAlpha(0);
+                if (gen.lightGlowInnerGfx) gen.lightGlowInnerGfx.setAlpha(0);
+                if (gen.lightSprite) gen.lightSprite.setAlpha(0.2);
                 UI.showToast('💥 Генератор сломан!', 2000);
 
                 if (isMultiplayer && roomCode) {
@@ -709,6 +1115,9 @@ function survivorAction(dt) {
                     gen.repaired = true;
                     gen.setTint(0x22ff66);
                     if (gen.glowGfx) gen.glowGfx.setAlpha(0);
+                    if (gen.lightGlowGfx) gen.lightGlowGfx.setAlpha(0);
+                    if (gen.lightGlowInnerGfx) gen.lightGlowInnerGfx.setAlpha(0);
+                    if (gen.lightSprite) gen.lightSprite.setAlpha(0.3);
                     p.progressAction = null;
                     UI.showToast('✅ Генератор починен!', 2000);
                     checkAllGens();
@@ -961,13 +1370,30 @@ function updateHUD() {
     const p = player;
     const genCount = generators.filter(g => g.repaired).length;
 
+    let aliveCount;
+    if (isKiller) {
+        if (isMultiplayer) {
+            // Count real survivors from remotePlayers
+            aliveCount = Object.values(remotePlayers).filter(rp => rp.role === 'survivor' && rp.state !== 'dead').length;
+        } else {
+            aliveCount = (player.aiPlayers || []).filter(a => a.state !== 'dead').length;
+        }
+    } else {
+        if (isMultiplayer) {
+            // Count real survivors (self + remote players)
+            aliveCount = 1 + Object.values(remotePlayers).filter(rp => rp.role === 'survivor' && rp.state !== 'dead').length;
+        } else {
+            aliveCount = survivorsAlive;
+        }
+    }
+
     UI.updateHUD(
         p.role,
         p.state,
         genCount,
         exitOpen,
         hatchOpen && !hatchClosed,
-        isKiller ? (player.aiPlayers || []).filter(a => a.state !== 'dead').length : survivorsAlive
+        aliveCount
     );
 }
 
@@ -975,8 +1401,15 @@ function checkWinLose() {
     if (gameEnded) return;
 
     if (isKiller) {
-        const alive = (player.aiPlayers || []).filter(a => a.state !== 'dead').length;
-        if (alive === 0) {
+        let allDead = false;
+        if (isMultiplayer) {
+            // All real survivors must be dead for killer to win
+            const survivors = Object.values(remotePlayers).filter(rp => rp.role === 'survivor');
+            allDead = survivors.length > 0 && survivors.every(rp => rp.state === 'dead');
+        } else {
+            allDead = (player.aiPlayers || []).filter(a => a.state !== 'dead').length === 0;
+        }
+        if (allDead) {
             doEndGame(true, 'Ты поймал всех выживших!');
         }
     } else {
@@ -1182,6 +1615,9 @@ function updateGeneratorsFromServer(gens) {
         if (gen.repaired && !gen.getTint()) {
             gen.setTint(0x22ff66);
             if (gen.glowGfx) gen.glowGfx.setAlpha(0);
+            if (gen.lightGlowGfx) gen.lightGlowGfx.setAlpha(0);
+            if (gen.lightGlowInnerGfx) gen.lightGlowInnerGfx.setAlpha(0);
+            if (gen.lightSprite) gen.lightSprite.setAlpha(0.3);
         }
 
         if (!gen.repaired && gen.progress > 0) {
@@ -1216,14 +1652,24 @@ function moveTo(sp, tx, ty, spd) {
 
 function nearestAliveTarget(sp, maxD) {
     let best = null, bd = maxD;
-    const pool = isKiller ? (player.aiPlayers || []) : (player.aiPlayers || []).filter(a => a.isAIKiller);
+    let pool = [];
 
-    pool.forEach(ai => {
-        if (!ai || ai.state === 'dead') return;
-        const d = dist(sp, ai.sprite);
+    if (isMultiplayer && isKiller) {
+        // In multiplayer, target real survivors from remotePlayers
+        pool = Object.values(remotePlayers).filter(rp => rp.role === 'survivor' && rp.state !== 'dead');
+    } else if (isKiller) {
+        pool = (player.aiPlayers || []).filter(a => a.state !== 'dead');
+    } else {
+        // Survivor targets the AI killer (singleplayer only)
+        pool = (player.aiPlayers || []).filter(a => a.isAIKiller);
+    }
+
+    pool.forEach(target => {
+        if (!target || target.state === 'dead') return;
+        const d = dist(sp, target.sprite);
         if (d < bd) {
             bd = d;
-            best = ai.sprite;
+            best = target.sprite;
         }
     });
 
