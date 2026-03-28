@@ -8,1462 +8,726 @@
     <meta name="theme-color" content="#111111">
     <title>Miasma Massacre</title>
     <link rel="stylesheet" href="styles.css">
+
+    <!-- Firebase (Realtime Database compat) -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <!-- Phaser (один раз!) -->
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
     <script>
+        // Firebase init
         try {
             firebase.initializeApp({
                 apiKey: "AIzaSyClnLMd7bt99ngZU7UzSxnStvYD3WXdkew",
                 authDomain: "dbdtg-d24d7.firebaseapp.com",
+                databaseURL: "https://dbdtg-d24d7-default-rtdb.firebaseio.com",
                 projectId: "dbdtg-d24d7",
                 storageBucket: "dbdtg-d24d7.firebasestorage.app",
                 messagingSenderId: "48938774159",
                 appId: "1:48938774159:web:3beaea874e68ed07104afa"
             });
-            window.db = firebase.firestore();
+            window.db = firebase.database();
             window.firebaseLoaded = true;
-        } catch(e) { console.error('Firebase init error:', e); }
+            console.log('Firebase Realtime DB ready');
+        } catch(e) {
+            console.error('Firebase init error:', e);
+            window.firebaseLoaded = false;
+        }
     </script>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
     <div id="app">
         <div id="loading-screen" class="screen active"><div class="loader"></div><p>Загрузка...</p></div>
-        <div id="main-menu" class="screen"><h1>Miasma Massacre</h1><div class="menu-buttons"><button id="btn-solo" class="btn primary">Играть (Solo)</button><button id="btn-multi" class="btn secondary">Мультиплеер</button></div><div class="version">v1.0.0</div></div>
-        <div id="role-select" class="screen"><h2>Выбери роль</h2><button id="btn-play-killer" class="btn primary">Убийца</button><button id="btn-play-survivor" class="btn secondary">Выживший</button></div>
-        <div id="lobby-create" class="screen"><h2>Лобби</h2><div id="lobby-status">Создание лобби...</div><div id="lobby-players"></div><button id="btn-start-game" class="btn" disabled style="background:#666;">Начать (ждём игроков)</button><button id="btn-leave-lobby" class="btn secondary">Выйти</button></div>
-        <div id="lobby-join" class="screen"><h2>Поиск игры</h2><div id="search-status">Поиск доступных лобби...</div><div id="search-count"></div><button id="btn-leave-search" class="btn secondary">Назад</button></div>
-        <div id="game-screen" class="screen"><div id="game-container"></div><div id="hud"><div id="role-indicator">Роль: <span id="player-role">---</span></div><div id="generators-info">Генераторы: <span id="gen-count">0/5</span></div><div id="exit-status">Выход: <span id="exit-state">закрыт</span></div></div><div id="player-list-hud"><div id="alive-count">Выжившие: 4/4</div></div></div>
-        <div id="game-over" class="screen"><h2 id="game-result-title">Победа!</h2><p id="game-result-message"></p><button id="btn-back-menu" class="btn primary">В меню</button></div>
-        <div id="browser-warning" class="screen"><h2>Доступно только в Telegram</h2><p>Эта игра работает только в Telegram Web Apps</p><p>Откройте игру через бота @YourBotName</p></div>
+        <div id="main-menu" class="screen">
+            <h1>Miasma Massacre</h1>
+            <div class="menu-buttons">
+                <button id="btn-solo" class="btn primary">Играть (Solo)</button>
+                <button id="btn-multi" class="btn secondary">Мультиплеер</button>
+            </div>
+            <div class="version">v1.0.0</div>
+        </div>
+        <div id="role-select" class="screen">
+            <h2>Выбери роль</h2>
+            <button id="btn-play-killer" class="btn primary">Убийца</button>
+            <button id="btn-play-survivor" class="btn secondary">Выживший</button>
+        </div>
+        <div id="lobby-create" class="screen">
+            <h2>Лобби</h2>
+            <div id="lobby-status">Создание лобби...</div>
+            <div id="lobby-players"></div>
+            <button id="btn-start-game" class="btn" disabled style="background:#666;">Начать (ждём игроков)</button>
+            <button id="btn-leave-lobby" class="btn secondary" onclick="leaveLobby()">Выйти</button>
+        </div>
+        <div id="lobby-join" class="screen">
+            <h2>Поиск игры</h2>
+            <div id="search-status">Поиск доступных лобби...</div>
+            <div id="search-count"></div>
+            <button id="btn-leave-search" class="btn secondary">Назад</button>
+        </div>
+        <div id="game-screen" class="screen">
+            <div id="game-container"></div>
+            <div id="hud">
+                <div id="role-indicator">Роль: <span id="player-role">---</span></div>
+                <div id="generators-info">Генераторы: <span id="gen-count">0/5</span></div>
+                <div id="exit-status">Выход: <span id="exit-state">закрыт</span></div>
+            </div>
+            <div id="player-list-hud">
+                <div id="alive-count">Выжившие: 4/4</div>
+            </div>
+        </div>
+        <div id="game-over" class="screen">
+            <h2 id="game-result-title">Победа!</h2>
+            <p id="game-result-message"></p>
+            <button id="btn-back-menu" class="btn primary">В меню</button>
+        </div>
     </div>
     <div id="toast"></div>
 
     <script>
     (function(){
-        var UI = { 
+        var UI = {
             showScreen: function(n){
-                var s = ['loading-screen', 'main-menu', 'role-select', 'lobby-create', 'lobby-join', 'game-screen', 'game-over', 'browser-warning'];
+                var s = ['loading-screen','main-menu','role-select','lobby-create','lobby-join','game-screen','game-over'];
                 s.forEach(function(x){
                     var el = document.getElementById(x);
                     if(el) el.classList.remove('active');
                 });
                 var target = document.getElementById(n);
                 if(target) target.classList.add('active');
-            }, 
-            showToast: function(m){var t=document.getElementById('toast');if(t){t.textContent=m;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');}},
-            showGameOver: function(won){var title=document.getElementById('game-result-title');var msg=document.getElementById('game-result-message');if(title)title.textContent=won?'ПОБЕДА!':'ПОРАЖЕНИЕ';if(msg)msg.textContent=won?'Ты сбежал!':isKiller?'Ты поймал всех!':'Тебя поймали!';UI.showScreen('game-over');}
+            },
+            showToast: function(m){
+                var t = document.getElementById('toast');
+                if(t){ t.textContent = m; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); }
+            },
+            showGameOver: function(won){
+                var title = document.getElementById('game-result-title');
+                var msg   = document.getElementById('game-result-message');
+                if(title) title.textContent = won ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ';
+                if(msg)   msg.textContent   = won ? 'Ты сбежал!' : (isKiller ? 'Ты поймал всех!' : 'Тебя поймали!');
+                UI.showScreen('game-over');
+            }
         };
-        var CONFIG = Object.freeze({ 
-            PLAYER_SPEED: 155, 
-            KILLER_SPEED: 170, 
-            INJURED_SPEED: 185,
-            DYING_SPEED: 30,
-            GENERATOR_COUNT: 5, 
-            CATCH_DISTANCE: 50, 
-            CATCH_COOLDOWN: 1.5,
-            HIT_DISTANCE: 55,
-            STUN_TIME: 1.5,
-            HOOK_TIME: 60,
-            HEAL_TIME: 15,
-            GATE_OPEN_TIME: 20,
+
+        // ── Game constants ──────────────────────────────────────────────────
+        var GAME_CONFIG = Object.freeze({
+            PLAYER_SPEED:     155,
+            KILLER_SPEED:     170,
+            INJURED_SPEED:    185,
+            DYING_SPEED:       30,
+            GENERATOR_COUNT:    5,
+            CATCH_DISTANCE:    50,
+            CATCH_COOLDOWN:   1.5,
+            HIT_DISTANCE:      55,
+            STUN_TIME:        1.5,
+            HOOK_TIME:         60,
+            HEAL_TIME:         15,
+            GATE_OPEN_TIME:    20,
             HATCH_APPEAR_CHANCE: 0.3
         });
-        
-        var CONSTANTS = Object.freeze({
-            MAP_WIDTH: 1200,
-            MAP_HEIGHT: 900,
-            MAX_VIOLATIONS: 5,
-            ACTION_COOLDOWN: 500,
-            MAX_SPEED_MULTIPLIER: 2
-        });
-        var game = null, player = null, generators = [], isKiller = false, exitOpen = false, survivorsLeft = 4, catchCooldown = 0;
-        var killerStunned = 0;
+
+        // ── State ───────────────────────────────────────────────────────────
+        var game         = null;
+        var player       = null;
+        var generators   = [];
+        var isKiller     = false;
+        var exitOpen     = false;
+        var survivorsLeft= 4;
+        var catchCooldown= 0;
+        var killerStunned= 0;
         var survivorSpeedBoost = 0;
-        
+
+        // ── Anti-cheat ──────────────────────────────────────────────────────
         var AntiCheat = {
-            lastPosition: {x: 0, y: 0},
-            lastTimestamp: 0,
-            violations: 0,
-            lastActionTime: {},
-            actionCooldowns: {hit: 0, heal: 0, hook: 0, sabo: 0, gate: 0},
-            maxViolations: 5,
-            
-            reset: function(){
-                this.lastPosition = {x: 0, y: 0};
-                this.lastTimestamp = 0;
-                this.violations = 0;
-                this.lastActionTime = {};
-                this.actionCooldowns = {hit: 0, heal: 0, hook: 0, sabo: 0, gate: 0};
-            },
-            
+            lastPosition: {x:0,y:0}, lastTimestamp:0, violations:0,
+            lastActionTime:{}, maxViolations:5,
+            reset: function(){ this.lastPosition={x:0,y:0}; this.lastTimestamp=0; this.violations=0; this.lastActionTime={}; },
             checkConfigIntegrity: function(){
-                if(CONFIG.PLAYER_SPEED !== 155 || CONFIG.KILLER_SPEED !== 170 || CONFIG.INJURED_SPEED !== 185){
-                    this.violations += 10;
-                    this.logViolation('CONFIG_MODIFIED', {});
-                    return false;
-                }
+                if(GAME_CONFIG.PLAYER_SPEED!==155||GAME_CONFIG.KILLER_SPEED!==170){ this.violations+=10; return false; }
                 return true;
             },
-            
-            validatePosition: function(x, y, scene){
-                if(x < -100 || x > 1300 || y < -100 || y > 1000){
-                    this.violations++;
-                    this.logViolation('OUT_OF_BOUNDS', {x: x, y: y});
-                    return false;
-                }
+            validatePosition: function(x,y){
+                if(x<-100||x>1300||y<-100||y>1000){ this.violations++; return false; }
                 return true;
             },
-            
-            validateSpeed: function(oldX, oldY, newX, newY, dt){
-                if(this.lastTimestamp > 0){
-                    var dist = Math.sqrt(Math.pow(newX - oldX, 2) + Math.pow(newY - oldY, 2));
-                    var time = dt / 1000;
-                    var speed = dist / time;
-                    var maxSpeed = isKiller ? CONFIG.KILLER_SPEED * 2 : CONFIG.PLAYER_SPEED * 2;
-                    
-                    if(speed > maxSpeed && time > 0.01){
-                        this.violations++;
-                        this.logViolation('SPEED_HACK', {speed: Math.round(speed), max: maxSpeed});
-                        return false;
-                    }
+            validateSpeed: function(ox,oy,nx,ny,dt){
+                if(this.lastTimestamp>0){
+                    var dist=Math.sqrt(Math.pow(nx-ox,2)+Math.pow(ny-oy,2));
+                    var spd=dist/(dt/1000);
+                    var maxSpd=(isKiller?GAME_CONFIG.KILLER_SPEED:GAME_CONFIG.PLAYER_SPEED)*2;
+                    if(spd>maxSpd&&dt/1000>0.01){ this.violations++; return false; }
                 }
-                this.lastPosition = {x: newX, y: newY};
-                this.lastTimestamp = Date.now();
-                return true;
+                this.lastPosition={x:nx,y:ny}; this.lastTimestamp=Date.now(); return true;
             },
-            
-            validateAction: function(actionType){
-                var now = Date.now();
-                var minInterval = 500;
-                
-                if(this.lastActionTime[actionType]){
-                    if(now - this.lastActionTime[actionType] < minInterval){
-                        this.violations++;
-                        this.logViolation('ACTION_FLOOD', {action: actionType});
-                        return false;
-                    }
-                }
-                this.lastActionTime[actionType] = now;
-                return true;
+            validateAction: function(type){
+                var now=Date.now();
+                if(this.lastActionTime[type]&&now-this.lastActionTime[type]<500){ this.violations++; return false; }
+                this.lastActionTime[type]=now; return true;
             },
-            
-            validateGeneratorProgress: function(progress){
-                if(progress < 0 || progress > 100){
-                    this.violations++;
-                    this.logViolation('INVALID_GEN_PROGRESS', {progress: progress});
-                    return false;
-                }
-                return true;
-            },
-            
-            logViolation: function(type, data){
-                console.warn('[ANTICHEAT] ' + type, data);
-                if(this.violations >= this.maxViolations){
-                    this.banPlayer(type);
-                }
-            },
-            
-            banPlayer: function(reason){
-                UI.showToast('Обнаружена подозрительная активность!');
-                console.error('[ANTICHEAT] Player banned for:', reason);
-                stopGame();
-                UI.showScreen('main-menu');
-            }
-        };
-        
-        var GameState = {
-            roomId: null,
-            isHost: false,
-            
-            syncToServer: function(state){
-                if(!this.roomId || !window.db) return;
-                window.db.collection('rooms').doc(this.roomId).collection('gameState').doc('current').set(state, {merge: true}).catch(function(e){ console.error('Sync error:', e); });
-            },
-            
-            validateAction: function(action, data){
-                if(!this.roomId || !window.db) return true;
-                return true;
-            }
+            validateGeneratorProgress: function(p){ return p>=0&&p<=100; }
         };
 
-        function startGame(km){ 
-            isKiller = km; 
-            exitOpen = false; 
-            survivorsLeft = 4; 
-            catchCooldown = 0; 
-            generators = []; 
+        // ── Game start / stop ───────────────────────────────────────────────
+        function startGame(km){
+            isKiller=km; exitOpen=false; survivorsLeft=4; catchCooldown=0; generators=[];
             AntiCheat.reset();
-            
+
             var gameScreen = document.getElementById('game-screen');
             var gameContainer = document.getElementById('game-container');
-            
-            if(gameScreen) {
+
+            if(gameScreen){
                 gameScreen.classList.add('active');
-                gameScreen.style.cssText = 'display:block !important; position:fixed !important; top:0 !important; left:0 !important; width:100% !important; height:100% !important; background:transparent !important; z-index:1000 !important;';
+                gameScreen.style.cssText='display:block!important;position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;background:transparent!important;z-index:1000!important;';
             }
-            if(gameContainer) {
-                gameContainer.style.cssText = 'display:block !important; position:fixed !important; top:0 !important; left:0 !important; width:100% !important; height:100% !important; background:#1a1a1a !important; z-index:1 !important; visibility:visible !important;';
+            if(gameContainer){
+                gameContainer.style.cssText='display:block!important;position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;background:#1a1a1a!important;z-index:1!important;visibility:visible!important;';
             }
-            
-            UI.showToast(isKiller ? 'Поймай всех!' : 'Найди генераторы!'); 
-            
-            var gameContainer = document.getElementById('game-container');
-            gameContainer.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#1a1a1a;color:#fff;font-family:system-ui,sans-serif;"><div class="loader"></div><p>Загрузка игры...</p></div>';
-            
-            initGame(); 
+
+            UI.showToast(isKiller ? 'Поймай всех!' : 'Найди генераторы!');
+            initGame();
         }
 
-        function stopGame(){ 
-            if(game){ 
-                game.destroy(true); 
-                game = null; 
-                player = null; 
-            } 
-            var existingJoystick = document.querySelector('[data-joystick]');
-            var existingActionBtn = document.querySelector('[data-action-btn]');
-            if(existingJoystick) existingJoystick.remove();
-            if(existingActionBtn) existingActionBtn.remove();
+        function stopGame(){
+            if(game){ game.destroy(true); game=null; player=null; }
+            var j=document.querySelector('[data-joystick]');
+            var a=document.querySelector('[data-action-btn]');
+            if(j) j.remove();
+            if(a) a.remove();
         }
 
-        function initGame(){ 
-            if(game){
-                game.destroy(true);
-                game = null;
-            }
+        // ── Phaser init ─────────────────────────────────────────────────────
+        function initGame(){
+            console.log('initGame, isKiller:', isKiller);
+            if(game){ game.destroy(true); game=null; }
+
             var container = document.getElementById('game-container');
-            container.innerHTML = '';
-            container.style.background = '#1a1a1a';
-            
-            var screenWidth = Math.min(window.innerWidth || 800, 1200);
-            var screenHeight = Math.min(window.innerHeight || 600, 900);
-            
-            console.log('Init game, isKiller:', isKiller, 'Size:', screenWidth, 'x', screenHeight);
-            
-            try {
-                game = new Phaser.Game({
-                    type: Phaser.CANVAS,
-                    parent: 'game-container',
-                    width: screenWidth,
-                    height: screenHeight,
-                    backgroundColor: '#1a1a1a',
-                    physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
-                    scene: { preload: preload, create: create, update: update }
-                });
-                
-                setTimeout(function() {
-                    if(!game.canvas) {
-                        console.log('Creating fallback canvas');
-                        createFallbackGame(container, screenWidth, screenHeight);
-                    }
-                }, 2000);
-            } catch(e) {
-                console.error('Phaser error:', e);
-                createFallbackGame(container, screenWidth, screenHeight);
+            container.innerHTML='';
+            container.style.background='#1a1a1a';
+
+            var W = window.innerWidth  || 800;
+            var H = window.innerHeight || 600;
+
+            if(typeof Phaser==='undefined'){
+                container.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#1a1a1a;color:#ff3333;font-family:sans-serif;"><h2>Ошибка: Phaser не загружен</h2><p>Проверьте интернет-соединение</p></div>';
+                return;
             }
-            
-            function createFallbackGame(container, w, h) {
-                var canvas = document.createElement('canvas');
-                canvas.width = w;
-                canvas.height = h;
-                canvas.style.width = '100%';
-                canvas.style.height = '100%';
-                canvas.style.background = '#1a1a1a';
-                container.appendChild(canvas);
-                
-                var ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#1a1a1a';
-                ctx.fillRect(0, 0, w, h);
-                ctx.fillStyle = '#4a4';
-                ctx.font = '24px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('Игра загружается...', w/2, h/2);
-                ctx.fillText('Роль: ' + (isKiller ? 'Маньяк' : 'Выживший'), w/2, h/2 + 40);
-                
-                console.log('Fallback game created');
-            }
-            
-            setTimeout(function() {
-                var container = document.getElementById('game-container');
-                var canvas = container ? container.querySelector('canvas') : null;
-                if(!canvas) {
-                    console.error('Canvas not created!');
-                    if(container) {
-                        container.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#1a1a1a;color:#fff;font-size:18px;"><div style="width:40px;height:40px;border:3px solid #333;border-top-color:#ff3333;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:15px;"></div><p>Загрузка...</p></div>';
-                    }
-                } else {
-                    console.log('Canvas size:', canvas.width, 'x', canvas.height);
-                    canvas.style.display = 'block';
-                    canvas.style.visibility = 'visible';
-                    canvas.style.backgroundColor = '#1a1a1a';
+
+            game = new Phaser.Game({
+                type: Phaser.CANVAS,
+                parent: 'game-container',
+                width: W,
+                height: H,
+                backgroundColor: '#1a1a1a',
+                physics:{ default:'arcade', arcade:{ gravity:{y:0}, debug:false } },
+                scene:{ preload:preload, create:create, update:update },
+                scale:{
+                    mode: Phaser.Scale.RESIZE,
+                    autoCenter: Phaser.Scale.CENTER_BOTH
                 }
-            }, 2000);
+            });
         }
 
+        // ── Preload ─────────────────────────────────────────────────────────
         function preload(){
             console.log('Preload started');
-            try {
-                var g = this.make.graphics();
-            
-            g.fillStyle(0x1B5E20);g.fillRect(10,40,25,35);g.fillStyle(0x2E7D32);g.fillCircle(22,40,20);g.fillCircle(12,35,12);g.fillCircle(32,35,10);g.fillStyle(0x3E2723);g.fillRect(18,70,8,5);g.fillStyle(0x5D4037);g.fillRect(8,60,12,15);g.fillRect(24,60,12,15);g.generateTexture('tree',45,85);g.clear();
-            
-            g.fillStyle(0x388E3C);g.fillCircle(20,20,18);g.fillStyle(0x2E7D32);g.fillCircle(10,18,10);g.fillCircle(30,16,10);g.fillStyle(0x1B5E20);g.fillCircle(20,25,6);g.generateTexture('bush',40,40);g.clear();
-            
-            g.fillStyle(0x607D8B);g.fillCircle(18,18,16);g.fillStyle(0x78909C);g.fillCircle(12,14,8);g.fillCircle(24,14,8);g.fillStyle(0x455A64);g.fillCircle(18,22,6);g.generateTexture('rock',40,40);g.clear();
-            
-            g.fillStyle(0x4E342E);g.fillRect(0,55,100,15);g.fillStyle(0x6D4C41);g.fillRect(5,15,90,40);g.fillStyle(0x5D4037);g.fillRect(0,10,100,8);g.fillStyle(0x81D4FA);g.fillRect(15,25,12,15);g.fillRect(65,25,12,15);g.fillStyle(0x3E2723);g.fillRect(42,35,16,20);g.fillStyle(0xFFEB3B);g.fillRect(20,30,8,10);g.fillRect(70,30,8,10);g.generateTexture('building',100,70);g.clear();
-            
-            g.fillStyle(0x5D4037);g.fillRect(0,0,4,30);g.fillRect(26,0,4,30);g.fillRect(52,0,4,30);g.fillRect(78,0,4,30);g.fillStyle(0x8D6E63);g.fillRect(4,4,22,4);g.fillRect(4,14,22,4);g.fillRect(30,4,22,4);g.fillRect(30,14,22,4);g.fillStyle(0x6D4C41);g.fillRect(10,20,10,10);g.fillRect(60,20,10,10);g.generateTexture('wall',100,30);g.clear();
-            
-            g.fillStyle(0x4E342E);g.fillRect(2,25,46,20);g.fillStyle(0x5D4037);g.fillRect(0,20,50,8);g.fillStyle(0x6D4C41);g.fillRect(5,30,15,10);g.fillStyle(0x3E2723);g.fillRect(35,30,10,15);g.fillStyle(0xFFA726);g.fillRect(20,20,10,10);g.generateTexture('shack',50,48);g.clear();
-            
-            g.fillStyle(0x795548);g.fillRect(2,2,26,26);g.fillStyle(0x6D4C41);g.fillRect(0,0,30,4);g.fillRect(0,26,30,4);g.fillStyle(0x5D4037);g.fillRect(0,12,30,4);g.fillStyle(0x4E342E);g.fillRect(8,8,14,10);g.generateTexture('crate',30,30);g.clear();
-            
-            g.fillStyle(0x5D4037);g.fillRect(0,0,50,5);g.fillRect(0,55,50,5);g.fillRect(0,0,5,60);g.fillRect(45,0,5,60);g.fillStyle(0x8D6E63);g.fillRect(5,5,40,50);g.fillRect(15,25,20,10);g.generateTexture('fence',50,60);g.clear();
-            
-            g.fillStyle(0xB71C1C);g.fillRect(0,0,80,60);g.fillStyle(0x7f0000);g.fillRect(5,5,70,50);g.fillStyle(0x424242);g.fillRect(35,20,10,25);g.generateTexture('gate',80,60);g.clear();
-            
-            g.fillStyle(0xD32F2F);g.fillRect(10,28,20,25);g.fillStyle(0x1976D2);g.fillRect(10,53,8,12);g.fillRect(22,53,8,12);g.fillStyle(0xFFCCBC);g.fillCircle(20,16,11);g.fillStyle(0xFFAB91);g.fillCircle(16,14,3);g.fillCircle(24,14,3);g.fillStyle(0x5D4037);g.fillCircle(20,10,11);g.fillStyle(0x212121);g.fillRect(16,9,3,3);g.fillRect(21,9,3,3);g.fillStyle(0xFFFFFF);g.fillRect(18,12,4,2);g.generateTexture('survivor1',40,65);g.clear();
-            
-            g.fillStyle(0x7B1FA2);g.fillRect(12,28,16,25);g.fillStyle(0x4A148C);g.fillRect(12,53,16,12);g.fillStyle(0xFFCCBC);g.fillCircle(20,16,10);g.fillStyle(0xFF8F00);g.fillCircle(20,10,10);g.fillStyle(0xFF6F00);g.fillCircle(14,14,5);g.fillCircle(26,14,5);g.fillStyle(0x212121);g.fillCircle(17,14,2);g.fillCircle(23,14,2);g.fillStyle(0xFFECB3);g.fillCircle(20,8,3);g.generateTexture('survivor2',40,65);g.clear();
-            
-            g.fillStyle(0x388E3C);g.fillRect(10,28,20,25);g.fillStyle(0x1565C0);g.fillRect(10,53,8,12);g.fillRect(22,53,8,12);g.fillStyle(0xD7CCC8);g.fillCircle(20,16,11);g.fillStyle(0x424242);g.fillCircle(20,8,11);g.fillStyle(0x212121);g.fillRect(16,7,3,2);g.fillRect(21,7,3,2);g.fillStyle(0xFFD700);g.fillCircle(28,12,4);g.generateTexture('survivor3',40,65);g.clear();
-            
-            g.fillStyle(0xFF5722);g.fillRect(12,28,16,25);g.fillStyle(0x3F51B5);g.fillRect(12,53,16,12);g.fillStyle(0xFFCCBC);g.fillCircle(20,16,10);g.fillStyle(0x8D6E63);g.fillCircle(20,9,10);g.fillStyle(0x6D4C41);g.fillCircle(12,14,4);g.fillCircle(28,14,4);g.fillStyle(0x212121);g.fillCircle(17,14,2);g.fillCircle(23,14,2);g.fillStyle(0xE91E63);g.fillRect(15,22,10,6);g.generateTexture('survivor4',40,65);g.clear();
-            
-            g.fillStyle(0x212121);g.fillRect(8,28,24,30);g.fillStyle(0xB71C1C);g.fillRect(5,24,30,18);g.fillStyle(0x7f0000);g.fillCircle(12,35,5);g.fillCircle(20,38,4);g.fillCircle(28,35,5);g.fillStyle(0xD7CCC8);g.fillCircle(20,14,12);g.fillStyle(0x37474F);g.fillRect(8,6,24,18);g.fillStyle(0xFF1744);g.fillCircle(14,10,4);g.fillCircle(26,10,4);g.fillStyle(0x000000);g.fillRect(15,18,10,4);g.fillStyle(0xFFFFFF);g.fillCircle(17,16,2);g.fillCircle(23,16,2);g.generateTexture('killer_m',40,70);g.clear();
-            
+            var g = this.make.graphics();
+
+            g.fillStyle(0x1B5E20);g.fillRect(10,40,25,35);g.fillStyle(0x2E7D32);g.fillCircle(22,40,20);g.fillCircle(12,35,12);g.fillCircle(32,35,10);g.generateTexture('tree',45,85);g.clear();
+            g.fillStyle(0x388E3C);g.fillCircle(20,20,18);g.fillStyle(0x2E7D32);g.fillCircle(10,18,10);g.fillCircle(30,16,10);g.generateTexture('bush',40,40);g.clear();
+            g.fillStyle(0x607D8B);g.fillCircle(18,18,16);g.fillStyle(0x78909C);g.fillCircle(12,14,8);g.fillCircle(24,14,8);g.generateTexture('rock',40,40);g.clear();
+
+            // Survivors
+            g.fillStyle(0xD32F2F);g.fillRect(10,28,20,25);g.fillStyle(0x1976D2);g.fillRect(10,53,8,12);g.fillRect(22,53,8,12);g.fillStyle(0xFFCCBC);g.fillCircle(20,16,11);g.fillStyle(0x5D4037);g.fillCircle(20,10,11);g.fillStyle(0x212121);g.fillRect(16,9,3,3);g.fillRect(21,9,3,3);g.generateTexture('survivor1',40,65);g.clear();
+            g.fillStyle(0x7B1FA2);g.fillRect(12,28,16,25);g.fillStyle(0x4A148C);g.fillRect(12,53,16,12);g.fillStyle(0xFFCCBC);g.fillCircle(20,16,10);g.fillStyle(0xFF8F00);g.fillCircle(20,10,10);g.fillStyle(0x212121);g.fillCircle(17,14,2);g.fillCircle(23,14,2);g.generateTexture('survivor2',40,65);g.clear();
+            g.fillStyle(0x388E3C);g.fillRect(10,28,20,25);g.fillStyle(0x1565C0);g.fillRect(10,53,8,12);g.fillRect(22,53,8,12);g.fillStyle(0xD7CCC8);g.fillCircle(20,16,11);g.fillStyle(0x424242);g.fillCircle(20,8,11);g.fillStyle(0x212121);g.fillRect(16,7,3,2);g.fillRect(21,7,3,2);g.generateTexture('survivor3',40,65);g.clear();
+            g.fillStyle(0xFF5722);g.fillRect(12,28,16,25);g.fillStyle(0x3F51B5);g.fillRect(12,53,16,12);g.fillStyle(0xFFCCBC);g.fillCircle(20,16,10);g.fillStyle(0x8D6E63);g.fillCircle(20,9,10);g.fillStyle(0x212121);g.fillCircle(17,14,2);g.fillCircle(23,14,2);g.generateTexture('survivor4',40,65);g.clear();
+
+            // Killer
+            g.fillStyle(0x212121);g.fillRect(8,28,24,30);g.fillStyle(0xB71C1C);g.fillRect(5,24,30,18);g.fillStyle(0xD7CCC8);g.fillCircle(20,14,12);g.fillStyle(0x37474F);g.fillRect(8,6,24,18);g.fillStyle(0xFF1744);g.fillCircle(14,10,4);g.fillCircle(26,10,4);g.fillStyle(0x000000);g.fillRect(15,18,10,4);g.generateTexture('killer_m',40,70);g.clear();
+
+            // Generator
             g.fillStyle(0x546E7A);g.fillRect(2,2,36,26);g.fillStyle(0x37474F);g.fillRect(4,4,14,10);g.fillRect(22,4,14,10);g.fillStyle(0x00E676);g.fillRect(6,6,5,6);g.fillRect(24,6,5,6);g.fillStyle(0xF44336);g.fillCircle(18,15,8);g.fillStyle(0xFFFFFF);g.fillCircle(18,15,4);g.generateTexture('generator',40,30);g.clear();
-            
-            g.fillStyle(0x4E342E);g.fillRect(0,0,70,55);g.fillStyle(0x3E2723);g.fillRect(5,5,25,45);g.fillRect(40,5,25,45);g.fillStyle(0x2E1B15);g.fillRect(3,0,8,10);g.fillRect(59,0,8,10);g.fillStyle(0xF44336);g.fillCircle(17,25,8);g.fillCircle(53,25,8);g.fillStyle(0x212121);g.fillRect(30,35,10,15);g.fillStyle(0x4CAF50);g.fillRect(15,15,40,20);g.generateTexture('exit',70,55);g.clear();
-            
-            g.fillStyle(0x1B1B1B);g.fillRect(0,0,32,32);g.fillStyle(0x2D2D2D);g.fillCircle(8,8,5);g.fillCircle(24,20,4);g.fillCircle(16,28,3);g.fillStyle(0x151515);g.fillCircle(12,16,3);g.generateTexture('ground',32,32);g.clear();
-            
-            g.fillStyle(0x555555);g.fillCircle(15,15,12);g.fillStyle(0x666666);g.fillCircle(10,12,4);g.fillCircle(20,10,3);g.generateTexture('fog',32,32);g.clear();
-            
+
+            // Exit / ground / hook / hatch
+            g.fillStyle(0x4E342E);g.fillRect(0,0,70,55);g.fillStyle(0x3E2723);g.fillRect(5,5,25,45);g.fillRect(40,5,25,45);g.fillStyle(0x4CAF50);g.fillRect(15,15,40,20);g.generateTexture('exit',70,55);g.clear();
+            g.fillStyle(0x1B1B1B);g.fillRect(0,0,32,32);g.fillStyle(0x2D2D2D);g.fillCircle(8,8,5);g.fillCircle(24,20,4);g.generateTexture('ground',32,32);g.clear();
             g.fillStyle(0x424242);g.fillCircle(15,15,12);g.fillStyle(0x616161);g.fillCircle(15,15,8);g.fillStyle(0x757575);g.fillCircle(15,15,4);g.generateTexture('hook',30,30);g.clear();
-            
-            g.fillStyle(0x424242);g.fillCircle(15,15,14);g.fillStyle(0x616161);g.fillCircle(15,15,10);g.fillStyle(0xB71C1C);g.fillCircle(15,15,4);g.generateTexture('hatch',30,30);g.clear();
-            } catch(e) {
-                console.error('Preload error:', e);
-            }
+            g.fillStyle(0x424242);g.fillCircle(15,15,14);g.fillStyle(0xB71C1C);g.fillCircle(15,15,4);g.generateTexture('hatch',30,30);g.clear();
+            g.fillStyle(0xB71C1C);g.fillRect(0,0,80,60);g.fillStyle(0x7f0000);g.fillRect(5,5,70,50);g.fillStyle(0x424242);g.fillRect(35,20,10,25);g.generateTexture('gate',80,60);g.clear();
         }
 
+        // ── Create ──────────────────────────────────────────────────────────
         function create(){
-            var mw = 1200, mh = 900;
-            for(var x = 0; x < mw; x += 32){
-                for(var y = 0; y < mh; y += 32){
-                    var t = this.add.image(x + 16, y + 16, 'ground');
-                    t.setAlpha(0.5 + Math.random() * 0.5);
+            var mw=1200, mh=900;
+            this.physics.world.setBounds(0,0,mw,mh);
+
+            // Ground tiles
+            for(var x=0;x<mw;x+=32){
+                for(var y=0;y<mh;y+=32){
+                    this.add.image(x+16,y+16,'ground').setAlpha(0.5+Math.random()*0.5);
                 }
             }
-            
-            var colliders = [];
-            var solidColliders = [];
-            
-            var borderFences = [];
-            for(var x = 30; x < mw; x += 50){
-                borderFences.push({x: x, y: 30});
-                borderFences.push({x: x, y: mh - 30});
-            }
-            for(var y = 30; y < mh; y += 50){
-                borderFences.push({x: 30, y: y});
-                borderFences.push({x: mw - 30, y: y});
-            }
-            borderFences.forEach(function(p){
-                var f = this.add.image(p.x, p.y, 'fence');
-                f.setDepth(p.y);
-                f.body = { immovable: true };
-                solidColliders.push(f);
-            }, this);
-            
-            var trees = [
-                {x:80,y:80},{x:180,y:100},{x:1100,y:60},{x:1050,y:140},
-                {x:60,y:820},{x:140,y:860},{x:1100,y:800},{x:1050,y:860},
-                {x:600,y:60},{x:320,y:320},{x:920,y:320},{x:320,y:620},{x:920,y:620},
-                {x:200,y:450},{x:1000,y:450},{x:450,y:200},{x:750,y:200}
-            ];
-            trees.forEach(function(p){
-                var t = this.add.image(p.x, p.y, 'tree');
-                t.setDepth(p.y);
-                colliders.push(t);
-            }, this);
-            
-            var rocks = [
-                {x:250,y:180},{x:450,y:150},{x:850,y:180},{x:250,y:700},
-                {x:950,y:500},{x:600,y:720},{x:400,y:450},{x:800,y:450}
-            ];
-            rocks.forEach(function(p){
-                var r = this.add.image(p.x, p.y, 'rock');
-                r.setDepth(p.y);
-                r.body = { immovable: true };
-                solidColliders.push(r);
-            }, this);
-            
-            var bushes = [
-                {x:180,y:280},{x:380,y:180},{x:780,y:220},{x:180,y:680},
-                {x:1020,y:420},{x:580,y:680},{x:450,y:350},{x:750,y:550}
-            ];
-            bushes.forEach(function(p){
-                var b = this.add.image(p.x, p.y, 'bush');
-                b.setDepth(p.y);
-                colliders.push(b);
-            }, this);
-            
-            var builds = [
-                {x:180,y:180},{x:1020,y:180},{x:180,y:720},{x:1020,y:720},{x:600,y:450}
-            ];
-            builds.forEach(function(b){
-                var bl = this.add.image(b.x, b.y, 'building');
-                bl.setDepth(b.y);
-                bl.body = { immovable: true };
-                solidColliders.push(bl);
-            }, this);
-            
-            var shacks = [
-                {x:80,y:350},{x:1120,y:280},{x:320,y:620},{x:780,y:80}
-            ];
-            shacks.forEach(function(s){
-                var sh = this.add.image(s.x, s.y, 'shack');
-                sh.setDepth(s.y);
-                sh.body = { immovable: true };
-                solidColliders.push(sh);
-            }, this);
-            
-            var fences = [
-                {x:280,y:120},{x:920,y:320},{x:120,y:480},{x:1080,y:620}
-            ];
-            fences.forEach(function(f){
-                var fe = this.add.image(f.x, f.y, 'wall');
-                fe.setDepth(f.y);
-                fe.body = { immovable: true };
-                solidColliders.push(fe);
-            }, this);
-            
-            var crates = [
-                {x:260,y:330},{x:940,y:480},{x:380,y:180},{x:730,y:630}
-            ];
-            crates.forEach(function(c){
-                var cr = this.add.image(c.x, c.y, 'crate');
-                cr.setDepth(c.y);
-                cr.body = { immovable: true };
-                solidColliders.push(cr);
-            }, this);
-            
-            var group = this.physics.add.group();
-            solidColliders.forEach(function(obj){
-                this.physics.add.existing(obj);
-                obj.body.setImmovable(true);
-                obj.body.setCollideWorldBounds(false);
-                group.add(obj);
-            }, this);
-            group.setImmovable(true);
-            
-            this.physics.add.collider(player, group);
-            
-            var genPos = [
-                {x:120,y:120},{x:1080,y:120},{x:600,y:450},
-                {x:120,y:780},{x:1080,y:780}
-            ];
+
+            // Static decoration
+            var trees=[{x:80,y:80},{x:180,y:100},{x:1100,y:60},{x:1050,y:140},{x:60,y:820},{x:140,y:860},{x:1100,y:800},{x:1050,y:860},{x:600,y:60},{x:320,y:320},{x:920,y:320},{x:320,y:620},{x:920,y:620}];
+            trees.forEach(function(p){ this.add.image(p.x,p.y,'tree').setDepth(p.y); },this);
+
+            var rocks=[{x:250,y:180},{x:450,y:150},{x:850,y:180},{x:250,y:700},{x:950,y:500},{x:600,y:720}];
+            rocks.forEach(function(p){ this.add.image(p.x,p.y,'rock').setDepth(p.y); },this);
+
+            var bushes=[{x:180,y:280},{x:380,y:180},{x:780,y:220},{x:180,y:680},{x:1020,y:420},{x:580,y:680}];
+            bushes.forEach(function(p){ this.add.image(p.x,p.y,'bush').setDepth(p.y); },this);
+
+            // Generators
+            var genPos=[{x:120,y:120},{x:1080,y:120},{x:600,y:450},{x:120,y:780},{x:1080,y:780}];
             genPos.forEach(function(p){
-                var gen = this.add.sprite(p.x, p.y, 'generator');
-                gen.progress = 0;
-                gen.repaired = false;
-                gen.beingRepaired = false;
-                gen.damageProgress = 0;
-                var bar = this.add.graphics();
-                bar.x = p.x - 20;
-                bar.y = p.y - 20;
-                gen.bar = bar;
-                var light = this.add.circle(p.x + 15, p.y - 12, 5, 0x00ff00);
-                light.setAlpha(0);
-                light.setDepth(p.y + 1);
-                gen.light = light;
-                this.physics.add.existing(gen);
-                gen.body.setImmovable(true);
-                gen.body.setCollideWorldBounds(false);
+                var gen=this.add.sprite(p.x,p.y,'generator');
+                gen.progress=0; gen.repaired=false;
+                var bar=this.add.graphics(); bar.x=0; bar.y=0;
+                gen.bar=bar; gen.barX=p.x; gen.barY=p.y;
+                var light=this.add.circle(p.x+15,p.y-12,5,0x00ff00).setAlpha(0).setDepth(p.y+1);
+                gen.light=light;
                 generators.push(gen);
-            }, this);
-            
-            var gatePositions = [
-                {x:60,y:450},{x:1140,y:450}
-            ];
-            this.gates = [];
-            gatePositions.forEach(function(gp){
-                var gate = this.add.sprite(gp.x, gp.y, 'gate');
-                gate.progress = 0;
-                gate.opened = false;
-                gate.bar = null;
-                this.physics.add.existing(gate);
-                gate.body.setImmovable(true);
-                gate.body.setCollideWorldBounds(false);
-                this.gates.push(gate);
-            }, this);
-            
-            this.exit = this.add.sprite(600, 450, 'exit');
-            this.exit.setTint(0x440000);
-            this.exit.setVisible(false);
-            
-            var hookPositions = [
-                {x:300,y:200},{x:900,y:200},{x:300,y:700},{x:900,y:700},{x:600,y:450}
-            ];
-            this.hooks = [];
-            hookPositions.forEach(function(hp){
-                var hook = this.add.sprite(hp.x, hp.y, 'hook');
-                hook.setTint(0x888888);
-                hook.setScale(1.2);
-                hook.occupied = false;
-                hook.hookedPlayer = null;
-                hook.hookTimer = 0;
-                this.hooks.push(hook);
-            }, this);
-            
-            this.hatch = null;
-            
-            this.physics.add.collider(player, group);
-            
-            var killerSpawn = {x:600, y:450};
-            var survivorSpawns = [
-                {x:100,y:100},{x:1100,y:100},{x:100,y:800},{x:1100,y:800}
-            ];
-            
-            player = isKiller ? this.add.sprite(killerSpawn.x, killerSpawn.y, 'killer_m') : this.add.sprite(survivorSpawns[0].x, survivorSpawns[0].y, 'survivor1');
-            player.health = 100;
-            player.injured = false;
-            player.dying = false;
-            player.hooked = false;
-            player.carriedBy = null;
+            },this);
+
+            // Gates
+            this.gates=[{x:60,y:450},{x:1140,y:450}].map(function(gp){
+                var gate=this.add.sprite(gp.x,gp.y,'gate');
+                gate.progress=0; gate.opened=false; gate.bar=null;
+                return gate;
+            },this);
+
+            // Exit (hidden until gens done)
+            this.exit=this.add.sprite(600,870,'exit').setTint(0x440000).setVisible(false);
+
+            // Hooks
+            this.hooks=[{x:300,y:200},{x:900,y:200},{x:300,y:700},{x:900,y:700},{x:600,y:450}].map(function(hp){
+                var hook=this.add.sprite(hp.x,hp.y,'hook').setTint(0x888888).setScale(1.2);
+                hook.occupied=false; hook.hookedPlayer=null; hook.hookTimer=0;
+                return hook;
+            },this);
+
+            this.hatch=null;
+
+            // ── Spawn player ──
+            var killerSpawn={x:600,y:450};
+            var survivorSpawns=[{x:100,y:100},{x:1100,y:100},{x:100,y:800},{x:1100,y:800}];
+            var spawnPos=isKiller?killerSpawn:survivorSpawns[0];
+
+            player=this.add.sprite(spawnPos.x,spawnPos.y,isKiller?'killer_m':'survivor1');
+            player.health=100; player.injured=false; player.dying=false; player.hooked=false; player.carriedBy=null;
             this.physics.add.existing(player);
-            player.body.setCollideWorldBounds(false);
+            player.body.setCollideWorldBounds(true);
             player.setDepth(1000);
-            
+
+            // ── AI survivors (for killer mode) ──
+            this.survivors=[];
             if(isKiller){
-                this.survivors = [];
-                var sp = [
-                    {x:survivorSpawns[1].x,y:survivorSpawns[1].y},
-                    {x:survivorSpawns[2].x,y:survivorSpawns[2].y},
-                    {x:survivorSpawns[3].x,y:survivorSpawns[3].y}
-                ];
-                var st = ['survivor2', 'survivor3', 'survivor4'];
-                sp.forEach(function(p, i){
-                    var s = this.add.sprite(p.x, p.y, st[i]);
-                    s.health = 100;
-                    s.injured = false;
-                    s.dying = false;
-                    s.hooked = false;
-                    s.carriedBy = null;
-                    s.alive = true;
-                    this.physics.add.existing(s);
-                    s.body.setCollideWorldBounds(false);
-                    s.setDepth(p.y);
-                    this.physics.add.collider(s, group);
-                    this.survivors.push(s);
-                }, this);
-            } else {
-                this.survivors = [];
+                [{x:survivorSpawns[1].x,y:survivorSpawns[1].y,'tex':'survivor2'},
+                 {x:survivorSpawns[2].x,y:survivorSpawns[2].y,'tex':'survivor3'},
+                 {x:survivorSpawns[3].x,y:survivorSpawns[3].y,'tex':'survivor4'}].forEach(function(s){
+                    var sv=this.add.sprite(s.x,s.y,s.tex);
+                    sv.health=100; sv.injured=false; sv.dying=false; sv.hooked=false; sv.carriedBy=null; sv.alive=true;
+                    this.physics.add.existing(sv);
+                    sv.body.setCollideWorldBounds(true);
+                    sv.setDepth(s.y);
+                    this.survivors.push(sv);
+                },this);
             }
-            
-            this.cameras.main.setBounds(0, 0, 1200, 900);
-            this.cameras.main.setZoom(1);
-            this.cameras.main.centerOn(600, 450);
+
+            // ── Camera ──
+            this.cameras.main.setBounds(0,0,mw,mh);
+            this.cameras.main.startFollow(player,true,0.1,0.1);
             this.cameras.main.setBackgroundColor('#1a1a1a');
-            
-            var fogParticles = [];
-            for(var i = 0; i < 30; i++){
-                var fx = Phaser.Math.Between(0, 1200);
-                var fy = Phaser.Math.Between(0, 900);
-                var fog = this.add.image(fx, fy, 'fog');
-                fog.setAlpha(Phaser.Math.FloatBetween(0.1, 0.3));
-                fog.setScale(Phaser.Math.FloatBetween(1.5, 3));
-                fog.setDepth(1000);
-                fog.origX = fx;
-                fog.origY = fy;
-                fog.speedX = Phaser.Math.FloatBetween(-5, 5);
-                fog.speedY = Phaser.Math.FloatBetween(-3, 3);
-                fogParticles.push(fog);
-            }
-            this.fogParticles = fogParticles;
-            
+
+            // ── Input ──
             initInput(this);
+
+            console.log('Game scene created! isKiller:', isKiller);
+            UI.showToast(isKiller ? '🔪 Поймай всех выживших!' : '⚙️ Почини генераторы!');
         }
 
+        // ── Update ──────────────────────────────────────────────────────────
         function update(time, dt){
             if(!player) return;
-            
-            if(!AntiCheat.checkConfigIntegrity()){
-                return;
-            }
-            
-            var vec = getInputVector();
-            var spd = CONFIG.PLAYER_SPEED;
-            
+
+            var vec=getInputVector();
+            var spd=GAME_CONFIG.PLAYER_SPEED;
+
             if(isKiller){
-                if(killerStunned > 0){
-                    killerStunned -= dt / 1000;
-                    player.body.setVelocity(0, 0);
-                } else {
-                    spd = CONFIG.KILLER_SPEED;
-                    player.body.setVelocity(vec.x * spd, vec.y * spd);
-                }
+                spd=killerStunned>0?0:GAME_CONFIG.KILLER_SPEED;
+                if(killerStunned>0) killerStunned-=dt/1000;
             } else {
-                if(survivorSpeedBoost > 0){
-                    survivorSpeedBoost -= dt / 1000;
-                    spd = CONFIG.INJURED_SPEED;
-                }
-                if(player.injured) spd = CONFIG.INJURED_SPEED;
-                if(player.dying) spd = CONFIG.DYING_SPEED;
-                if(player.hooked) spd = 0;
-                
-                if(spd > 0){
-                    player.body.setVelocity(vec.x * spd, vec.y * spd);
-                }
+                if(player.injured) spd=GAME_CONFIG.INJURED_SPEED;
+                if(player.dying)   spd=GAME_CONFIG.DYING_SPEED;
+                if(player.hooked)  spd=0;
+                if(survivorSpeedBoost>0){ survivorSpeedBoost-=dt/1000; spd=GAME_CONFIG.INJURED_SPEED; }
             }
-            
-            if(player && player.x && player.y){
-                if(!AntiCheat.validatePosition(player.x, player.y, this)){
-                    player.body.setVelocity(0, 0);
-                    player.x = 600;
-                    player.y = 450;
-                }
-                if(!AntiCheat.validateSpeed(AntiCheat.lastPosition.x, AntiCheat.lastPosition.y, player.x, player.y, dt)){
-                    player.body.setVelocity(0, 0);
-                }
-            }
-            
-            if(isKiller && isActionPressed() && killerStunned <= 0){
-                if(!AntiCheat.validateAction('hit')){
-                    return;
-                }
-                this.survivors.forEach(function(s){
-                    if(s.alive && !s.hooked){
-                        var d = Phaser.Math.Distance.Between(player.x, player.y, s.x, s.y);
-                        if(d < CONFIG.HIT_DISTANCE){
+
+            if(spd>0) player.body.setVelocity(vec.x*spd, vec.y*spd);
+            else       player.body.setVelocity(0,0);
+
+            // ── Killer logic ──
+            if(isKiller){
+                // Hit survivors
+                if(isActionPressed()&&killerStunned<=0&&AntiCheat.validateAction('hit')){
+                    this.survivors.forEach(function(s){
+                        if(!s.alive||s.hooked) return;
+                        var d=Phaser.Math.Distance.Between(player.x,player.y,s.x,s.y);
+                        if(d<GAME_CONFIG.HIT_DISTANCE){
                             if(s.injured){
-                                s.dying = true;
-                                s.setTint(0x666666);
+                                s.dying=true; s.setTint(0x666666);
                                 UI.showToast('Выживший сбит с ног!');
                             } else {
-                                s.injured = true;
-                                s.setTint(0xff6666);
-                                survivorSpeedBoost = 2;
-                                killerStunned = CONFIG.STUN_TIME;
-                                UI.showToast('Выживший ранен! +Ускорение');
+                                s.injured=true; s.setTint(0xff6666);
+                                survivorSpeedBoost=2; killerStunned=GAME_CONFIG.STUN_TIME;
+                                UI.showToast('Выживший ранен!');
                             }
                         }
-                    } else if(s.dying && !s.hooked && !s.carriedBy){
-                        var d = Phaser.Math.Distance.Between(player.x, player.y, s.x, s.y);
-                        if(d < CONFIG.HIT_DISTANCE && Math.abs(vec.x) < 0.3 && Math.abs(vec.y) < 0.3){
-                            var hook = this.hooks.find(function(h){ return !h.occupied; });
-                            if(hook){
-                                s.carriedBy = player;
-                                s.x = player.x;
-                                s.y = player.y - 30;
-                            }
-                        }
-                    }
-                }, this);
-                
-                generators.forEach(function(gen){
-                    var d = Phaser.Math.Distance.Between(player.x, player.y, gen.x, gen.y);
-                    if(d < 50 && gen.progress > 0){
-                        gen.progress = Math.max(0, gen.progress - dt / 50);
-                        gen.bar.clear();
-                        gen.bar.fillStyle(0x000000, 0.7);
-                        gen.bar.fillRect(-20, -20, 40, 6);
-                        gen.bar.fillStyle(0xff0000);
-                        gen.bar.fillRect(-19, -19, 38 * (gen.progress / 100), 4);
-                        if(gen.progress <= 0){
-                            gen.setTint(0x444444);
-                            UI.showToast('Генератор сломан!');
-                        }
-                    }
-                });
-                
-                if(this.gates){
-                    this.gates.forEach(function(gate){
-                        var d = Phaser.Math.Distance.Between(player.x, player.y, gate.x, gate.y);
-                        if(d < 50 && !gate.opened){
-                            if(AntiCheat.validateAction('gate')){
-                                gate.progress += dt / 100;
-                            }
-                            if(!AntiCheat.validateGeneratorProgress(gate.progress)){
-                                gate.progress = Math.max(0, Math.min(100, gate.progress));
-                            }
-                            if(!gate.bar) gate.bar = this.add.graphics();
-                            gate.bar.clear();
-                            gate.bar.fillStyle(0x000000, 0.7);
-                            gate.bar.fillRect(-20, -30, 40, 6);
-                            gate.bar.fillStyle(0xff0000);
-                            gate.bar.fillRect(-19, -29, 38 * (gate.progress / 100), 4);
-                            if(gate.progress >= 100){
-                                gate.opened = true;
-                                gate.setTint(0x00ff00);
-                                UI.showToast('Ворота открыты!');
-                            }
-                        }
-                    }, this);
+                    });
                 }
-                
-                if(this.hatch){
-                    var d = Phaser.Math.Distance.Between(player.x, player.y, this.hatch.x, this.hatch.y);
-                    if(d < 40 && this.hatch.active){
-                        this.hatch.destroy();
-                        this.hatch = null;
-                        UI.showToast('Люк закрыт!');
-                    }
+
+                // AI survivor flee
+                if(killerStunned<=0){
+                    this.survivors.forEach(function(s){
+                        if(!s.alive||s.hooked) return;
+                        if(Math.random()<0.02) s.body.setVelocity((Math.random()-0.5)*60,(Math.random()-0.5)*60);
+                        var d=Phaser.Math.Distance.Between(s.x,s.y,player.x,player.y);
+                        if(d<150){
+                            var a=Phaser.Math.Angle.Between(s.x,s.y,player.x,player.y);
+                            var rs=s.injured?GAME_CONFIG.INJURED_SPEED:GAME_CONFIG.PLAYER_SPEED;
+                            s.body.setVelocity(Math.cos(a)*rs,Math.sin(a)*rs);
+                        }
+                    });
                 }
-            }
-            
-            if(isKiller && player.carriedSurvivor){
-                player.carriedSurvivor.x = player.x;
-                player.carriedSurvivor.y = player.y - 30;
-                var hook = this.hooks.find(function(h){ return !h.occupied; });
-                if(hook && isActionPressed()){
-                    player.carriedSurvivor.hooked = true;
-                    player.carriedSurvivor.x = hook.x;
-                    player.carriedSurvivor.y = hook.y;
-                    hook.occupied = true;
-                    hook.hookedPlayer = player.carriedSurvivor;
-                    hook.hookTimer = CONFIG.HOOK_TIME;
-                    player.carriedSurvivor = null;
-                    UI.showToast('Выживший повешен!');
-                    survivorsLeft--;
-                }
-            }
-            
-            if(isKiller && killerStunned <= 0){
+
+                // Hook dying survivor
                 this.survivors.forEach(function(s){
-                    if(s.alive && !s.hooked){
-                        if(Math.random() < 0.02){
-                            s.body.setVelocity((Math.random() - 0.5) * 60, (Math.random() - 0.5) * 60);
+                    if(!s.dying||s.hooked||s.carriedBy) return;
+                    var d=Phaser.Math.Distance.Between(player.x,player.y,s.x,s.y);
+                    if(d<GAME_CONFIG.HIT_DISTANCE&&isActionPressed()){
+                        var hook=this.hooks.find(function(h){ return !h.occupied; });
+                        if(hook){
+                            s.hooked=true; s.x=hook.x; s.y=hook.y;
+                            s.body.setVelocity(0,0);
+                            hook.occupied=true; hook.hookedPlayer=s; hook.hookTimer=GAME_CONFIG.HOOK_TIME;
+                            survivorsLeft--;
+                            UI.showToast('Выживший повешен!');
                         }
-                        var d = Phaser.Math.Distance.Between(s.x, s.y, player.x, player.y);
-                        if(d < 150){
-                            var a = Phaser.Math.Angle.Between(s.x, s.y, player.x, player.y);
-                            var runSpd = s.injured ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED;
-                            s.body.setVelocity(Math.cos(a) * runSpd, Math.sin(a) * runSpd);
-                        }
-                    } else if(s.dying && !s.hooked && !s.carriedBy && !isActionPressed()){
-                        s.body.setVelocity(0, 0);
+                    }
+                },this);
+
+                // Damage generators
+                generators.forEach(function(gen){
+                    if(gen.repaired) return;
+                    var d=Phaser.Math.Distance.Between(player.x,player.y,gen.x,gen.y);
+                    if(d<50&&gen.progress>0&&isActionPressed()){
+                        gen.progress=Math.max(0,gen.progress-dt/50);
+                        drawBar(gen,gen.barX,gen.barY,0xff0000);
+                        if(gen.progress<=0) gen.setTint(0x444444);
                     }
                 });
+
+                // Win check
+                var allHooked=this.survivors.length>0&&this.survivors.every(function(s){ return s.hooked||!s.alive; });
+                if(allHooked){
+                    UI.showGameOver(false);
+                    stopGame(); return;
+                }
             }
-            
-            if(!isKiller && !player.dying && !player.hooked){
-                var nearGenerator = false;
+
+            // ── Survivor logic ──
+            if(!isKiller&&!player.dying&&!player.hooked){
+                var nearGen=false;
                 if(isActionPressed()){
                     generators.forEach(function(gen){
-                        if(!gen.repaired){
-                            var d = Phaser.Math.Distance.Between(player.x, player.y, gen.x, gen.y);
-                            if(d < 50){
-                                nearGenerator = true;
-                                if(!AntiCheat.validateAction('repair')){
-                                    gen.progress += 0;
-                                } else {
-                                    gen.progress += dt / 100;
-                                }
-                                if(!AntiCheat.validateGeneratorProgress(gen.progress)){
-                                    gen.progress = Math.max(0, Math.min(100, gen.progress));
-                                }
-                                gen.bar.clear();
-                                gen.bar.fillStyle(0x000000, 0.7);
-                                gen.bar.fillRect(-20, -20, 40, 6);
-                                gen.bar.fillStyle(0xffff00);
-                                gen.bar.fillRect(-19, -19, 38 * (gen.progress / 100), 4);
-                                if(gen.progress >= 100){
-                                    gen.repaired = true;
-                                    gen.light.setAlpha(1);
-                                    gen.setTint(0x00ff00);
-                                    UI.showToast('Генератор починен!');
-                                }
+                        if(gen.repaired) return;
+                        var d=Phaser.Math.Distance.Between(player.x,player.y,gen.x,gen.y);
+                        if(d<50){
+                            nearGen=true;
+                            if(AntiCheat.validateAction('repair')){
+                                gen.progress=Math.min(100,gen.progress+dt/100);
+                            }
+                            drawBar(gen,gen.barX,gen.barY,0xffff00);
+                            if(gen.progress>=100){
+                                gen.repaired=true;
+                                gen.light.setAlpha(1);
+                                gen.setTint(0x00ff00);
+                                UI.showToast('⚙️ Генератор починен!');
                             }
                         }
                     });
-                    
-                    if(this.hatch && !player.injured && !player.dying){
-                        var d = Phaser.Math.Distance.Between(player.x, player.y, this.hatch.x, this.hatch.y);
-                        if(d < 40){
-                            UI.showGameOver(true);
-                            stopGame();
-                            return;
-                        }
+                    // Hatch escape
+                    if(this.hatch){
+                        var dh=Phaser.Math.Distance.Between(player.x,player.y,this.hatch.x,this.hatch.y);
+                        if(dh<40){ UI.showGameOver(true); stopGame(); return; }
                     }
                 }
-                
-                if(nearGenerator){
-                    player.body.setVelocity(0, 0);
+                if(nearGen) player.body.setVelocity(0,0);
+
+                // Exit escape
+                if(exitOpen){
+                    var de=Phaser.Math.Distance.Between(player.x,player.y,this.exit.x,this.exit.y);
+                    if(de<50){ UI.showGameOver(true); stopGame(); return; }
                 }
-                
-                this.survivors.forEach(function(s){
-                    if(s && s.hooked && s.hookTimer > 0){
-                        s.hookTimer -= dt / 1000;
-                        if(s.hookTimer <= 0){
-                            UI.showGameOver(false);
-                            stopGame();
-                        }
+
+                // Open exit when all gens done
+                var rep=generators.filter(function(g){ return g.repaired; }).length;
+                if(rep>=GAME_CONFIG.GENERATOR_COUNT&&!exitOpen){
+                    exitOpen=true;
+                    this.exit.setTint(0x00ff00).setVisible(true);
+                    if(Math.random()<GAME_CONFIG.HATCH_APPEAR_CHANCE){
+                        var hx=100+Math.random()*1000, hy=100+Math.random()*700;
+                        this.hatch=this.add.sprite(hx,hy,'hatch').setTint(0xffaa00);
+                        this.hatch.active=true;
                     }
-                }, this);
-                
-                var rep = generators.filter(function(g){ return g.repaired; }).length;
-                if(rep >= CONFIG.GENERATOR_COUNT && !exitOpen && !this.hatch){
-                    if(Math.random() < CONFIG.HATCH_APPEAR_CHANCE){
-                        var hx = 100 + Math.random() * 1000;
-                        var hy = 100 + Math.random() * 700;
-                        this.hatch = this.add.sprite(hx, hy, 'hatch');
-                        this.hatch.setTint(0xffaa00);
-                        this.hatch.active = true;
-                        UI.showToast('Появился ЛЮК!');
-                    }
-                    exitOpen = true;
-                    this.exit.setTint(0x00ff00);
-                    this.exit.setVisible(true);
-                    UI.showToast('ВЫХОД ОТКРЫТ!');
+                    UI.showToast('🚪 ВЫХОД ОТКРЫТ!');
                 }
             }
-            
-            if(killerStunned > 0) killerStunned -= dt / 1000;
-            if(survivorSpeedBoost > 0) survivorSpeedBoost -= dt / 1000;
-            
-            if(isKiller && this.survivors){
-                var allHooked = this.survivors.every(function(s){ return s.hooked; });
-                if(allHooked && this.survivors.length > 0){
-                    UI.showGameOver(false);
-                    stopGame();
-                    return;
-                }
-            }
-            
-            player.setDepth(player.y + 1000);
-            
-            var rep = generators.filter(function(g){ return g.repaired; }).length;
-            var roleEl = document.getElementById('player-role');
-            var genEl = document.getElementById('gen-count');
-            var exitEl = document.getElementById('exit-state');
-            var aliveEl = document.getElementById('alive-count');
-            
-            if(roleEl) roleEl.textContent = isKiller ? 'Убийца' : (player.injured ? 'Ранен' : (player.dying ? 'Падает' : 'Выживший'));
-            if(genEl) genEl.textContent = rep + '/5';
-            if(exitEl) exitEl.textContent = exitOpen ? 'открыт' : 'закрыт';
-            if(aliveEl) aliveEl.textContent = 'Выжившие: ' + survivorsLeft;
-            
-            if(this.fogParticles){
-                this.fogParticles.forEach(function(fog){
-                    fog.x += fog.speedX * (dt / 100);
-                    fog.y += fog.speedY * (dt / 100);
-                    if(fog.x < -50) fog.x = 1250;
-                    if(fog.x > 1250) fog.x = -50;
-                    if(fog.y < -50) fog.y = 950;
-                    if(fog.y > 950) fog.y = -50;
+
+            // Hook timers
+            if(this.hooks){
+                this.hooks.forEach(function(h){
+                    if(h.occupied&&h.hookTimer>0){
+                        h.hookTimer-=dt/1000;
+                        if(h.hookTimer<=0&&!isKiller){ UI.showGameOver(false); stopGame(); return; }
+                    }
                 });
             }
-            
-            if(!this.serverSyncTimer) this.serverSyncTimer = 0;
-            this.serverSyncTimer += dt;
-            if(this.serverSyncTimer > 1000 && GameState.roomId){
-                this.serverSyncTimer = 0;
-                var state = {
-                    playerId: window.userId || 'guest',
-                    role: isKiller ? 'killer' : 'survivor',
-                    x: player ? Math.round(player.x) : 0,
-                    y: player ? Math.round(player.y) : 0,
-                    generatorsRepaired: rep,
-                    exitOpen: exitOpen,
-                    survivorsLeft: survivorsLeft,
-                    timestamp: Date.now()
-                };
-                GameState.syncToServer(state);
-            }
+
+            // HUD
+            var rep2=generators.filter(function(g){ return g.repaired; }).length;
+            var roleEl=document.getElementById('player-role');
+            var genEl=document.getElementById('gen-count');
+            var exitEl=document.getElementById('exit-state');
+            var aliveEl=document.getElementById('alive-count');
+            if(roleEl) roleEl.textContent=isKiller?'Убийца':(player.injured?'Ранен':(player.dying?'Падает':'Выживший'));
+            if(genEl)  genEl.textContent=rep2+'/5';
+            if(exitEl) exitEl.textContent=exitOpen?'открыт':'закрыт';
+            if(aliveEl) aliveEl.textContent='Выжившие: '+survivorsLeft;
+
+            player.setDepth(player.y+1000);
         }
 
-        UI.showGameOver = function(won){
-            document.getElementById('game-result-title').textContent = won ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ';
-            document.getElementById('game-result-message').textContent = won ? 'Ты сбежал!' : isKiller ? 'Ты поймал всех!' : 'Тебя поймали!';
-            UI.showScreen('game-over');
-        };
+        function drawBar(gen, bx, by, color){
+            gen.bar.clear();
+            gen.bar.fillStyle(0x000000,0.7);
+            gen.bar.fillRect(bx-20,by-22,40,6);
+            gen.bar.fillStyle(color);
+            gen.bar.fillRect(bx-19,by-21,38*(gen.progress/100),4);
+        }
 
-        var inputVector = {x: 0, y: 0};
-        var actionPressed = false;
-        
+        // ── Input ───────────────────────────────────────────────────────────
+        var inputVector={x:0,y:0};
+        var actionPressed=false;
+
         function initInput(scene){
-            var gameScreen = document.getElementById('game-screen');
-            
-            var joystick = document.createElement('div');
-            joystick.setAttribute('data-joystick', 'true');
-            joystick.style.cssText = 'position:absolute;bottom:30px;left:30px;width:110px;height:110px;z-index:1000;touch-action:none;';
-            joystick.innerHTML = '<div style="width:100%;height:100%;background:rgba(255,255,255,0.15);border:3px solid rgba(255,255,255,0.4);border-radius:50%;position:relative;"><div style="width:45px;height:45px;background:rgba(255,50,50,0.9);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div></div>';
-            if(gameScreen) gameScreen.appendChild(joystick);
-            
-            var actionBtn = document.createElement('div');
-            actionBtn.setAttribute('data-action-btn', 'true');
-            actionBtn.textContent = 'ДЕЙСТВИЕ';
-            actionBtn.style.cssText = 'position:absolute;bottom:50px;right:30px;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#ff3300);border:3px solid rgba(255,255,255,0.5);color:#fff;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:1000;touch-action:none;';
-            if(gameScreen) gameScreen.appendChild(actionBtn);
-            
-            var joystickInner = joystick.firstChild;
-            var knob = joystickInner.firstChild;
-            var touching = false;
-            var maxDist = 45;
-            var joystickId = null;
-            
-            function updateJoystick(clientX, clientY){
-                var rect = joystickInner.getBoundingClientRect();
-                var dx = clientX - (rect.left + rect.width / 2);
-                var dy = clientY - (rect.top + rect.height / 2);
-                var dist = Math.min(Math.sqrt(dx * dx + dy * dy), maxDist);
-                var angle = Math.atan2(dy, dx);
-                var normX = dist / maxDist * Math.cos(angle);
-                var normY = dist / maxDist * Math.sin(angle);
-                knob.style.transform = 'translate(calc(-50% + ' + (normX * maxDist) + 'px), calc(-50% + ' + (normY * maxDist) + 'px))';
-                inputVector.x = normX;
-                inputVector.y = normY;
+            var gameScreen=document.getElementById('game-screen');
+
+            // Joystick
+            var joystick=document.createElement('div');
+            joystick.setAttribute('data-joystick','true');
+            joystick.style.cssText='position:fixed;bottom:30px;left:30px;width:110px;height:110px;z-index:9999;touch-action:none;';
+            joystick.innerHTML='<div style="width:100%;height:100%;background:rgba(255,255,255,0.15);border:3px solid rgba(255,255,255,0.4);border-radius:50%;position:relative;"><div id="joystick-knob" style="width:45px;height:45px;background:rgba(255,50,50,0.9);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"></div></div>';
+            document.body.appendChild(joystick);
+
+            // Action button
+            var actionBtn=document.createElement('div');
+            actionBtn.setAttribute('data-action-btn','true');
+            actionBtn.textContent='ДЕЙСТВИЕ';
+            actionBtn.style.cssText='position:fixed;bottom:50px;right:30px;width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#ff3300);border:3px solid rgba(255,255,255,0.5);color:#fff;font-size:11px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:9999;touch-action:none;';
+            document.body.appendChild(actionBtn);
+
+            var knob=document.getElementById('joystick-knob');
+            var joyInner=joystick.firstChild;
+            var touching=false, maxDist=45, joystickId=null;
+
+            function updateJoystick(cx,cy){
+                var rect=joyInner.getBoundingClientRect();
+                var dx=cx-(rect.left+rect.width/2);
+                var dy=cy-(rect.top+rect.height/2);
+                var dist=Math.min(Math.sqrt(dx*dx+dy*dy),maxDist);
+                var angle=Math.atan2(dy,dx);
+                var nx=dist/maxDist*Math.cos(angle);
+                var ny=dist/maxDist*Math.sin(angle);
+                knob.style.transform='translate(calc(-50% + '+(nx*maxDist)+'px), calc(-50% + '+(ny*maxDist)+'px))';
+                inputVector.x=nx; inputVector.y=ny;
             }
-            
-            joystick.addEventListener('touchstart', function(e){
-                e.preventDefault();
-                e.stopPropagation();
-                touching = true;
-                joystickId = e.changedTouches[0].identifier;
-                updateJoystick(e.touches[0].clientX, e.touches[0].clientY);
-            }, {passive: false});
-            
-            joystick.addEventListener('touchmove', function(e){
-                e.preventDefault();
-                e.stopPropagation();
-                if(touching){
-                    for(var i = 0; i < e.changedTouches.length; i++){
-                        if(e.changedTouches[i].identifier === joystickId){
-                            updateJoystick(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
-                            break;
-                        }
-                    }
-                }
-            }, {passive: false});
-            
-            joystick.addEventListener('touchend', function(e){
-                e.preventDefault();
-                e.stopPropagation();
-                touching = false;
-                joystickId = null;
-                inputVector.x = 0;
-                inputVector.y = 0;
-                knob.style.transform = 'translate(-50%,-50%)';
-            });
-            
-            joystick.addEventListener('touchcancel', function(){
-                touching = false;
-                joystickId = null;
-                inputVector.x = 0;
-                inputVector.y = 0;
-                knob.style.transform = 'translate(-50%,-50%)';
-            });
-            
-            actionBtn.addEventListener('touchstart', function(e){
-                e.preventDefault();
-                e.stopPropagation();
-                actionPressed = true;
-                actionBtn.style.transform = 'scale(0.95)';
-            }, {passive: false});
-            
-            actionBtn.addEventListener('touchend', function(e){
-                e.preventDefault();
-                e.stopPropagation();
-                actionPressed = false;
-                actionBtn.style.transform = 'scale(1)';
-            });
-            
-            actionBtn.addEventListener('touchcancel', function(){
-                actionPressed = false;
-                actionBtn.style.transform = 'scale(1)';
-            });
+            function resetJoystick(){ touching=false; joystickId=null; inputVector.x=0; inputVector.y=0; knob.style.transform='translate(-50%,-50%)'; }
+
+            joystick.addEventListener('touchstart',function(e){ e.preventDefault(); touching=true; joystickId=e.changedTouches[0].identifier; updateJoystick(e.touches[0].clientX,e.touches[0].clientY); },{passive:false});
+            joystick.addEventListener('touchmove',function(e){ e.preventDefault(); if(touching){ for(var i=0;i<e.changedTouches.length;i++){ if(e.changedTouches[i].identifier===joystickId){ updateJoystick(e.changedTouches[i].clientX,e.changedTouches[i].clientY); break; } } } },{passive:false});
+            joystick.addEventListener('touchend',resetJoystick);
+            joystick.addEventListener('touchcancel',resetJoystick);
+
+            // Mouse fallback for desktop testing
+            joystick.addEventListener('mousedown',function(e){ touching=true; updateJoystick(e.clientX,e.clientY); });
+            document.addEventListener('mousemove',function(e){ if(touching) updateJoystick(e.clientX,e.clientY); });
+            document.addEventListener('mouseup',function(){ if(touching) resetJoystick(); });
+
+            actionBtn.addEventListener('touchstart',function(e){ e.preventDefault(); actionPressed=true; actionBtn.style.transform='scale(0.95)'; },{passive:false});
+            actionBtn.addEventListener('touchend',function(e){ e.preventDefault(); actionPressed=false; actionBtn.style.transform='scale(1)'; });
+            actionBtn.addEventListener('touchcancel',function(){ actionPressed=false; actionBtn.style.transform='scale(1)'; });
+            actionBtn.addEventListener('mousedown',function(){ actionPressed=true; actionBtn.style.transform='scale(0.95)'; });
+            actionBtn.addEventListener('mouseup',function(){ actionPressed=false; actionBtn.style.transform='scale(1)'; });
         }
-        
+
         function getInputVector(){ return inputVector; }
         function isActionPressed(){ return actionPressed; }
-        
-        function checkTelegramEnvironment(){
-            var isInTelegram = false;
-            try{
-                isInTelegram = !!(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user);
-            } catch(e){}
-            
-            if(!isInTelegram){
-                document.getElementById('loading-screen').classList.remove('active');
-                document.getElementById('browser-warning').classList.add('active');
-                return false;
-            }
-            return true;
-        }
-        
-        if(!checkTelegramEnvironment()){
-            // Show warning, don't initialize
-        } else {
-        
-        var attempts = 0;
-        
-        function initApp(){
-            if(typeof Phaser !== 'undefined' && typeof Phaser.Game !== 'undefined'){
-                document.getElementById('loading-screen').classList.remove('active');
-                document.getElementById('main-menu').classList.add('active');
-                setupButtons();
-                try { Telegram.WebApp.ready(); Telegram.WebApp.expand(); } catch(e) {}
-                if(window.firebaseLoaded){
-                    setTimeout(restoreRoomOrGame, 500);
-                }
-                return true;
-            }
-            return false;
-        }
-        
-        function tryInit(){
-            if(initApp()) return;
-            attempts++;
-            var loadingText = document.querySelector('#loading-screen p');
-            if(attempts <= 50){
-                if(loadingText) loadingText.textContent = 'Загрузка...';
-                setTimeout(tryInit, 100);
-            } else {
-                if(loadingText) loadingText.textContent = 'Ошибка загрузки';
-            }
-        }
-        
-        function saveRoomState(roomId, host){
-            localStorage.setItem('roomId', roomId);
-            localStorage.setItem('isHost', host ? 'true' : 'false');
-        }
-        
-        function clearRoomState(){
-            localStorage.removeItem('roomId');
-            localStorage.removeItem('isHost');
-        }
-        
-        function clearGameState(){
-            localStorage.removeItem('gameState');
-        }
-        
-        function getSavedRoomState(){
-            var roomId = localStorage.getItem('roomId');
-            var host = localStorage.getItem('isHost') === 'true';
-            return roomId ? {roomId: roomId, isHost: host} : null;
-        }
-        
+
+        // ── Multiplayer lobby ───────────────────────────────────────────────
+        var currentPlayerId=null;
+        var currentRoomId=null;
+        var isHost=false;
+        var roomUnsubscribe=null;
+
         function getTelegramId(){
             try{
-                if(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user){
-                    return 'tg_' + Telegram.WebApp.initDataUnsafe.user.id;
+                if(Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user){
+                    return 'tg_'+Telegram.WebApp.initDataUnsafe.user.id;
                 }
             } catch(e){}
-            var saved = localStorage.getItem('userId');
+            var saved=localStorage.getItem('userId');
             if(saved) return saved;
-            var newId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-            localStorage.setItem('userId', newId);
-            return newId;
+            var id='guest_'+Date.now()+'_'+Math.random().toString(36).substr(2,6);
+            localStorage.setItem('userId',id);
+            return id;
         }
-        
-        function isTelegram(){
-            try{
-                return !!(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user);
-            } catch(e){}
-            return false;
-        }
-        
-        function initUserData(){
-            if(!isTelegram()) return;
-            if(localStorage.getItem('userInitialized') === 'true') return;
-            if(!window.firebaseLoaded) return;
-            
-            var userId = getTelegramId();
-            var userName = 'Игрок';
-            var avatarUrl = '';
-            var isTG = isTelegram();
-            
-            if(isTG){
-                try{
-                    var u = Telegram.WebApp.initDataUnsafe.user;
-                    userName = u.first_name || u.username || 'Игрок';
-                    avatarUrl = u.photo_url || '';
-                } catch(e){}
-            }
-            
-            window.db.collection('users').doc(userId).get().then(function(doc){
-                if(doc.exists){
-                    localStorage.setItem('userInitialized', 'true');
-                    window.db.collection('users').doc(userId).update({
-                        lastSeen: Date.now(),
-                        lastRoom: localStorage.getItem('roomId') || null
-                    });
-                } else {
-                    localStorage.setItem('userInitialized', 'true');
-                    window.db.collection('users').doc(userId).set({
-                        id: userId,
-                        name: userName,
-                        avatar: avatarUrl,
-                        isTelegram: isTG,
-                        createdAt: Date.now(),
-                        lastSeen: Date.now(),
-                        gamesPlayed: 0,
-                        gamesWon: 0,
-                        gamesLost: 0
-                    });
-                }
-            }).catch(function(err){
-                console.log('User init error:', err);
-            });
-        }
-        
-        tryInit();
-        setTimeout(initUserData, 1000);
-         
-        var currentPlayerId = getTelegramId();
-        var currentRoomId = null;
-        var isHost = false;
-        var roomUnsubscribe = null;
-        var lobbyData = null;
-        var currentGameState = null;
-        
-        function saveGameState(state){
-            localStorage.setItem('gameState', JSON.stringify(state));
-        }
-        
-        function getSavedGameState(){
-            var saved = localStorage.getItem('gameState');
-            return saved ? JSON.parse(saved) : null;
-        }
-        
-        function restoreRoomOrGame(){
-            var savedGame = getSavedGameState();
-            if(savedGame && savedGame.status === 'playing' && window.firebaseLoaded){
-                window.db.collection('rooms').doc(savedGame.roomId).get().then(function(doc){
-                    if(doc.exists){
-                        var data = doc.data();
-                        if(data.status === 'playing'){
-                            currentRoomId = savedGame.roomId;
-                            isHost = (savedGame.role === 'killer');
-                            clearRoomState();
-                            saveGameState({roomId: savedGame.roomId, status: 'playing', role: savedGame.role});
-                            UI.showScreen('game-screen');
-                            UI.showToast('Восстановление игры...');
-                            setTimeout(function(){
-                                initGame();
-                            }, 100);
-                            return;
-                        }
-                    }
-                    restoreLobby();
-                }).catch(function(){
-                    restoreLobby();
-                });
-            } else {
-                restoreLobby();
-            }
-        }
-        
-        function restoreLobby(){
-            var saved = getSavedRoomState();
-            if(saved && window.firebaseLoaded){
-                currentRoomId = saved.roomId;
-                isHost = saved.isHost;
-                window.db.collection('rooms').doc(saved.roomId).get().then(function(doc){
-                    if(doc.exists && doc.data().status === 'waiting'){
-                        UI.showScreen('lobby-create');
-                        if(isHost){
-                            document.getElementById('lobby-status').textContent = 'Ожидание игроков...';
-                            document.getElementById('lobby-players').innerHTML = '<div class="player-slot host">👹 Маньяк (Вы)</div>';
-                            document.getElementById('btn-start-game').style.display = 'block';
-                        } else {
-                            document.getElementById('lobby-status').textContent = 'Подключено к лобби';
-                            document.getElementById('lobby-players').innerHTML = '<div class="player-slot">Загрузка...</div>';
-                            document.getElementById('btn-start-game').style.display = 'none';
-                        }
-                        listenToRoom(currentRoomId);
-                        UI.showToast('Восстановлено подключение');
-                    } else {
-                        clearRoomState();
-                    }
-                }).catch(function(){
-                    clearRoomState();
-                });
-            }
-        }
-        
+
         function createLobby(){
-            if(!window.firebaseLoaded){
-                UI.showToast('Firebase не загружена');
-                return;
-            }
-            clearGameState();
-            var code = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-            currentRoomId = code;
-            isHost = true;
-            saveRoomState(code, true);
-            document.getElementById('lobby-status').textContent = 'Создание лобби...';
-            document.getElementById('lobby-players').innerHTML = '<div class="player-slot host">👹 Маньяк (Вы)</div>';
+            if(!window.firebaseLoaded){ UI.showToast('Firebase не загружена'); return; }
+            var code='room_'+Date.now()+'_'+Math.random().toString(36).substr(2,6);
+            currentRoomId=code; isHost=true;
             UI.showScreen('lobby-create');
-            UI.showToast('Создание лобби...');
-            
-            console.log('Creating room:', code);
-            
-            var hostName = 'Маньяк';
-            try{
-                if(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user){
-                    hostName = Telegram.WebApp.initDataUnsafe.user.first_name || 'Маньяк';
-                }
-            } catch(e){}
-            
-            window.db.collection('rooms').doc(code).set({
-                code: code,
-                hostId: currentPlayerId,
-                hostName: hostName,
-                status: 'waiting',
-                createdAt: Date.now(),
-                players: {}
+            document.getElementById('lobby-status').textContent='Создание лобби...';
+            document.getElementById('lobby-players').innerHTML='<div class="player-slot host">👹 Маньяк (Вы)</div>';
+            var hostName='Маньяк';
+            try{ if(Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user) hostName=Telegram.WebApp.initDataUnsafe.user.first_name||'Маньяк'; }catch(e){}
+            window.db.ref('rooms/'+code).set({
+                code:code, hostId:currentPlayerId, hostName:hostName, status:'waiting', createdAt:Date.now(),
+                players:{ [currentPlayerId]:{id:currentPlayerId,name:hostName,role:'killer',isHost:true} }
             }).then(function(){
-                var playersRef = window.db.collection('rooms').doc(code).collection('players').doc(currentPlayerId);
-                return playersRef.set({
-                    id: currentPlayerId,
-                    name: hostName,
-                    role: 'killer',
-                    isHost: true,
-                    joinedAt: Date.now()
-                });
-            }).then(function(){
-                console.log('Room created:', code);
                 UI.showToast('Лобби создано!');
-                document.getElementById('lobby-status').textContent = 'Ожидание игроков...';
+                document.getElementById('lobby-status').textContent='Ожидание игроков...';
                 listenToRoom(code);
-            }).catch(function(err){
-                console.error('Room create error:', err);
-                document.getElementById('lobby-status').textContent = 'Ошибка: ' + err.message;
-                UI.showToast('Ошибка: ' + err.message);
-            });
+            }).catch(function(err){ UI.showToast('Ошибка: '+err.message); });
         }
-        
+
         function joinLobby(){
-            if(!window.firebaseLoaded){
-                UI.showToast('Firebase не загружена');
-                return;
-            }
-            clearGameState();
+            if(!window.firebaseLoaded){ UI.showToast('Firebase не загружена'); return; }
             UI.showScreen('lobby-join');
-            document.getElementById('search-status').textContent = 'Поиск лобби...';
-            
-            var survivorName = 'Выживший';
-            try{
-                if(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user){
-                    survivorName = Telegram.WebApp.initDataUnsafe.user.first_name || 'Выживший';
-                }
-            } catch(e){}
-            
-            var searchInterval = setInterval(function(){
-                window.db.collection('rooms').get().then(function(snapshot){
-                    var found = false;
-                    var count = 0;
-                    snapshot.forEach(function(doc){
-                        var room = doc.data();
-                        if(room.status !== 'waiting') return;
-                        var players = room.players || {};
-                        var pCount = Object.keys(players).length;
-                        count++;
-                        if(pCount < 4 && !found){
-                            currentRoomId = doc.id;
-                            isHost = false;
-                            found = true;
-                            players[currentPlayerId] = { id: currentPlayerId, role: 'survivor', joinedAt: Date.now() };
-                            saveRoomState(doc.id, false);
-                            window.db.collection('rooms').doc(currentRoomId).update({players: players}).then(function(){
-                                return window.db.collection('rooms').doc(currentRoomId).collection('players').doc(currentPlayerId).set({
-                                    id: currentPlayerId,
-                                    name: survivorName,
-                                    role: 'survivor',
-                                    isHost: false,
-                                    joinedAt: Date.now()
-                                });
-                            }).then(function(){
+            document.getElementById('search-status').textContent='Поиск лобби...';
+            var survivorName='Выживший';
+            try{ if(Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user) survivorName=Telegram.WebApp.initDataUnsafe.user.first_name||'Выживший'; }catch(e){}
+            var searchInterval=setInterval(function(){
+                window.db.ref('rooms').once('value').then(function(snap){
+                    var rooms=snap.val()||{};
+                    var found=false;
+                    Object.keys(rooms).forEach(function(rid){
+                        var room=rooms[rid];
+                        if(found||room.status!=='waiting') return;
+                        var players=room.players||{};
+                        if(Object.keys(players).length<4){
+                            found=true; currentRoomId=rid; isHost=false;
+                            window.db.ref('rooms/'+rid+'/players/'+currentPlayerId).set({id:currentPlayerId,name:survivorName,role:'survivor',isHost:false}).then(function(){
                                 clearInterval(searchInterval);
                                 UI.showScreen('lobby-create');
-                                document.getElementById('lobby-status').textContent = 'Подключено к лобби';
-                                document.getElementById('btn-start-game').style.display = 'none';
-                                listenToRoom(currentRoomId);
+                                document.getElementById('lobby-status').textContent='Подключено к лобби';
+                                document.getElementById('btn-start-game').style.display='none';
+                                listenToRoom(rid);
                                 UI.showToast('Подключился к лобби');
                             });
                         }
                     });
-                    if(!found){
-                        document.getElementById('search-status').textContent = 'Поиск лобби... (' + count + ' комнат)';
-                    }
-                }).catch(function(err){
-                    document.getElementById('search-status').textContent = 'Ошибка: ' + err.message;
-                    clearInterval(searchInterval);
-                });
-            }, 2000);
-            
-            document.getElementById('btn-leave-search').onclick = function(){
-                clearInterval(searchInterval);
-                UI.showScreen('main-menu');
-            };
+                    if(!found) document.getElementById('search-status').textContent='Поиск лобби... (нет доступных комнат)';
+                }).catch(function(err){ document.getElementById('search-status').textContent='Ошибка: '+err.message; clearInterval(searchInterval); });
+            },2000);
+            document.getElementById('btn-leave-search').onclick=function(){ clearInterval(searchInterval); UI.showScreen('main-menu'); };
         }
-        
+
         function listenToRoom(roomCode){
-            roomUnsubscribe = window.db.collection('rooms').doc(roomCode).onSnapshot(function(doc){
-                if(!doc.exists) return;
-                var data = doc.data();
-                lobbyData = data;
-                var players = data.players || {};
-                var playerList = document.getElementById('lobby-players');
-                var html = '<div class="player-slot host">👹 Маньяк</div>';
-                var count = 1;
-                for(var pid in players){
-                    if(pid !== data.hostId){
-                        var playerName = players[pid].name || ('Выживший ' + count);
-                        html += '<div class="player-slot">🏃 ' + playerName + '</div>';
-                        count++;
-                    }
+            if(roomUnsubscribe) roomUnsubscribe();
+            var ref=window.db.ref('rooms/'+roomCode);
+            ref.on('value',function(snap){
+                if(!snap.exists()) return;
+                var data=snap.val();
+                var players=data.players||{};
+                var count=Object.keys(players).length;
+                var html='';
+                Object.values(players).forEach(function(p){
+                    var cls=p.role==='killer'?'host':'';
+                    html+='<div class="player-slot '+cls+'">'+(p.role==='killer'?'👹':'🏃')+' '+p.name+'</div>';
+                });
+                for(var i=count;i<4;i++) html+='<div class="player-slot empty">⏳ Ожидание...</div>';
+                document.getElementById('lobby-players').innerHTML=html;
+                var btnStart=document.getElementById('btn-start-game');
+                if(isHost){
+                    if(count>=2){ btnStart.disabled=false; btnStart.textContent='Начать игру ('+count+'/4)'; btnStart.style.background='#ff3333'; }
+                    else { btnStart.disabled=true; btnStart.textContent='Начать (ждём игроков)'; btnStart.style.background='#666'; }
                 }
-                for(var i = count; i <= 4; i++){
-                    html += '<div class="player-slot empty">⏳ Ожидание...</div>';
-                }
-                playerList.innerHTML = html;
-                var btnStart = document.getElementById('btn-start-game');
-                if(isHost && count >= 2){
-                    btnStart.disabled = false;
-                    btnStart.textContent = 'Начать игру (' + count + '/4)';
-                    btnStart.style.background = '#ff3333';
-                } else if(isHost) {
-                    btnStart.disabled = true;
-                    btnStart.textContent = 'Начать (ждём игроков)';
-                    btnStart.style.background = '#666';
-                }
-                if(data.status === 'playing'){
-                    if(roomUnsubscribe) roomUnsubscribe();
-                    saveGameState({roomId: roomCode, status: 'playing', role: isHost ? 'killer' : 'survivor'});
+                if(data.status==='playing'){
+                    ref.off(); roomUnsubscribe=null;
                     startMultiplayerGame(data);
                 }
-            }, function(err){
-                console.error('Error listening to room:', err);
             });
+            roomUnsubscribe=function(){ ref.off(); };
         }
-        
-        function leaveLobby(){
-            var roomIdToLeave = currentRoomId;
-            var playerIdToRemove = currentPlayerId;
-            var wasHost = isHost;
-            
-            if(roomUnsubscribe){
-                roomUnsubscribe();
-                roomUnsubscribe = null;
+
+        function startMultiplayerGame(roomData){
+            isKiller=(currentPlayerId===roomData.hostId);
+            exitOpen=false; survivorsLeft=4; catchCooldown=0; generators=[];
+            UI.showScreen('game-screen');
+            UI.showToast(isKiller?'Поймай всех!':'Найди генераторы!');
+            setTimeout(initGame,100);
+        }
+
+        window.leaveLobby=function(){
+            if(roomUnsubscribe){ roomUnsubscribe(); roomUnsubscribe=null; }
+            if(currentRoomId&&window.firebaseLoaded){
+                window.db.ref('rooms/'+currentRoomId+'/players/'+currentPlayerId).remove();
             }
-            
-            if(roomIdToLeave){
-                window.db.collection('rooms').doc(roomIdToLeave).get().then(function(doc){
-                    if(!doc.exists) return;
-                    
-                    var data = doc.data();
-                    var players = data.players || {};
-                    var playerKeys = Object.keys(players);
-                    
-                    delete players[playerIdToRemove];
-                    
-                    window.db.collection('rooms').doc(roomIdToLeave).collection('players').doc(playerIdToRemove).delete();
-                    
-                    if(playerKeys.length <= 1){
-                        window.db.collection('rooms').doc(roomIdToLeave).delete().then(function(){
-                            console.log('Room deleted - no players left');
-                        });
-                    } else {
-                        window.db.collection('rooms').doc(roomIdToLeave).update({players: players}).then(function(){
-                            console.log('Player removed from room');
-                            if(wasHost && playerKeys.length > 1){
-                                console.log('Host left, remaining players:', playerKeys.length - 1);
-                            }
-                        });
-                    }
-                }).catch(function(error){
-                    console.error('Error leaving lobby:', error);
-                });
-            }
-            
-            clearRoomState();
-            clearGameState();
-            currentRoomId = null;
-            isHost = false;
-            lobbyData = null;
+            currentRoomId=null; isHost=false;
             UI.showScreen('main-menu');
             UI.showToast('Вы вышли из лобби');
+        };
+
+        // ── App init ────────────────────────────────────────────────────────
+        function initApp(){
+            if(typeof Phaser==='undefined'||typeof Phaser.Game==='undefined') return false;
+            currentPlayerId=getTelegramId();
+            document.getElementById('loading-screen').classList.remove('active');
+            document.getElementById('main-menu').classList.add('active');
+            setupButtons();
+            try{ Telegram.WebApp.ready(); Telegram.WebApp.expand(); }catch(e){}
+            return true;
         }
-        
-        function startGameAsHost(){
-            if(!currentRoomId || !isHost) return;
-            window.db.collection('rooms').doc(currentRoomId).update({status: 'playing'}).then(function(){
-                UI.showToast('Игра началась!');
-            });
+
+        var attempts=0;
+        function tryInit(){
+            if(initApp()) return;
+            if(++attempts<60) setTimeout(tryInit,100);
+            else { var p=document.querySelector('#loading-screen p'); if(p) p.textContent='Ошибка загрузки — проверьте интернет'; }
         }
-        
-        function startMultiplayerGame(roomData){
-            clearRoomState();
-            isKiller = (currentPlayerId === roomData.hostId);
-            saveGameState({roomId: currentRoomId, status: 'playing', role: isKiller ? 'killer' : 'survivor'});
-            exitOpen = false;
-            survivorsLeft = 4;
-            catchCooldown = 0;
-            generators = [];
-            UI.showScreen('game-screen');
-            UI.showToast(isKiller ? 'Поймай всех!' : 'Найди генераторы!');
-            setTimeout(function(){
-                initGame();
-            }, 100);
-        }
-        
+        tryInit();
+
         function setupButtons(){
-            var btnSolo = document.getElementById('btn-solo');
-            var btnMulti = document.getElementById('btn-multi');
-            var btnKiller = document.getElementById('btn-play-killer');
-            var btnSurvivor = document.getElementById('btn-play-survivor');
-            var btnBack = document.getElementById('btn-back-menu');
-            var btnStartGame = document.getElementById('btn-start-game');
-            var btnLeaveLobby = document.getElementById('btn-leave-lobby');
-            var btnLeaveSearch = document.getElementById('btn-leave-search');
-            
-            if(btnSolo) btnSolo.onclick = function(){
-                UI.showScreen('role-select');
-            };
-            
-            if(btnMulti) btnMulti.onclick = function(){
-                UI.showScreen('role-select');
-            };
-            
-            if(btnKiller) btnKiller.onclick = function(){
-                createLobby();
-            };
-            
-            if(btnSurvivor) btnSurvivor.onclick = function(){
-                joinLobby();
-            };
-            
-            if(btnBack) btnBack.onclick = function(){
-                stopGame();
-                leaveLobby();
-                UI.showScreen('main-menu');
-            };
-            
-            if(btnStartGame) {
-                btnStartGame.onclick = function(){
-                    console.log('Start game button clicked!');
-                    startGameAsHost();
-                };
-                console.log('Start button found, isHost:', isHost, 'disabled:', btnStartGame.disabled);
-            }
-            
-            if(btnLeaveLobby) btnLeaveLobby.onclick = function(){
-                leaveLobby();
-            };
-            
-            if(btnLeaveSearch) btnLeaveSearch.onclick = function(){
-                UI.showScreen('main-menu');
-            };
+            function on(id,fn){ var el=document.getElementById(id); if(el) el.onclick=fn; }
+            on('btn-solo',       function(){ UI.showScreen('role-select'); });
+            on('btn-multi',      function(){ UI.showScreen('role-select'); });
+            on('btn-play-killer',function(){ startGame(true); });
+            on('btn-play-survivor',function(){ startGame(false); });
+            on('btn-back-menu',  function(){ stopGame(); UI.showScreen('main-menu'); });
+            on('btn-start-game', function(){
+                if(!currentRoomId||!isHost) return;
+                window.db.ref('rooms/'+currentRoomId).update({status:'playing'}).then(function(){ UI.showToast('Игра началась!'); });
+            });
+            on('btn-leave-lobby', window.leaveLobby);
         }
-        
-        } // end of Telegram check
-        
+
     })();
     </script>
 </body>
