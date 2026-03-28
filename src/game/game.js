@@ -643,6 +643,7 @@ function createRepairingTextures(g, name, shirtColor, hairColor) {
     g.fillStyle(0xffccaa); g.fillCircle(22, 3, 5);
     g.generateTexture(name + '_arm_r', 28, 14);
     g.clear();
+}
 
 // ═══════ CREATE SCENE ═══════
 
@@ -899,8 +900,30 @@ function makePlayer(scene, x, y, tex, isMe) {
         progressAction: null,
         isMe: isMe,
         glowFx: glow,
-        glowColor: glowColor
+        glowColor: glowColor,
+        isRepairing: false,
+        repairAnimPhase: 0,
+        repairArms: null,
+        repairSparks: null,
+        repairBobPhase: 0
     };
+
+    // Create repair arms if survivor
+    if (tex !== 'killer') {
+        const armL = scene.add.sprite(0, 0, tex + '_arm_l');
+        armL.setVisible(false);
+        armL.setDepth(sp.depth + 1);
+        const armR = scene.add.sprite(0, 0, tex + '_arm_r');
+        armR.setVisible(false);
+        armR.setDepth(sp.depth + 1);
+        p.repairArms = { left: armL, right: armR };
+
+        // Create spark particles graphics
+        const sparks = scene.add.graphics();
+        sparks.setVisible(false);
+        sparks.setDepth(sp.depth + 2);
+        p.repairSparks = sparks;
+    }
 
     sp._pRef = p;
     return p;
@@ -950,6 +973,82 @@ function update(time, dt) {
             const pulse = 0.5 + Math.sin(gameTime * 0.004) * 0.2;
             p.glowFx.setAlpha(pulse * 0.4);
             p.glowFx.setPosition(p.sprite.x, p.sprite.y);
+        }
+
+        // Update repair animation
+        if (p.isRepairing && p.progressAction && p.progressAction.target) {
+            const gen = p.progressAction.target;
+            const sp = p.sprite;
+
+            // Show repair texture (crouching)
+            if (!sp.texture.key.includes('_repair')) {
+                sp.setTexture(p.tex + '_repair');
+            }
+
+            // Position repair arms extending toward generator
+            if (p.repairArms) {
+                p.repairArms.left.setVisible(true);
+                p.repairArms.right.setVisible(true);
+
+                // Calculate direction to generator
+                const dx = gen.bx - sp.x;
+                const dy = gen.by - sp.y;
+                const angle = Math.atan2(dy, dx);
+
+                // Arm animation phase - rapid back and forth
+                p.repairAnimPhase += dt * 0.015;
+                const armOffset = Math.sin(p.repairAnimPhase) * 8;
+                const armExtend = 10 + Math.sin(p.repairAnimPhase * 2) * 4;
+
+                // Left arm position (front)
+                const leftArmAngle = angle - 0.3;
+                const leftArmX = sp.x + Math.cos(leftArmAngle) * armExtend + Math.cos(angle + Math.PI/2) * 5;
+                const leftArmY = sp.y + Math.sin(leftArmAngle) * armExtend + Math.sin(angle + Math.PI/2) * 5 - 20;
+                p.repairArms.left.setPosition(leftArmX, leftArmY);
+                p.repairArms.left.setRotation(angle);
+                p.repairArms.left.setAlpha(0.9);
+
+                // Right arm position (front, offset)
+                const rightArmAngle = angle + 0.3;
+                const rightArmX = sp.x + Math.cos(rightArmAngle) * armExtend + Math.cos(angle - Math.PI/2) * 5;
+                const rightArmY = sp.y + Math.sin(rightArmAngle) * armExtend + Math.sin(angle - Math.PI/2) * 5 - 20;
+                p.repairArms.right.setPosition(rightArmX, rightArmY);
+                p.repairArms.right.setRotation(angle);
+                p.repairArms.right.setAlpha(0.9);
+            }
+
+            // Spark particles effect
+            if (p.repairSparks) {
+                p.repairSparks.setVisible(true);
+                p.repairSparks.clear();
+
+                // Generate sparks near generator where hands work
+                const sparkCount = 2 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < sparkCount; i++) {
+                    const sparkAngle = Math.random() * Math.PI * 2;
+                    const sparkDist = 15 + Math.random() * 20;
+                    const sparkX = gen.bx + Math.cos(sparkAngle) * sparkDist;
+                    const sparkY = gen.by - 10 + Math.sin(sparkAngle) * sparkDist;
+                    const sparkSize = 1 + Math.random() * 2;
+
+                    // Yellow-white spark color
+                    const brightness = Math.random();
+                    if (brightness > 0.7) {
+                        p.repairSparks.fillStyle(0xffffff, 0.9);
+                    } else if (brightness > 0.4) {
+                        p.repairSparks.fillStyle(0xffdd44, 0.8);
+                    } else {
+                        p.repairSparks.fillStyle(0xff8800, 0.7);
+                    }
+                    p.repairSparks.fillCircle(sparkX, sparkY, sparkSize);
+                }
+            }
+
+            // Body bobbing animation (leaning into work)
+            p.repairBobPhase += dt * 0.008;
+        } else {
+            // Clear repair animation state
+            p._repairBobOffset = undefined;
         }
     });
 
@@ -1096,6 +1195,14 @@ function survivorAction(dt) {
 
     if (p.state === 'dying' || p.state === 'hooked') return;
 
+    // Check if still near the generator being repaired
+    if (p.isRepairing && p.progressAction && p.progressAction.type === 'repair') {
+        const gen = p.progressAction.target;
+        if (!gen || dist(sp, gen) >= CONFIG.INTERACT_DISTANCE) {
+            cancelProgress(p);
+        }
+    }
+
     let acted = false;
 
     // Repair generator
@@ -1108,6 +1215,10 @@ function survivorAction(dt) {
                 if (!p.progressAction || p.progressAction.target !== gen) {
                     p.progressAction = { type: 'repair', target: gen };
                 }
+
+                // Start repair animation
+                p.isRepairing = true;
+
                 gen.progress = Math.min(100, gen.progress + CONFIG.GENERATOR_REPAIR_RATE * (dt / 1000));
                 drawBar(gen.barGfx, gen.bx, gen.by, gen.progress, 0xffee00);
 
@@ -1119,6 +1230,12 @@ function survivorAction(dt) {
                     if (gen.lightGlowInnerGfx) gen.lightGlowInnerGfx.setAlpha(0);
                     if (gen.lightSprite) gen.lightSprite.setAlpha(0.3);
                     p.progressAction = null;
+                    p.isRepairing = false;
+                    p.repairArms.left.setVisible(false);
+                    p.repairArms.right.setVisible(false);
+                    p.repairSparks.setVisible(false);
+                    // Reset to normal texture
+                    sp.setTexture(p.tex);
                     UI.showToast('✅ Генератор починен!', 2000);
                     checkAllGens();
 
@@ -1223,6 +1340,17 @@ function survivorAction(dt) {
 
 function cancelProgress(p) {
     p.progressAction = null;
+    p.isRepairing = false;
+    if (p.repairArms) {
+        p.repairArms.left.setVisible(false);
+        p.repairArms.right.setVisible(false);
+    }
+    if (p.repairSparks) {
+        p.repairSparks.setVisible(false);
+    }
+    if (p.tex && p.sprite) {
+        p.sprite.setTexture(p.tex);
+    }
 }
 
 function checkAllGens() {
