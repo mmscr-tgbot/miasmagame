@@ -367,8 +367,9 @@ function create() {
     // Hooks
     [{ x: 500, y: 450 }, { x: 1900, y: 450 }, { x: 500, y: 1350 }, { x: 1900, y: 1350 },
     { x: 1200, y: 500 }, { x: 1200, y: 1300 }, { x: 800, y: 900 }, { x: 1600, y: 900 }]
-        .forEach(p => {
+        .forEach((p, i) => {
             const sp = this.add.sprite(p.x, p.y, 'hook').setDepth(p.y + 1).setScale(1.3);
+            sp.hookId = i;
             sp.occupied = false;
             sp.hookedSurvivor = null;
             sp.hookTimer = 0;
@@ -608,7 +609,7 @@ function killerAction(dt) {
         if (hook && dist(sp, hook) < CONFIG.INTERACT_DISTANCE + 20) {
             hangSurvivor(ct, hook);
             p.carryTarget = null;
-            UI.toast('🪝 Выживший повешен!', 2000);
+            UI.showToast('🪝 Выживший повешен!', 2000);
 
             if (isMultiplayer && roomCode && playerId) {
                 hookSurvivor(roomCode, ct.playerId, hook.id);
@@ -627,7 +628,7 @@ function killerAction(dt) {
             t.sprite.setTint(0xff8888);
             killerStun = CONFIG.STUN_TIME;
             if (t.isMe) boostTimer = CONFIG.BOOST_TIME;
-            UI.toast('💥 Выживший ранен!', 2000);
+            UI.showToast('💥 Выживший ранен!', 2000);
 
             if (isMultiplayer && roomCode && t.playerId) {
                 setPlayerInjured(roomCode, t.playerId);
@@ -636,14 +637,14 @@ function killerAction(dt) {
             t.state = 'dying';
             t.sprite.setTint(0xff4444);
             killerStun = CONFIG.STUN_TIME;
-            UI.toast('⬇️ Выживший упал!', 2000);
+            UI.showToast('⬇️ Выживший упал!', 2000);
 
             if (isMultiplayer && roomCode && t.playerId) {
                 setPlayerDying(roomCode, t.playerId);
             }
         } else if (t.state === 'dying') {
             p.carryTarget = t;
-            UI.toast('💪 Поднимаешь выжившего...', 2000);
+            UI.showToast('💪 Поднимаешь выжившего...', 2000);
 
             if (isMultiplayer && roomCode && playerId) {
                 setPlayerCarrying(roomCode, playerId, t.playerId);
@@ -661,7 +662,7 @@ function killerAction(dt) {
             if (gen.progress <= 0) {
                 gen.setTint(0x444444);
                 if (gen.glowGfx) gen.glowGfx.setAlpha(0);
-                UI.toast('💥 Генератор сломан!', 2000);
+                UI.showToast('💥 Генератор сломан!', 2000);
 
                 if (isMultiplayer && roomCode) {
                     updateGeneratorProgress(roomCode, gen.genId, gen.progress, false);
@@ -675,7 +676,7 @@ function killerAction(dt) {
         hatchClosed = true;
         hatchOpen = false;
         hatch.setTint(0x220000);
-        UI.toast('🔒 Маньяк закрыл люк!', 2000);
+        UI.showToast('🔒 Маньяк закрыл люк!', 2000);
 
         if (isMultiplayer && roomCode) {
             closeHatch(roomCode);
@@ -709,7 +710,7 @@ function survivorAction(dt) {
                     gen.setTint(0x22ff66);
                     if (gen.glowGfx) gen.glowGfx.setAlpha(0);
                     p.progressAction = null;
-                    UI.toast('✅ Генератор починен!', 2000);
+                    UI.showToast('✅ Генератор починен!', 2000);
                     checkAllGens();
 
                     if (isMultiplayer && roomCode) {
@@ -745,7 +746,7 @@ function survivorAction(dt) {
                     hook.hookedSurvivor = null;
                     hook.hookTimer = 0;
                     p.progressAction = null;
-                    UI.toast('🙌 Снят с крюка!', 2000);
+                    UI.showToast('🙌 Снят с крюка!', 2000);
 
                     if (isMultiplayer && roomCode && hs.playerId) {
                         unhookSurvivor(roomCode, hs.playerId);
@@ -773,7 +774,7 @@ function survivorAction(dt) {
                     ai.state = 'alive';
                     ai.sprite.clearTint();
                     p.progressAction = null;
-                    UI.toast('💊 Вылечен!', 2000);
+                    UI.showToast('💊 Вылечен!', 2000);
                 }
                 return true;
             }
@@ -797,7 +798,7 @@ function survivorAction(dt) {
                     gate.opened = true;
                     gate.setTint(0x22ff66);
                     p.progressAction = null;
-                    UI.toast('🚪 Ворота открыты! Беги!', 2000);
+                    UI.showToast('🚪 Ворота открыты! Беги!', 2000);
 
                     if (isMultiplayer && roomCode) {
                         setGateOpened(roomCode, true);
@@ -819,7 +820,7 @@ function checkAllGens() {
     const done = generators.filter(g => g.repaired).length;
     if (done >= CONFIG.GENERATOR_COUNT && !exitOpen) {
         exitOpen = true;
-        UI.toast('⚡ Все генераторы! Открывай ворота!', 3000);
+        UI.showToast('⚡ Все генераторы! Открывай ворота!', 3000);
 
         gates.forEach(gate => {
             gate.glowGfx = scene.add.graphics();
@@ -852,7 +853,7 @@ function spawnHatch() {
     hatchOpen = true;
     hatch.glowGfx = glow;
 
-    UI.toast('🪤 Люк появился на карте!', 3000);
+    UI.showToast('🪤 Люк появился на карте!', 3000);
 
     if (isMultiplayer && roomCode) {
         setHatchSpawned(roomCode, hx, hy);
@@ -916,16 +917,16 @@ function updateAI(dt) {
                         p2.state = 'injured';
                         p2.sprite.setTint(0xff8888);
                         boostTimer = CONFIG.BOOST_TIME;
-                        UI.toast('💥 Ты ранен!', 2000);
+                        UI.showToast('💥 Ты ранен!', 2000);
                     } else if (p2.state === 'injured') {
                         p2.state = 'dying';
                         p2.sprite.setTint(0xff4444);
-                        UI.toast('⬇️ Ты упал!', 2000);
+                        UI.showToast('⬇️ Ты упал!', 2000);
                     } else if (p2.state === 'dying') {
                         const hook = nearestFreeHook(sp);
                         if (hook) {
                             hangSurvivor(p2, hook);
-                            UI.toast('🪝 Тебя повесили!', 2000);
+                            UI.showToast('🪝 Тебя повесили!', 2000);
                         }
                     }
                 }
@@ -1041,7 +1042,7 @@ function initMultiplayerSync() {
         onGateUpdate: (gate) => {
             if (gate.opened && !exitOpen) {
                 exitOpen = true;
-                UI.toast('⚡ Ворота открыты!', 2000);
+                UI.showToast('⚡ Ворота открыты!', 2000);
             }
         },
         onHatchUpdate: (hatchData) => {
@@ -1114,7 +1115,7 @@ function updateRemotePlayers(players) {
                 rp.sprite.setAlpha(0.3);
             } else if (pdata.state === 'hooked') {
                 // Find hook and position
-                const hook = hooks.find(h => h.id === pdata.hookId);
+                const hook = hooks.find(h => h.hookId === pdata.hookId);
                 if (hook) {
                     rp.sprite.setPosition(hook.x, hook.y - 12);
                 }
