@@ -60,7 +60,7 @@ try{
   <div id="main-menu" class="screen"><h1>☣ Miasma Massacre</h1><div class="menu-buttons"><button id="btn-create-lobby" class="btn primary">🔪 Создать лобби (Маньяк)</button><button id="btn-find-lobby" class="btn secondary">🔍 Найти игру (Выживший)</button><button id="btn-solo" class="btn" style="background:#222;margin-top:8px">🎮 Играть Solo</button></div><div class="version">v3.0</div></div>
   <div id="role-select" class="screen"><h2>Выбери роль</h2><button id="btn-play-killer" class="btn primary">🔪 Убийца</button><button id="btn-play-survivor" class="btn secondary">🏃 Выживший</button><button id="btn-back-role" class="btn" style="margin-top:15px;background:#222">← Назад</button></div>
   <div id="lobby-create" class="screen"><h2>🏠 Лобби: <span id="display-room-code" style="color:#fff;font-size:20px"></span></h2><p id="lobby-status" style="color:#aaa;margin-bottom:15px;text-align:center">Ожидание игроков...</p><div id="lobby-players" style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:300px;margin-bottom:15px"></div><button id="btn-start-game" class="btn primary" disabled style="background:#555">Начать игру</button><button id="btn-leave-lobby" class="btn secondary" style="margin-top:8px">← Выйти</button></div>
-  <div id="lobby-join" class="screen"><h2>🔍 Поиск игры</h2><p id="search-status" style="color:#aaa;margin-bottom:15px;text-align:center">Ищу доступные лобби...</p><div id="found-lobbies" style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:300px;margin-bottom:15px"></div><button id="btn-leave-search" class="btn secondary">← Назад</button></div>
+  <div id="lobby-join" class="screen"><h2>🔍 Поиск игры</h2><p id="found-lobbies" style="color:#aaa;text-align:center;margin-bottom:15px">Ищу доступные лобби...</p><button id="btn-leave-search" class="btn secondary">← Назад</button></div>
   <div id="game-screen" class="screen">
     <div id="game-container"></div>
     <div id="hud">
@@ -1316,29 +1316,44 @@ function findAndJoinLobby(){
   if(!window.fsLoaded){UI.toast('Firestore не загружен');return;}
   UI.showScreen('lobby-join');
   gMyRole='survivor';
-  document.getElementById('found-lobbies').innerHTML='<p style="color:#aaa">Ищу лобби...</p>';
+  document.getElementById('found-lobbies').innerHTML='<p style="color:#aaa">Поиск лобби...</p>';
   var sName=gUser?gUser.name:'Выживший';
   if(gIsTelegram){try{var u=Telegram.WebApp.initDataUnsafe.user;if(u)sName=u.first_name||'Выживший';}catch(e){}}
 
-  // Listen to all rooms in real-time
+  // Listen to all rooms in real-time and auto-join first available
   if(window._lobbyUnsub)window._lobbyUnsub();
+  var joined=false;
   window._lobbyUnsub=window.fbFS.collection('rooms')
     .onSnapshot(function(snap){
+      if(joined)return;
       var container=document.getElementById('found-lobbies');
       if(!container)return;
-      var html='';
-      var found=false;
       snap.forEach(function(doc){
+        if(joined)return;
         var rm=doc.data();
         if(rm.status!=='waiting')return;
         var pl=rm.players||{};
         var playerCount=Object.keys(pl).length;
         if(playerCount>=4)return;
-        found=true;
-        html+='<div class="player-slot" style="cursor:pointer;border:2px solid #ff3333" onclick="joinLobbyById(\''+doc.id+'\',\''+sName.replace(/'/g,"\\'")+'\')">🔪 '+rm.hostName+' <span style="color:#aaa;font-size:12px">('+playerCount+'/4 игроков)</span></div>';
+        // Found a lobby - join it
+        joined=true;
+        var code=doc.id;
+        gRoomId=code;gIsHost=false;
+        var playerData={id:gMyId,name:sName,role:'survivor',isHost:false};
+        window.fbFS.collection('rooms').doc(code).update({
+          ['players.'+gMyId]:playerData
+        }).then(function(){
+          if(window._lobbyUnsub){window._lobbyUnsub();window._lobbyUnsub=null;}
+          UI.showScreen('lobby-create');
+          document.getElementById('display-room-code').textContent=code;
+          document.getElementById('lobby-status').textContent='Вы присоединились!';
+          listenRoomFirestore(code);
+          UI.toast('Подключился к лобби!');
+        }).catch(function(e){UI.toast('Ошибка: '+e.message);});
       });
-      container.innerHTML=found?html:'<p style="color:#666">Нет доступных лобби. Стань маньяком!</p>';
-      document.getElementById('search-status').textContent=found?'Нажми на лобби для входа':'Нет лобби — создай своё!';
+      if(!joined){
+        document.getElementById('found-lobbies').innerHTML='<p style="color:#666">Нет доступных лобби...</p>';
+      }
     });
 
   document.getElementById('btn-leave-search').onclick=function(){
@@ -1362,8 +1377,6 @@ function joinLobbyById(code,sName){
     UI.toast('Подключился к лобби!');
   }).catch(function(e){UI.toast('Ошибка: '+e.message);});
 }
-
-window.joinLobbyById=joinLobbyById;
 
 function listenRoomFirestore(code){
   if(gRoomUnsubFirestore)gRoomUnsubFirestore();
