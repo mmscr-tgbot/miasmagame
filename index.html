@@ -761,7 +761,28 @@ function setupButtons() {
              showToast('Ошибка запуска игры: ' + e.message);
          });
      });
-    on('btn-leave-lobby', window.leaveLobby);
+     on('btn-leave-lobby', window.leaveLobby);
+}
+
+/* ═══════ MISSING FUNCTIONS FROM DATABASE.JS ═══════ */
+
+// Инициализировать генераторы
+function initializeGenerators(roomCode) {
+    if (!isFirebaseReady() || !db) return;
+
+    const generators = {};
+    for (let i = 0; i < CONFIG.GENERATOR_COUNT; i++) {
+        generators[i] = {
+            id: i,
+            progress: 0,
+            repaired: false,
+            repairingBy: null,
+            lastUpdate: Date.now()
+        };
+    }
+
+    db.ref('gameSessions/' + roomCode).child('generators').set(generators)
+        .catch(() => {});
 }
 
 /* ═══════ APP INIT ═══════ */
