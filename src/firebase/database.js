@@ -1,22 +1,23 @@
+// ═══════ FIREBASE DATABASE - GAME SYNC ═══════
+// Синхронизация игры через Firebase Realtime Database
+
 let db;
-let roomsRef;
-let currentRoomId = null;
-let unsubscribeRoom = null;
+let gameSessionRef = null;
+let gameUnsubscribe = null;
 let firebaseReady = false;
+
+// ═══════ INIT ═══════
 
 function initFirebaseDB() {
     return new Promise((resolve, reject) => {
-        console.log('Проверка firebase:', typeof firebase);
-        
         if (typeof firebase === 'undefined') {
             console.error('Firebase НЕ загружен!');
             reject(new Error('Firebase SDK не загружен'));
             return;
         }
-        
+
         try {
             db = firebase.database();
-            roomsRef = db.ref('rooms');
             firebaseReady = true;
             console.log('Firebase Database готова');
             resolve(true);
@@ -27,217 +28,333 @@ function initFirebaseDB() {
     });
 }
 
-function generateRoomCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < CONFIG.ROOM_CODE_LENGTH; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
+function isFirebaseReady() {
+    return firebaseReady && typeof firebase !== 'undefined' && db !== null && db !== undefined;
 }
 
-function createRoom(roomName, maxPlayers, hostId, hostName) {
-    console.log('createRoom вызвана, firebaseReady:', firebaseReady);
-    
-    if (!firebaseReady) {
-        console.error('Firebase НЕ готова!');
-        return Promise.reject(new Error('Firebase не готова'));
-    }
-    
-    const roomCode = generateRoomCode();
-    console.log('Код комнаты:', roomCode);
-    
-    const roomData = {
-        code: roomCode,
-        name: roomName || 'Комната',
-        maxPlayers: maxPlayers,
-        hostId: hostId,
-        status: 'waiting',
-        createdAt: Date.now(),
-        players: {},
-        generators: {},
-        gameState: null
+// ═══════ GAME SESSION SYNC ═══════
+
+// Инициализация игровой сессии
+function initGameSession(roomCode, playerId, isKiller) {
+    if (!firebaseReady) return Promise.reject(new Error('Firebase не готова'));
+
+    gameSessionRef = db.ref('gameSessions/' + roomCode);
+
+    const playerData = {
+        id: playerId,
+        role: isKiller ? 'killer' : 'survivor',
+        x: isKiller ? 600 : 150 + Math.random() * 100,
+        y: isKiller ? 450 : 150 + Math.random() * 100,
+        state: 'alive',
+        health: isKiller ? null : 100,
+        lastUpdate: Date.now()
     };
-    
-    console.log('Данные комнаты:', roomData);
-    console.log('Запись в Firebase...');
-    
-    return roomsRef.child(roomCode).set(roomData)
+
+    return gameSessionRef.child('players').child(playerId).set(playerData)
         .then(() => {
-            console.log('Комната создана в Firebase:', roomCode);
-            currentRoomId = roomCode;
-            return { success: true, roomId: roomCode, roomData };
-        })
-        .catch((error) => {
-            console.error('Ошибка записи в Firebase:', error);
-            return { success: false, error: error.message };
+            console.log('Игрок добавлен в сессию:', playerId);
+            return true;
         });
 }
 
-function joinRoom(roomCode, playerId, playerName) {
-    if (!firebaseReady) {
-        return Promise.reject(new Error('Firebase не готова'));
+// Обновить состояние игрока
+function updatePlayerState(roomCode, playerId, state) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        state: state,
+        lastUpdate: Date.now()
+    }).catch(() => {});
+}
+
+// Обновить здоровье игрока
+function updatePlayerHealth(roomCode, playerId, health) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        health: health,
+        lastUpdate: Date.now()
+    }).catch(() => {});
+}
+
+// Отправить позицию игрока
+function sendPlayerPosition(roomCode, playerId, x, y) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        x: x,
+        y: y,
+        lastUpdate: Date.now()
+    }).catch(() => {});
+}
+
+// Обновить прогресс генератора
+function updateGeneratorProgress(roomCode, generatorId, progress, repaired, repairingBy) {
+    if (!firebaseReady || !db) return;
+
+    const updates = {
+        progress: progress,
+        repaired: repaired,
+        lastUpdate: Date.now()
+    };
+    if (repairingBy !== undefined) {
+        updates.repairingBy = repairingBy;
     }
-    
-    return roomsRef.child(roomCode.toUpperCase()).once('value')
-        .then((snapshot) => {
-            if (!snapshot.exists()) {
-                return { success: false, error: 'Комната не найдена' };
-            }
-            
-            const roomData = snapshot.val();
-            
-            if (Object.keys(roomData.players || {}).length >= roomData.maxPlayers) {
-                return { success: false, error: 'Комната полна' };
-            }
-            
-            if (roomData.status === 'playing') {
-                return { success: false, error: 'Игра уже началась' };
-            }
-            
-            const playerData = {
-                id: playerId,
-                name: playerName || 'Игрок',
-                role: null,
-                ready: false,
-                connected: true,
-                joinedAt: Date.now()
-            };
-            
-            return roomsRef.child(roomCode.toUpperCase()).child('players').child(playerId).set(playerData)
-                .then(() => {
-                    currentRoomId = roomCode.toUpperCase();
-                    console.log('Присоединился к комнате:', roomCode);
-                    return { success: true, roomId: roomCode.toUpperCase(), roomData };
-                });
-        })
-        .catch((error) => {
-            console.error('Ошибка присоединения:', error);
-            return { success: false, error: error.message };
-        });
+
+    db.ref('gameSessions/' + roomCode).child('generators').child(generatorId).update(updates)
+        .catch(() => {});
 }
 
-function leaveRoom(roomCode, playerId) {
-    if (!firebaseReady) return Promise.resolve({ success: false, error: 'Firebase не готова' });
-    
-    return roomsRef.child(roomCode).child('players').child(playerId).remove()
-        .then(() => {
-            currentRoomId = null;
-            return { success: true };
-        })
-        .catch((error) => {
-            return { success: false, error: error.message };
-        });
+// Открыть ворота
+function setGateOpened(roomCode, opened) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('gate').set({
+        opened: opened,
+        openedAt: opened ? Date.now() : null
+    }).catch(() => {});
 }
 
-function subscribeToRoom(roomCode, callbacks) {
-    if (!firebaseReady) return null;
-    
-    if (unsubscribeRoom) unsubscribeRoom();
-    
-    unsubscribeRoom = roomsRef.child(roomCode).on('value', (snapshot) => {
-        if (callbacks.onUpdate) {
-            callbacks.onUpdate(snapshot.val());
+// Создать люк
+function setHatchSpawned(roomCode, x, y) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('hatch').set({
+        spawned: true,
+        x: x,
+        y: y,
+        opened: true,
+        closedByKiller: false
+    }).catch(() => {});
+}
+
+// Закрыть люк
+function closeHatch(roomCode) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('hatch').update({
+        opened: false,
+        closedByKiller: true
+    }).catch(() => {});
+}
+
+// Повесить выжившего на крюк
+function hookSurvivor(roomCode, playerId, hookId) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        state: 'hooked',
+        hookedAt: Date.now(),
+        hookId: hookId
+    }).catch(() => {});
+}
+
+// Снять с крюка
+function unhookSurvivor(roomCode, playerId) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        state: 'injured',
+        health: 50,
+        hookedAt: null,
+        hookId: null
+    }).catch(() => {});
+}
+
+// Убить игрока
+function setPlayerDead(roomCode, playerId) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        state: 'dead',
+        deadAt: Date.now()
+    }).catch(() => {});
+}
+
+// Ранить игрока
+function setPlayerInjured(roomCode, playerId) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        state: 'injured',
+        health: 50,
+        injuredAt: Date.now()
+    }).catch(() => {});
+}
+
+// Игрок упал (dying state)
+function setPlayerDying(roomCode, playerId) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        state: 'dying',
+        dyingAt: Date.now()
+    }).catch(() => {});
+}
+
+// Убийца несёт выжившего
+function setPlayerCarrying(roomCode, killerId, survivorId) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(killerId).update({
+        state: 'carrying',
+        carryingId: survivorId
+    }).catch(() => {});
+}
+
+// Убийца отпустил выжившего
+function setPlayerIdle(roomCode, playerId) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        state: 'alive',
+        carryingId: null
+    }).catch(() => {});
+}
+
+// Установить результат игры
+function setGameResult(roomCode, winner, message) {
+    if (!firebaseReady || !db) return;
+
+    return db.ref('gameSessions/' + roomCode).update({
+        status: 'finished',
+        winner: winner,
+        resultMessage: message,
+        endedAt: Date.now()
+    }).catch(() => {});
+}
+
+// ═══════ SUBSCRIBE ═══════
+
+// Подписаться на изменения сессии
+function subscribeToGameSession(roomCode, callbacks) {
+    if (!firebaseReady || !db) return null;
+
+    if (gameUnsubscribe) gameUnsubscribe();
+
+    const sessionRef = db.ref('gameSessions/' + roomCode);
+
+    gameUnsubscribe = sessionRef.on('value', (snapshot) => {
+        if (!snapshot.exists()) return;
+
+        const data = snapshot.val();
+
+        if (callbacks.onPlayersUpdate) {
+            callbacks.onPlayersUpdate(data.players || {});
+        }
+
+        if (callbacks.onGeneratorsUpdate) {
+            callbacks.onGeneratorsUpdate(data.generators || {});
+        }
+
+        if (callbacks.onGateUpdate && data.gate) {
+            callbacks.onGateUpdate(data.gate);
+        }
+
+        if (callbacks.onHatchUpdate && data.hatch) {
+            callbacks.onHatchUpdate(data.hatch);
+        }
+
+        if (callbacks.onStatusUpdate) {
+            callbacks.onStatusUpdate(data.status || 'waiting');
+        }
+
+        if (callbacks.onGameResult && data.status === 'finished') {
+            callbacks.onGameResult(data.winner, data.resultMessage);
         }
     }, (error) => {
         if (callbacks.onError) {
             callbacks.onError(error);
         }
     });
-    
-    return unsubscribeRoom;
+
+    return gameUnsubscribe;
 }
 
-function unsubscribeFromRoom() {
-    if (unsubscribeRoom) {
-        unsubscribeRoom();
-        unsubscribeRoom = null;
+// Отписаться от сессии
+function unsubscribeFromGameSession() {
+    if (gameUnsubscribe) {
+        gameUnsubscribe();
+        gameUnsubscribe = null;
     }
+    gameSessionRef = null;
 }
 
-function updatePlayerReady(roomCode, playerId, ready) {
-    if (!firebaseReady) return Promise.resolve({ success: false });
-    
-    return roomsRef.child(roomCode).child('players').child(playerId).child('ready').set(ready)
-        .then(() => ({ success: true }))
-        .catch(() => ({ success: false }));
+// Очистить сессию
+function cleanupGameSession(roomCode) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).remove().catch(() => {});
 }
 
-function startGame(roomCode) {
-    if (!firebaseReady) return Promise.resolve({ success: false, error: 'Firebase не готова' });
-    
-    return roomsRef.child(roomCode).once('value')
+// Выйти из сессии
+function leaveGameSession(roomCode, playerId) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).remove()
+        .catch(() => {});
+
+    unsubscribeFromGameSession();
+}
+
+// Инициализировать генераторы
+function initializeGenerators(roomCode) {
+    if (!firebaseReady || !db) return;
+
+    const generators = {};
+    for (let i = 0; i < CONFIG.GENERATOR_COUNT; i++) {
+        generators[i] = {
+            id: i,
+            progress: 0,
+            repaired: false,
+            repairingBy: null,
+            lastUpdate: Date.now()
+        };
+    }
+
+    db.ref('gameSessions/' + roomCode).child('generators').set(generators)
+        .catch(() => {});
+}
+
+// Проверить все ли генераторы починены
+function checkAllGeneratorsRepaired(roomCode) {
+    if (!firebaseReady || !db) return false;
+
+    return db.ref('gameSessions/' + roomCode).child('generators')
+        .once('value')
         .then((snapshot) => {
-            const roomData = snapshot.val();
-            const playerIds = Object.keys(roomData.players || {});
-            
-            if (playerIds.length < 2) {
-                return { success: false, error: 'Нужно минимум 2 игрока' };
-            }
-            
-            const killerIndex = Math.floor(Math.random() * playerIds.length);
-            const updates = {};
-            
-            playerIds.forEach((id, index) => {
-                updates[`players/${id}/role`] = index === killerIndex ? 'killer' : 'survivor';
-            });
-            
-            const generators = {};
-            for (let i = 1; i <= CONFIG.GENERATOR_COUNT; i++) {
-                generators[i] = { id: i, repaired: false, progress: 0, repairingBy: null };
-            }
-            
-            updates.status = 'playing';
-            updates.generators = generators;
-            updates.startedAt = Date.now();
-            
-            return roomsRef.child(roomCode).update(updates)
-                .then(() => {
-                    console.log('Игра началась:', roomCode);
-                    return { success: true };
-                });
+            const gens = snapshot.val();
+            if (!gens) return false;
+
+            const allRepaired = Object.values(gens).every(g => g.repaired);
+            return allRepaired;
         })
-        .catch((error) => {
-            return { success: false, error: error.message };
-        });
+        .catch(() => false);
 }
 
-function updatePlayerPosition(roomCode, playerId, x, y, rotation) {
-    if (!firebaseReady) return;
-    
-    roomsRef.child(roomCode).child('players').child(playerId).update({
-        x: x, y: y, rotation: rotation, lastUpdate: Date.now()
-    }).catch(() => {});
-}
+// ═══════ EXPORTS ═══════
 
-function updateGenerator(roomCode, generatorId, data) {
-    if (!firebaseReady) return;
-    
-    roomsRef.child(roomCode).child('generators').child(generatorId).update(data).catch(() => {});
-}
-
-function setPlayerCaught(roomCode, playerId) {
-    if (!firebaseReady) return;
-    
-    roomsRef.child(roomCode).child('players').child(playerId).update({
-        caught: true, caughtAt: Date.now()
-    }).catch(() => {});
-}
-
-function endGame(roomCode, result) {
-    if (!firebaseReady) return Promise.resolve({ success: false });
-    
-    return roomsRef.child(roomCode).update({
-        status: 'finished', result: result, endedAt: Date.now()
-    }).then(() => ({ success: true }))
-    .catch(() => ({ success: false }));
-}
-
-function getCurrentRoomId() {
-    return currentRoomId;
-}
-
-function isFirebaseReady() {
-    console.log('Проверка isFirebaseReady:', firebaseReady, typeof firebase, typeof roomsRef);
-    return firebaseReady && typeof firebase !== 'undefined' && roomsRef;
-}
+window.initFirebaseDB = initFirebaseDB;
+window.isFirebaseReady = isFirebaseReady;
+window.initGameSession = initGameSession;
+window.updatePlayerState = updatePlayerState;
+window.updatePlayerHealth = updatePlayerHealth;
+window.sendPlayerPosition = sendPlayerPosition;
+window.updateGeneratorProgress = updateGeneratorProgress;
+window.setGateOpened = setGateOpened;
+window.setHatchSpawned = setHatchSpawned;
+window.closeHatch = closeHatch;
+window.hookSurvivor = hookSurvivor;
+window.unhookSurvivor = unhookSurvivor;
+window.setPlayerDead = setPlayerDead;
+window.setPlayerInjured = setPlayerInjured;
+window.setPlayerDying = setPlayerDying;
+window.setPlayerCarrying = setPlayerCarrying;
+window.setPlayerIdle = setPlayerIdle;
+window.setGameResult = setGameResult;
+window.subscribeToGameSession = subscribeToGameSession;
+window.unsubscribeFromGameSession = unsubscribeFromGameSession;
+window.cleanupGameSession = cleanupGameSession;
+window.leaveGameSession = leaveGameSession;
+window.initializeGenerators = initializeGenerators;
+window.checkAllGeneratorsRepaired = checkAllGeneratorsRepaired;

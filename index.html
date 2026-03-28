@@ -46,18 +46,15 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script>
-try{
-  firebase.initializeApp({apiKey:"AIzaSyClnLMd7bt99ngZU7UzSxnStvYD3WXdkew",authDomain:"dbdtg-d24d7.firebaseapp.com",databaseURL:"https://dbdtg-d24d7-default-rtdb.firebaseio.com",projectId:"dbdtg-d24d7",storageBucket:"dbdtg-d24d7.firebasestorage.app",messagingSenderId:"48938774159",appId:"1:48938774159:web:3beaea874e68ed07104afa"});
-  window.fbDB=firebase.database();window.firebaseLoaded=true;
-  window.fbFS=firebase.firestore();window.fsLoaded=true;
-}catch(e){window.firebaseLoaded=false;window.fsLoaded=false;}
-</script>
+<script src="src/firebase/config.js"></script>
+<script src="src/firebase/database.js"></script>
+<script src="src/game/room.js"></script>
+<script src="src/game/game.js"></script>
 </head>
 <body>
 <div id="app">
   <div id="loading-screen" class="screen active"><div class="loader"></div><p id="load-text">Загрузка...</p></div>
-  <div id="main-menu" class="screen"><h1>☣ Miasma Massacre</h1><div class="menu-buttons"><button id="btn-create-lobby" class="btn primary">🔪 Создать лобби (Маньяк)</button><button id="btn-find-lobby" class="btn secondary">🔍 Найти игру (Выживший)</button><button id="btn-solo" class="btn" style="background:#222;margin-top:8px">🎮 Играть Solo</button></div><div class="version">v3.0</div></div>
+  <div id="main-menu" class="screen"><h1>☣ Miasma Massacre</h1><div class="menu-buttons"><button id="btn-create-lobby" class="btn primary">🔪 Создать лобби (Маньяк)</button><button id="btn-find-lobby" class="btn secondary">🔍 Найти игру (Выживший)</button><button id="btn-solo" class="btn" style="background:#222;margin-top:8px">🎮 Играть Solo</button></div><div class="version">v4.0</div></div>
   <div id="role-select" class="screen"><h2>Выбери роль</h2><button id="btn-play-killer" class="btn primary">🔪 Убийца</button><button id="btn-play-survivor" class="btn secondary">🏃 Выживший</button><button id="btn-back-role" class="btn" style="margin-top:15px;background:#222">← Назад</button></div>
   <div id="lobby-create" class="screen"><h2>🏠 Лобби: <span id="display-room-code" style="color:#fff;font-size:20px"></span></h2><p id="lobby-status" style="color:#aaa;margin-bottom:15px;text-align:center">Ожидание игроков...</p><div id="lobby-players" style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:300px;margin-bottom:15px"></div><button id="btn-start-game" class="btn primary" disabled style="background:#555">Начать игру</button><button id="btn-leave-lobby" class="btn secondary" style="margin-top:8px">← Выйти</button></div>
   <div id="lobby-join" class="screen"><h2>🔍 Поиск игры</h2><p id="found-lobbies" style="color:#aaa;text-align:center;margin-bottom:15px">Ищу доступные лобби...</p><button id="btn-leave-search" class="btn secondary">← Назад</button></div>
@@ -73,1443 +70,402 @@ try{
   <div id="game-over" class="screen"><h2 id="game-result-title">Победа!</h2><p id="game-result-message"></p><button id="btn-back-menu" class="btn primary">В меню</button></div>
 </div>
 <div id="toast"></div>
+
 <script>
 (function(){
 'use strict';
-/* ═══════ CONSTANTS ═══════ */
-var C={
-  MAP_W:2400,MAP_H:1800,
-  PLAYER_SPEED:145,KILLER_SPEED:162,INJURED_SPEED:115,DYING_SPEED:38,
-  HIT_DIST:58,INTERACT_DIST:62,
-  STUN_TIME:1.8,BOOST_TIME:2.2,
-  HOOK_TIME:90,
-  GEN_REPAIR_RATE:100/28,GEN_BREAK_RATE:100/10,
-  HEAL_RATE:100/18,UNHOOK_RATE:100/4,
-  GATE_RATE:100/20,
-  GEN_COUNT:5
-};
+
+/* ═══════ GLOBAL STATE ═══════ */
+let gUser = null;
+let gIsTelegram = false;
+let gMyId = null;
+let gRoomId = null;
+let gIsHost = false;
+let gMyRole = null;
+let gGameSessionId = null;
+
 /* ═══════ USER INIT ═══════ */
-var gUser=null,gIsTelegram=false;
-function getTelegramUser(){
-  try{if(Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user){
-    var u=Telegram.WebApp.initDataUnsafe.user;
-    return{id:'tg_'+u.id,name:u.first_name||'Игрок',username:u.username||'',photo:u.photo_url||''};
-  }}catch(e){}
-  return null;
-}
-function isRunningInTelegram(){
-  try{return!!Telegram&&!!Telegram.WebApp&&!!Telegram.WebApp.initDataUnsafe&&!!Telegram.WebApp.initDataUnsafe.user;}catch(e){return false;}
-}
-function initUser(callback){
-  var tgUser=getTelegramUser();
-  gIsTelegram=isRunningInTelegram();
-  if(gIsTelegram&&tgUser){
-    if(!window.fsLoaded){console.warn('Firestore not loaded');callback&&callback(null);return;}
-    window.fbFS.collection('users').doc(tgUser.id).get().then(function(doc){
-      if(doc.exists){
-        gUser={id:tgUser.id,name:tgUser.name,isNew:false};
-        console.log('Existing user:',gUser);
-      } else {
-        gUser={id:tgUser.id,name:tgUser.name,isNew:true};
-        window.fbFS.collection('users').doc(tgUser.id).set({
-          id:tgUser.id,name:tgUser.name,username:tgUser.username,photo:tgUser.photo,
-          createdAt:firebase.firestore.FieldValue.serverTimestamp(),lastSeen:firebase.firestore.FieldValue.serverTimestamp(),gamesPlayed:0,gamesWon:0
-        }).then(function(){
-          console.log('New user created:',gUser);
-        }).catch(function(e){console.error('User write error:',e);});
-      }
-      callback&&callback(gUser);
-    }).catch(function(e){console.error('User read error:',e);callback&&callback(null);});
-  } else {
-    var s=localStorage.getItem('uid');if(s){gUser={id:s,name:'Игрок',isNew:false};callback&&callback(gUser);return;}
-    var id='g_'+Date.now()+'_'+Math.random().toString(36).substr(2,6);
-    localStorage.setItem('uid',id);gUser={id:id,name:'Игрок',isNew:true};callback&&callback(gUser);
-  }
-}
-/* ═══════ UI ═══════ */
-var UI={
-  showScreen:function(n){['loading-screen','main-menu','role-select','lobby-create','lobby-join','game-screen','game-over'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('active');});var t=document.getElementById(n);if(t)t.classList.add('active');},
-  toast:function(msg){var t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.classList.remove('show');void t.offsetWidth;t.classList.add('show');},
-  gameOver:function(won,msg){var ti=document.getElementById('game-result-title');var m=document.getElementById('game-result-message');if(ti)ti.textContent=won?'🎉 ПОБЕДА!':'💀 ПОРАЖЕНИЕ';if(m)m.textContent=msg||'';UI.showScreen('game-over');}
-};
-/* ═══════ GAME STATE ═══════ */
-var gGame=null,gScene=null,gIsKiller=false;
-var gGenerators=[],gHooks=[],gGates=[],gHatch=null,gStaticGroup=null;
-var gExitOpen=false,gHatchOpen=false,gHatchClosed=false,gSurvivorsAlive=0;
-var gMyPlayer=null,gAIPlayers=[];
-var gKillerStun=0,gBoostTimer=0,gActionPressed=false,gInputVec={x:0,y:0};
-var _floatBars=[],_floatBarGfx=null,_keys={};
-var gGameEnded=false;
-var gRoomUnsubFirestore=null;
-
-/* ═══════ TEXTURES ═══════ */
-function buildTextures(sc){
-  var g=sc.make.graphics({x:0,y:0,add:false});
-
-  /* ─── GROUND with grass pattern ─── */
-  g.fillStyle(0x1a2610);g.fillRect(0,0,64,64);
-  g.fillStyle(0x243515);
-  for(var i=0;i<40;i++){g.fillRect(Math.random()*64,Math.random()*64,2,4);}
-  g.fillStyle(0x2a4018);
-  for(var i=0;i<25;i++){g.fillCircle(Math.random()*64,Math.random()*64,1.5);}
-  g.fillStyle(0x1e2e12);
-  g.fillRect(0,0,64,2);g.fillRect(0,62,64,2);
-  g.fillRect(0,0,2,64);g.fillRect(62,0,2,64);
-  g.generateTexture('ground',64,64);g.clear();
-
-  /* ─── FENCE POST ─── */
-  // Wooden post with grain
-  g.fillStyle(0x5a4a3a);g.fillRect(4,0,16,64);
-  g.fillStyle(0x6b5a48);g.fillRect(5,0,3,64);
-  g.fillStyle(0x4a3a2a);g.fillRect(18,0,2,64);
-  // Top cap
-  g.fillStyle(0x7a6a58);g.fillRect(2,-2,20,6);
-  g.fillStyle(0x8a7a68);g.fillRect(3,-2,18,2);
-  // Nails
-  g.fillStyle(0x888888);g.fillCircle(12,15,2);g.fillCircle(12,35,2);g.fillCircle(12,55,2);
-  // Shadow
-  g.fillStyle(0x2a2a2a,0.3);g.fillRect(20,5,4,58);
-  g.generateTexture('fence_post',24,64);g.clear();
-
-  /* ─── FENCE RAIL ─── */
-  g.fillStyle(0x5a4a3a);g.fillRect(0,2,64,8);
-  g.fillStyle(0x6b5a48);g.fillRect(0,2,64,2);
-  g.fillStyle(0x4a3a2a);g.fillRect(0,8,64,2);
-  g.generateTexture('fence_rail',64,12);g.clear();
-
-  /* ─── BRICK WALL ─── */
-  // Main brick color with mortar lines
-  g.fillStyle(0x8B4513);g.fillRect(0,0,48,24);
-  // Brick pattern
-  g.fillStyle(0x6B3008);g.fillRect(0,0,48,2); // mortar top
-  g.fillStyle(0x6B3008);g.fillRect(0,11,48,2); // mortar middle
-  g.fillStyle(0x6B3008);g.fillRect(0,22,48,2); // mortar bottom
-  g.fillStyle(0x6B3008);g.fillRect(0,0,2,24); // mortar left
-  g.fillStyle(0x6B3008);g.fillRect(23,0,2,12); // mortar vertical top
-  g.fillStyle(0x6B3008);g.fillRect(23,13,2,11); // mortar vertical bottom
-  g.fillStyle(0x6B3008);g.fillRect(47,0,2,24); // mortar right
-  // Brick highlights
-  g.fillStyle(0x9a5520,0.4);g.fillRect(3,3,18,6);
-  g.fillStyle(0x9a5520,0.4);g.fillRect(26,3,18,6);
-  g.fillStyle(0x9a5520,0.4);g.fillRect(3,14,18,6);
-  g.fillStyle(0x9a5520,0.4);g.fillRect(26,14,18,6);
-  g.generateTexture('brick',48,24);g.clear();
-
-  /* ─── STONE ─── */
-  g.fillStyle(0x696969);g.fillEllipse(22,18,42,34);
-  g.fillStyle(0x808080);g.fillEllipse(22,20,38,30);
-  // Cracks
-  g.fillStyle(0x505050);g.fillRect(18,8,2,12);g.fillRect(20,16,8,2);
-  g.fillStyle(0x909090);g.fillCircle(13,12,8);g.fillCircle(28,9,6);
-  g.fillStyle(0x606060);g.fillCircle(18,22,5);g.fillCircle(30,18,4);
-  g.fillStyle(0xa0a0a0,0.5);g.fillEllipse(15,14,6,4);
-  g.generateTexture('stone',44,38);g.clear();
-
-  /* ─── TREE ─── */
-  // Trunk with bark texture
-  g.fillStyle(0x4a3020);g.fillRect(16,40,10,30);
-  g.fillStyle(0x5a4030);g.fillRect(17,40,3,30);
-  g.fillStyle(0x3a2515);g.fillRect(23,40,2,30);
-  g.fillStyle(0x5a4030);g.fillRect(26,40,2,30);
-  // Main foliage layers (pine-like)
-  g.fillStyle(0x1a5a10);
-  g.fillCircle(21,35,20);
-  g.fillStyle(0x228a20);
-  g.fillCircle(21,30,17);
-  g.fillStyle(0x2aaa2a);
-  g.fillCircle(15,25,12);g.fillCircle(27,25,12);g.fillCircle(21,20,10);
-  g.fillStyle(0x35bb35);
-  g.fillCircle(12,22,8);g.fillCircle(30,22,8);g.fillCircle(21,15,8);
-  // Highlights
-  g.fillStyle(0x55dd55,0.3);
-  g.fillCircle(16,20,5);g.fillCircle(26,20,4);
-  g.generateTexture('tree',42,72);g.clear();
-
-  /* ─── BUSH ─── */
-  g.fillStyle(0x1a5a10);g.fillCircle(18,16,16);
-  g.fillStyle(0x228a20);g.fillCircle(9,14,10);g.fillCircle(26,12,11);g.fillCircle(18,8,9);
-  g.fillStyle(0x2aaa2a);g.fillCircle(6,16,6);g.fillCircle(30,16,6);g.fillCircle(18,4,6);
-  // Berries/details
-  g.fillStyle(0x8B0000);g.fillCircle(12,10,2);g.fillCircle(24,14,2);g.fillCircle(18,20,2);
-  g.generateTexture('bush',36,30);g.clear();
-
-  /* ─── SHACK WALL (wood planks) ─── */
-  g.fillStyle(0x7a5a3a);g.fillRect(0,0,48,20);
-  // Wood plank lines
-  g.fillStyle(0x6a4a2a);g.fillRect(0,0,48,2);
-  g.fillStyle(0x5a3a1a);g.fillRect(0,4,48,1);
-  g.fillStyle(0x6a4a2a);g.fillRect(0,9,48,1);
-  g.fillStyle(0x5a3a1a);g.fillRect(0,14,48,1);
-  g.fillStyle(0x6a4a2a);g.fillRect(0,19,48,1);
-  // Vertical plank joints
-  g.fillStyle(0x4a2a0a);g.fillRect(15,0,2,20);g.fillRect(32,0,2,20);
-  // Wood grain highlights
-  g.fillStyle(0x8a6a4a,0.4);g.fillRect(2,2,12,2);g.fillRect(18,6,10,2);g.fillRect(35,11,10,2);
-  g.generateTexture('shack_wall',48,20);g.clear();
-
-  /* ─── GENERATOR (detailed machine) ─── */
-  // Main body
-  g.fillStyle(0x3a3a40);g.fillRect(0,0,48,36);
-  // Metal panel
-  g.fillStyle(0x4a4a52);g.fillRect(2,2,28,32);
-  g.fillStyle(0x5a5a62);g.fillRect(3,3,26,30);
-  // Vents
-  g.fillStyle(0x2a2a30);for(var vi=0;vi<4;vi++)g.fillRect(5,6+vi*7,20,4);
-  // Control panel
-  g.fillStyle(0x222228);g.fillRect(32,4,14,14);
-  g.fillStyle(0x00ff44);g.fillRect(34,6,4,6); // green LED
-  g.fillStyle(0xff2222);g.fillRect(40,6,4,6); // red LED
-  // Knobs
-  g.fillStyle(0x888888);g.fillCircle(35,18,3);g.fillCircle(42,18,3);
-  g.fillStyle(0x666666);g.fillCircle(35,18,1.5);g.fillCircle(42,18,1.5);
-  // Engine details
-  g.fillStyle(0x555560);g.fillRect(4,26,10,8);
-  g.fillStyle(0x666670);g.fillRect(5,27,8,6);
-  g.fillStyle(0x333338);g.fillRect(16,26,10,8);
-  // Bolts
-  g.fillStyle(0x888888);g.fillCircle(5,5,2);g.fillCircle(23,5,2);g.fillCircle(5,33,2);g.fillCircle(23,33,2);
-  // Highlight edge
-  g.fillStyle(0x6a6a72,0.5);g.fillRect(0,0,48,2);
-  g.generateTexture('gen',48,36);g.clear();
-
-  /* ─── HOOK ─── */
-  // Metal hook base
-  g.fillStyle(0x444450);g.fillCircle(16,16,14);
-  g.fillStyle(0x666670);g.fillCircle(16,13,10);
-  g.fillStyle(0x555560);g.fillCircle(16,14,8);
-  // Hook curve
-  g.fillStyle(0x333340);g.fillRect(13,4,6,12);
-  g.fillStyle(0x333340);g.fillCircle(16,22,5);
-  g.fillStyle(0x888890);g.fillCircle(16,4,4);
-  // Chain
-  g.fillStyle(0x666670);g.fillRect(15,0,2,6);
-  g.fillStyle(0x555560);g.fillCircle(16,0,3);
-  // Shine
-  g.fillStyle(0xaaaaaa,0.3);g.fillCircle(13,11,3);
-  g.generateTexture('hook',32,32);g.clear();
-
-  /* ─── GATE (wooden doors) ─── */
-  // Door frame
-  g.fillStyle(0x5a3a1a);g.fillRect(0,0,32,64);
-  // Left door
-  g.fillStyle(0x7a5a3a);g.fillRect(2,2,13,60);
-  g.fillStyle(0x6a4a2a);g.fillRect(2,2,13,2);g.fillRect(2,14,13,2);g.fillRect(2,30,13,2);g.fillRect(2,46,13,2);
-  // Right door
-  g.fillStyle(0x7a5a3a);g.fillRect(17,2,13,60);
-  g.fillStyle(0x6a4a2a);g.fillRect(17,2,13,2);g.fillRect(17,14,13,2);g.fillRect(17,30,13,2);g.fillRect(17,46,13,2);
-  // Metal bands
-  g.fillStyle(0x444450);g.fillRect(0,10,32,4);g.fillRect(0,50,32,4);
-  // Handles
-  g.fillStyle(0x888890);g.fillCircle(14,32,3);g.fillCircle(18,32,3);
-  g.fillStyle(0x666670);g.fillCircle(14,32,1.5);g.fillCircle(18,32,1.5);
-  g.generateTexture('gate',32,64);g.clear();
-
-  /* ─── HATCH (trapdoor) ─── */
-  // Outer ring
-  g.fillStyle(0x3a3a30);g.fillCircle(20,20,20);
-  g.fillStyle(0x5a5a4a);g.fillCircle(20,20,17);
-  g.fillStyle(0x3a3a30);g.fillCircle(20,20,14);
-  // Inner dark
-  g.fillStyle(0x1a1a10);g.fillCircle(20,20,10);
-  // Handle ring
-  g.fillStyle(0x666660);g.fillCircle(20,20,5);
-  g.fillStyle(0x888880);g.fillCircle(20,20,3);
-  g.fillStyle(0x555550);g.fillCircle(20,20,2);
-  // Cross bars
-  g.fillStyle(0x4a4a40);g.fillRect(17,6,6,28);g.fillRect(6,17,28,6);
-  g.generateTexture('hatch',40,40);g.clear();
-
-  /* ─── SURVIVOR 1 - Male with red shirt ─── */
-  // Shadow
-  g.fillStyle(0x000000,0.3);g.fillEllipse(20,60,24,8);
-  // Legs (blue jeans)
-  g.fillStyle(0x2c3e70);g.fillRect(12,44,8,20);
-  g.fillStyle(0x2c3e70);g.fillRect(22,44,8,20);
-  g.fillStyle(0x1a2a50);g.fillRect(12,60,8,4); // shoes
-  g.fillStyle(0x1a2a50);g.fillRect(22,60,8,4);
-  // Body (red shirt)
-  g.fillStyle(0xc0392b);g.fillRect(10,26,22,20);
-  g.fillStyle(0xe74c3c);g.fillRect(11,27,20,18); // highlight
-  // Collar
-  g.fillStyle(0xa93226);g.fillRect(17,26,8,4);
-  // Arms
-  g.fillStyle(0xc0392b);g.fillRect(4,28,7,16);
-  g.fillStyle(0xc0392b);g.fillRect(31,28,7,16);
-  g.fillStyle(0xffccaa);g.fillRect(5,42,5,6); // hands
-  g.fillStyle(0xffccaa);g.fillRect(32,42,5,6);
-  // Neck
-  g.fillStyle(0xffccaa);g.fillRect(17,22,6,5);
-  // Head
-  g.fillStyle(0xffccaa);g.fillCircle(20,14,11);
-  // Hair (dark brown)
-  g.fillStyle(0x3d2314);g.fillCircle(20,8,10);
-  g.fillStyle(0x3d2314);g.fillRect(10,6,20,8);
-  g.fillStyle(0x2a1808);g.fillRect(12,4,16,4);
-  // Eyes
-  g.fillStyle(0x222222);g.fillCircle(16,13,2.5);
-  g.fillStyle(0x222222);g.fillCircle(24,13,2.5);
-  g.fillStyle(0xffffff);g.fillCircle(15,12,1);
-  g.fillStyle(0xffffff);g.fillCircle(23,12,1);
-  // Mouth (slight smile)
-  g.fillStyle(0xcc8877);g.fillRect(17,18,6,2);
-  g.generateTexture('s1',40,64);g.clear();
-
-  /* ─── SURVIVOR 2 - Female with purple dress ─── */
-  g.fillStyle(0x000000,0.3);g.fillEllipse(20,60,22,7);
-  // Legs (bare)
-  g.fillStyle(0xffccaa);g.fillRect(14,48,5,16);
-  g.fillStyle(0xffccaa);g.fillRect(23,48,5,16);
-  g.fillStyle(0xffaa99);g.fillRect(13,62,7,3); // shoes
-  g.fillStyle(0xffaa99);g.fillRect(22,62,7,3);
-  // Dress
-  g.fillStyle(0x8e44ad);g.fillRect(11,30,20,22);
-  g.fillStyle(0x9b59b6);g.fillRect(12,31,18,20); // highlight
-  g.fillStyle(0x7d3c98);g.fillRect(11,30,20,3);
-  // Sleeves
-  g.fillStyle(0x8e44ad);g.fillRect(4,32,8,12);
-  g.fillStyle(0x9b59b6);g.fillRect(30,32,8,12);
-  g.fillStyle(0xffccaa);g.fillRect(5,42,5,5);
-  g.fillStyle(0xffccaa);g.fillRect(32,42,5,5);
-  // Neck
-  g.fillStyle(0xffccaa);g.fillRect(17,24,6,7);
-  // Head
-  g.fillStyle(0xffccaa);g.fillCircle(20,14,10);
-  // Long hair
-  g.fillStyle(0x4a3020);g.fillCircle(20,10,10);
-  g.fillStyle(0x5a4030);g.fillCircle(12,14,7);g.fillCircle(28,14,7);
-  g.fillStyle(0x4a3020);g.fillRect(10,12,20,16);
-  g.fillStyle(0x3a2515);g.fillRect(10,20,4,10);
-  g.fillStyle(0x3a2515);g.fillRect(26,20,4,10);
-  // Eyes (larger, with lashes)
-  g.fillStyle(0x222222);g.fillCircle(16,13,2.5);
-  g.fillStyle(0x222222);g.fillCircle(24,13,2.5);
-  g.fillStyle(0x6a9bd1);g.fillCircle(16,13,1.5);
-  g.fillStyle(0x6a9bd1);g.fillCircle(24,13,1.5);
-  g.fillStyle(0xffffff);g.fillCircle(15,12,1);
-  g.fillStyle(0xffffff);g.fillCircle(23,12,1);
-  // Lips
-  g.fillStyle(0xc0392b);g.fillCircle(20,18,3);
-  g.generateTexture('s2',40,65);g.clear();
-
-  /* ─── SURVIVOR 3 - Male in green jacket ─── */
-  g.fillStyle(0x000000,0.3);g.fillEllipse(20,60,24,8);
-  // Legs (dark pants)
-  g.fillStyle(0x2c3e50);g.fillRect(12,44,8,20);
-  g.fillStyle(0x2c3e50);g.fillRect(22,44,8,20);
-  g.fillStyle(0x1a252f);g.fillRect(12,60,8,4);
-  g.fillStyle(0x1a252f);g.fillRect(22,60,8,4);
-  // Body (green jacket)
-  g.fillStyle(0x27ae60);g.fillRect(9,26,24,20);
-  g.fillStyle(0x2ecc71);g.fillRect(10,27,22,18);
-  // Zipper
-  g.fillStyle(0x1a8a40);g.fillRect(20,27,3,18);
-  // Collar
-  g.fillStyle(0x229954);g.fillRect(15,26,12,4);
-  // Arms
-  g.fillStyle(0x27ae60);g.fillRect(3,28,7,16);
-  g.fillStyle(0x2ecc71);g.fillRect(32,28,7,16);
-  g.fillStyle(0xffccaa);g.fillRect(4,42,5,6);
-  g.fillStyle(0xffccaa);g.fillRect(33,42,5,6);
-  // Neck
-  g.fillStyle(0xffccaa);g.fillRect(17,22,6,5);
-  // Head
-  g.fillStyle(0xffccaa);g.fillCircle(20,14,11);
-  // Hair (black buzz cut)
-  g.fillStyle(0x1a1a1a);g.fillCircle(20,9,10);
-  g.fillStyle(0x111111);g.fillRect(10,7,20,6);
-  // Eyes
-  g.fillStyle(0x222222);g.fillCircle(16,13,2.5);
-  g.fillStyle(0x222222);g.fillCircle(24,13,2.5);
-  g.fillStyle(0xffffff);g.fillCircle(15,12,1);
-  g.fillStyle(0xffffff);g.fillCircle(23,12,1);
-  // Stubborn mouth
-  g.fillStyle(0xcc8877);g.fillRect(16,18,8,2);
-  g.generateTexture('s3',40,64);g.clear();
-
-  /* ─── SURVIVOR 4 - Female in yellow top ─── */
-  g.fillStyle(0x000000,0.3);g.fillEllipse(20,60,20,7);
-  // Legs (blue skirt)
-  g.fillStyle(0x3498db);g.fillRect(13,44,6,8);
-  g.fillStyle(0x3498db);g.fillRect(23,44,6,8);
-  g.fillStyle(0xffccaa);g.fillRect(13,52,6,12);
-  g.fillStyle(0xffccaa);g.fillRect(23,52,6,12);
-  g.fillStyle(0x333333);g.fillRect(12,62,8,3);
-  g.fillStyle(0x333333);g.fillRect(22,62,8,3);
-  // Skirt
-  g.fillStyle(0x3498db);g.fillRect(12,44,18,10);
-  g.fillStyle(0x5dade2);g.fillRect(13,45,16,8);
-  // Body (yellow top)
-  g.fillStyle(0xf1c40f);g.fillRect(11,28,20,18);
-  g.fillStyle(0xf4d03f);g.fillRect(12,29,18,16);
-  // Arms
-  g.fillStyle(0xf1c40f);g.fillRect(4,30,8,12);
-  g.fillStyle(0xf4d03f);g.fillRect(30,30,8,12);
-  g.fillStyle(0xffccaa);g.fillRect(5,40,5,6);
-  g.fillStyle(0xffccaa);g.fillRect(32,40,5,6);
-  // Neck
-  g.fillStyle(0xffccaa);g.fillRect(17,24,6,5);
-  // Head
-  g.fillStyle(0xffccaa);g.fillCircle(20,14,10);
-  // Hair (ponytail)
-  g.fillStyle(0x8B4513);g.fillCircle(20,10,10);
-  g.fillStyle(0xa0522d);g.fillCircle(14,8,6);
-  g.fillStyle(0x8B4513);g.fillCircle(28,8,5);
-  // Ponytail
-  g.fillStyle(0x8B4513);g.fillRect(26,6,4,16);
-  g.fillStyle(0xa0522d);g.fillCircle(28,22,5);
-  // Eyes
-  g.fillStyle(0x222222);g.fillCircle(16,13,2.5);
-  g.fillStyle(0x222222);g.fillCircle(24,13,2.5);
-  g.fillStyle(0x8B4513);g.fillCircle(16,13,1.5);
-  g.fillStyle(0x8B4513);g.fillCircle(24,13,1.5);
-  g.fillStyle(0xffffff);g.fillCircle(15,12,1);
-  g.fillStyle(0xffffff);g.fillCircle(23,12,1);
-  // Smile
-  g.fillStyle(0xc0392b);g.fillCircle(20,17,2);
-  g.generateTexture('s4',40,65);g.clear();
-
-  /* ─── KILLER - Menacing figure ─── */
-  // Shadow
-  g.fillStyle(0x000000,0.4);g.fillEllipse(20,66,30,10);
-  // Legs (wide stance, boots)
-  g.fillStyle(0x1a1a1a);g.fillRect(8,52,10,18);
-  g.fillStyle(0x1a1a1a);g.fillRect(24,52,10,18);
-  g.fillStyle(0x111111);g.fillRect(6,66,14,6); // left boot
-  g.fillStyle(0x111111);g.fillRect(22,66,14,6); // right boot
-  g.fillStyle(0x2a2a2a);g.fillRect(8,66,10,3);
-  g.fillStyle(0x2a2a2a);g.fillRect(24,66,10,3);
-  // Body (bulky dark coat)
-  g.fillStyle(0x1a1a1a);g.fillRect(6,28,30,26);
-  g.fillStyle(0x252525);g.fillRect(7,29,28,24);
-  // Coat details
-  g.fillStyle(0x111111);g.fillRect(6,28,30,3);
-  g.fillStyle(0x333333);g.fillRect(18,29,5,24); // center line
-  // Chest (bloody apron)
-  g.fillStyle(0x8B0000);g.fillRect(10,32,22,18);
-  g.fillStyle(0x6B0000);g.fillRect(11,33,20,16);
-  // Blood stains
-  g.fillStyle(0x990000);g.fillCircle(15,38,4);
-  g.fillStyle(0x990000);g.fillCircle(24,42,3);
-  g.fillStyle(0x990000);g.fillCircle(20,48,3);
-  // Arms (long sleeves)
-  g.fillStyle(0x1a1a1a);g.fillRect(0,28,7,22);
-  g.fillStyle(0x1a1a1a);g.fillRect(35,28,7,22);
-  g.fillStyle(0x252525);g.fillRect(1,29,5,20);
-  g.fillStyle(0x252525);g.fillRect(36,29,5,20);
-  // Hands (gloved)
-  g.fillStyle(0x111111);g.fillRect(1,48,6,8);
-  g.fillStyle(0x111111);g.fillRect(35,48,6,8);
-  // Neck
-  g.fillStyle(0x3a3a3a);g.fillRect(16,22,8,8);
-  // Head (mask)
-  g.fillStyle(0x2a2a2a);g.fillCircle(20,14,13);
-  g.fillStyle(0x1a1a1a);g.fillRect(8,6,26,16);
-  // Mask (white porcelain)
-  g.fillStyle(0xeeeeee);g.fillRect(9,7,24,14);
-  g.fillStyle(0xdddddd);g.fillRect(10,8,22,12);
-  // Eye holes
-  g.fillStyle(0x000000);g.fillRect(11,10,7,6);
-  g.fillStyle(0x000000);g.fillRect(24,10,7,6);
-  // Glowing red eyes
-  g.fillStyle(0xff0000);g.fillCircle(14,13,3);
-  g.fillStyle(0xff0000);g.fillCircle(26,13,3);
-  g.fillStyle(0xff4444);g.fillCircle(14,13,1.5);
-  g.fillStyle(0xff4444);g.fillCircle(26,13,1.5);
-  // Stitches on mask
-  g.fillStyle(0xaaaaaa);g.fillRect(9,14,24,1);
-  g.fillStyle(0x888888);g.fillCircle(20,14,1);
-  // Mouth (jagged)
-  g.fillStyle(0x111111);g.fillRect(14,18,12,4);
-  g.fillStyle(0x333333);g.fillRect(14,18,2,4);
-  g.fillStyle(0x333333);g.fillRect(18,18,2,4);
-  g.fillStyle(0x333333);g.fillRect(22,18,2,4);
-  g.fillStyle(0x333333);g.fillRect(26,18,2,4);
-  // Weapon (knife) - just a hint
-  g.fillStyle(0x888888);g.fillRect(36,40,3,16);
-  g.fillStyle(0xaaaaaa);g.fillRect(36,38,3,4);
-  g.generateTexture('killer',40,72);g.clear();
-
-  g.destroy();
-}
-
-/* ═══════ MAP LAYOUT ═══════ */
-function getMapObstacles(){
-  var obs=[];
-  function addBrickRow(sx,sy,n){for(var i=0;i<n;i++)obs.push({t:'brick',x:sx+i*50,y:sy,sw:46,sh:22,solid:true});}
-  function addBrickCol(sx,sy,n){for(var i=0;i<n;i++)obs.push({t:'brick',x:sx,y:sy+i*26,sw:46,sh:22,solid:true});}
-  // Brick wall compounds
-  addBrickRow(280,260,5);addBrickCol(280,260,6);
-  addBrickRow(880,340,6);addBrickCol(880,340,5);
-  addBrickRow(1880,580,5);addBrickCol(1880,580,6);
-  addBrickRow(360,1380,5);addBrickCol(360,1380,5);
-  addBrickRow(1580,1040,5);addBrickCol(1580,1040,4);
-  addBrickRow(1080,1480,6);
-  addBrickCol(680,820,5);addBrickRow(680,820,4);
-  // More corridors
-  addBrickRow(1200,500,4);addBrickCol(1200,500,4);
-  addBrickRow(500,1100,4);addBrickCol(500,1100,4);
-  addBrickRow(1700,1300,4);addBrickCol(1700,1300,4);
-
-  // Stones
-  [[200,400],[500,200],[1200,300],[1800,200],[2200,500],
-   [300,1000],[600,1400],[1400,900],[2000,1100],[1700,1600],
-   [800,1600],[1100,700],[1500,400],[2100,1400],[450,700],
-   [950,1200],[1700,350],[2300,900],[400,1550],[1600,250],
-   [1050,1600],[750,450],[1800,1000],[2200,1200]
-  ].forEach(function(p){obs.push({t:'stone',x:p[0],y:p[1],sw:44,sh:38,solid:true});});
-
-  // Trees (decorative)
-  [[150,150],[600,100],[1100,150],[1600,100],[2200,200],
-   [100,600],[400,400],[900,500],[1400,300],[2000,400],
-   [150,1100],[500,900],[1000,1300],[1500,1100],[2100,800],
-   [300,1700],[700,1700],[1200,1700],[1700,1700],[2200,1600],
-   [50,400],[50,1200],[2350,600],[2350,1200],
-   [800,300],[1300,550],[1900,1000],[700,1100],[550,1650],
-   [1400,1550],[850,750],[1600,700],[2150,1000]
-  ].forEach(function(p){obs.push({t:'tree',x:p[0],y:p[1],sw:40,sh:68,solid:false});});
-
-  // Bushes (decorative)
-  [[250,500],[700,300],[1050,400],[1800,700],[2100,300],
-   [350,1200],[800,1000],[1300,1400],[1600,800],[2200,1200],
-   [600,600],[1100,900],[1700,1300],[900,1500],[2000,600],
-   [450,850],[1250,750],[1750,900],[600,1250],[1850,1450]
-  ].forEach(function(p){obs.push({t:'bush',x:p[0],y:p[1],sw:36,sh:30,solid:false});});
-
-  // Shack 1
-  addShack(obs,500,1050);
-  // Shack 2
-  addShack(obs,1700,650);
-  // Shack 3
-  addShack(obs,1050,1200);
-
-  return obs;
-}
-
-function addShack(obs,sx,sy){
-  var sw2=240,sh2=160,wt=20;
-  // top wall with door gap
-  obs.push({t:'shack_wall',x:sx,y:sy,sw:90,sh:wt,solid:true});
-  obs.push({t:'shack_wall',x:sx+sw2-90,y:sy,sw:90,sh:wt,solid:true});
-  // bottom wall with door gap
-  obs.push({t:'shack_wall',x:sx,y:sy+sh2,sw:90,sh:wt,solid:true});
-  obs.push({t:'shack_wall',x:sx+sw2-90,y:sy+sh2,sw:90,sh:wt,solid:true});
-  // left wall
-  for(var i=0;i<sh2/wt;i++)obs.push({t:'shack_wall',x:sx,y:sy+i*wt,sw:wt,sh:wt,solid:true});
-  // right wall
-  for(var j=0;j<sh2/wt;j++)obs.push({t:'shack_wall',x:sx+sw2-wt,y:sy+j*wt,sw:wt,sh:wt,solid:true});
-}
-
-/* ═══════ START / STOP ═══════ */
-function startSoloGame(killerMode){
-  gIsKiller=killerMode;
-  resetState();
-  showGameScreen();
-  setTimeout(initPhaser,80);
-}
-function resetState(){
-  gGameEnded=false;
-  gGenerators=[];gHooks=[];gGates=[];gHatch=null;gStaticGroup=null;
-  gExitOpen=false;gHatchOpen=false;gHatchClosed=false;
-  gSurvivorsAlive=gIsKiller?3:0;
-  gMyPlayer=null;gAIPlayers=[];
-  gKillerStun=0;gBoostTimer=0;gActionPressed=false;gInputVec={x:0,y:0};
-  _floatBars=[];_floatBarGfx=null;
-}
-function showGameScreen(){
-  UI.showScreen('game-screen');
-  var gs=document.getElementById('game-screen');
-  var gc=document.getElementById('game-container');
-  if(gs)gs.style.cssText='display:block!important;position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;z-index:100!important;';
-  if(gc)gc.style.cssText='display:block!important;position:fixed!important;top:0!important;left:0!important;width:100%!important;height:100%!important;background:#1a1a1a!important;z-index:1!important;';
-}
-function stopGame(){
-  removeControls();
-  if(gGame){gGame.destroy(true);gGame=null;}
-  gScene=null;
-}
-function initPhaser(){
-  if(gGame){gGame.destroy(true);gGame=null;}
-  document.getElementById('game-container').innerHTML='';
-  var W=window.innerWidth||800,H=window.innerHeight||600;
-  gGame=new Phaser.Game({
-    type:Phaser.CANVAS,parent:'game-container',width:W,height:H,
-    backgroundColor:'#1a1a1a',
-    physics:{default:'arcade',arcade:{gravity:{y:0},debug:false}},
-    scene:{preload:gPreload,create:gCreate,update:gUpdate},
-    scale:{mode:Phaser.Scale.RESIZE,autoCenter:Phaser.Scale.CENTER_BOTH}
-  });
-}
-
-/* ═══════ PHASER SCENE ═══════ */
-function gPreload(){buildTextures(this);}
-
-function gCreate(){
-  gScene=this;
-  var W=C.MAP_W,H=C.MAP_H;
-  this.physics.world.setBounds(0,0,W,H);
-
-  // Ground with multiple layers for depth
-  for(var x=0;x<W;x+=64)for(var y=0;y<H;y+=64){
-    var tile=this.add.image(x+32,y+32,'ground').setAlpha(0.6+Math.random()*0.35);
-    tile.setDepth(0);
-  }
-
-  // Dark grass patches for variation
-  var darkPatches=[[300,300],[900,500],[1500,400],[600,900],[1800,800],[1200,1200],[2100,1400],[400,1600]];
-  darkPatches.forEach(function(p){
-    var c=this.add.graphics();
-    c.fillStyle(0x0a1208,0.4);
-    c.fillCircle(p[0],p[1],80+Math.random()*60);
-    c.setDepth(1);
-  },this);
-
-  // Static group for all solid obstacles
-  gStaticGroup=this.physics.add.staticGroup();
-
-  // Iron fence border (visual + solid)
-  buildFence.call(this,W,H);
-
-  // Obstacles
-  var obstacles=getMapObstacles();
-  obstacles.forEach(function(o){
-    if(o.solid){
-      var sp=gStaticGroup.create(o.x+o.sw/2, o.y+o.sh/2, o.t);
-      sp.setDisplaySize(o.sw,o.sh);
-      sp.refreshBody();
-      sp.setDepth(o.y+o.sh/2);
-    } else {
-      var img=gScene.add.image(o.x+o.sw/2, o.y+o.sh/2, o.t);
-      img.setDisplaySize(o.sw,o.sh);
-      img.setDepth(o.y+o.sh/2+1);
-    }
-  });
-
-  // Ambient particles (fireflies/dust)
-  for(var i=0;i<50;i++){
-    var px=Math.random()*W,py=Math.random()*H;
-    var dot=this.add.graphics();
-    dot.fillStyle(0xffffaa,0.3+Math.random()*0.3);
-    dot.fillCircle(0,0,1+Math.random()*2);
-    dot.setDepth(5000);
-    dot._baseY=py;dot._speed=0.5+Math.random();dot._phase=Math.random()*Math.PI*2;
-  }
-
-  // Generators with glow
-  [{x:300,y:200},{x:2100,y:200},{x:1200,y:900},{x:300,y:1600},{x:2100,y:1600}]
-  .forEach(function(p,i){
-    // Glow aura
-    var glow=this.add.graphics();
-    glow.fillStyle(0x00ff44,0.1);
-    glow.fillCircle(p.x,p.y,40);
-    glow.setDepth(p.y+1);
-    // Generator sprite
-    var sp=this.add.sprite(p.x,p.y,'gen').setDepth(p.y+2);
-    sp.genId=i;sp.progress=0;sp.repaired=false;
-    sp.barGfx=this.add.graphics().setDepth(p.y+3);
-    sp.bx=p.x;sp.by=p.y;
-    sp.glowGfx=glow;
-    gGenerators.push(sp);
-  },this);
-
-  // Hooks with subtle glow
-  [{x:500,y:450},{x:1900,y:450},{x:500,y:1350},{x:1900,y:1350},
-   {x:1200,y:500},{x:1200,y:1300},{x:800,y:900},{x:1600,y:900}]
-  .forEach(function(p){
-    var sp=this.add.sprite(p.x,p.y,'hook').setDepth(p.y+1).setScale(1.3);
-    sp.occupied=false;sp.hookedSurvivor=null;sp.hookTimer=0;sp.bx=p.x;sp.by=p.y;
-    gHooks.push(sp);
-  },this);
-
-  // Gates (left & right edges) with glow when open
-  [{x:30,y:900},{x:C.MAP_W-30,y:900}]
-  .forEach(function(p){
-    var sp=this.add.sprite(p.x,p.y,'gate').setDepth(p.y+1).setScale(1.8);
-    sp.progress=0;sp.opened=false;
-    sp.barGfx=this.add.graphics().setDepth(p.y+2);
-    sp.bx=p.x;sp.by=p.y;
-    gGates.push(sp);
-  },this);
-
-  // Spawn players
-  spawnPlayers.call(this);
-
-  // Camera
-  this.cameras.main.setBounds(0,0,W,H);
-  this.cameras.main.startFollow(gMyPlayer.sprite,true,0.1,0.1);
-  this.cameras.main.setBackgroundColor('#050505');
-
-  // Fog overlay (dark vignette at edges)
-  var fog=this.add.graphics().setScrollFactor(0).setDepth(59999);
-  fog.fillStyle(0x000000,0.6);
-  fog.fillRect(0,0,W,H);
-  // Clear center for visibility
-  fog.fillStyle(0x000000,0);
-  var cx=W/2,cy=H/2;
-  fog.fillCircle(cx,cy,Math.min(W,H)*0.35);
-  // Gradient edges
-  for(var r=Math.min(W,H)*0.35;r<Math.max(W,H)*0.7;r+=50){
-    fog.fillStyle(0x000000,0.02);
-    fog.fillCircle(cx,cy,r);
-  }
-
-  // Floating bar graphics (world space)
-  _floatBarGfx=this.add.graphics().setDepth(55000);
-
-  // Controls
-  createControls();
-
-  UI.toast(gIsKiller?'🔪 Поймай всех выживших!':'⚙️ Почини все генераторы!');
-}
-
-function buildFence(W,H){
-  var step=48;
-  // Top & bottom rows
-  for(var x=0;x<=W;x+=step){
-    placeFencePost.call(this,x,0);
-    placeFencePost.call(this,x,H);
-  }
-  // Left & right columns (skip corners)
-  for(var y=step;y<H;y+=step){
-    placeFencePost.call(this,0,y);
-    placeFencePost.call(this,W,y);
-  }
-}
-function placeFencePost(x,y){
-  var sp=gStaticGroup.create(x,y,'fence_post');
-  sp.setDisplaySize(20,60);
-  sp.refreshBody();
-}
-
-function spawnPlayers(){
-  var kSpawn={x:1200,y:900};
-  var sSpawns=[{x:200,y:200},{x:2200,y:200},{x:200,y:1600},{x:2200,y:1600}];
-
-  if(gIsKiller){
-    gMyPlayer=makePlayer(this,kSpawn.x,kSpawn.y,'killer',true);
-    this.physics.add.collider(gMyPlayer.sprite,gStaticGroup);
-    var sTex=['s1','s2','s3'];
-    sTex.forEach(function(t,i){
-      var ai=makePlayer(gScene,sSpawns[i].x,sSpawns[i].y,t,false);
-      ai.aiDir={x:0,y:0};ai.aiTimer=0;
-      gScene.physics.add.collider(ai.sprite,gStaticGroup);
-      gAIPlayers.push(ai);
-    });
-    // survivors collide with each other
-    gAIPlayers.forEach(function(a){
-      gScene.physics.add.collider(gMyPlayer.sprite,a.sprite);
-      gAIPlayers.forEach(function(b){if(a!==b)gScene.physics.add.collider(a.sprite,b.sprite);});
-    });
-  } else {
-    gMyPlayer=makePlayer(this,sSpawns[0].x,sSpawns[0].y,'s1',true);
-    this.physics.add.collider(gMyPlayer.sprite,gStaticGroup);
-    // AI killer far away
-    var aiK=makePlayer(this,kSpawn.x,kSpawn.y,'killer',false);
-    aiK.isAIKiller=true;aiK.aiTimer=0;aiK.aiHitCooldown=0;
-    this.physics.add.collider(aiK.sprite,gStaticGroup);
-    this.physics.add.collider(gMyPlayer.sprite,aiK.sprite);
-    gAIPlayers.push(aiK);
-    gSurvivorsAlive=1;
-  }
-}
-
-function makePlayer(scene,x,y,tex,isMe){
-  var sp=scene.add.sprite(x,y,tex);
-  sp.setDepth(1000+y);
-  scene.physics.add.existing(sp);
-  sp.body.setCollideWorldBounds(true);
-  sp.body.setSize(24,28,true);
-
-  // Player glow aura
-  var glow=scene.add.graphics();
-  var glowColor=(tex==='killer')?0xff2222:0x44aaff;
-  glow.fillStyle(glowColor,0.15);
-  glow.fillCircle(0,0,25);
-  glow.setDepth(999);
-  glow.setAlpha(0.5);
-
-  var p={sprite:sp,tex:tex,role:(tex==='killer')?'killer':'survivor',
-    state:'alive',health:100,hookTimer:0,carryTarget:null,progressAction:null,isMe:isMe,
-    glowFx:glow,glowColor:glowColor};
-  sp._pRef=p;
-  return p;
-}
-
-/* ═══════ MAIN UPDATE ═══════ */
-var _gameTime=0;
-function gUpdate(time,dt){
-  if(!gScene||!gMyPlayer||gGameEnded)return;
-  _gameTime+=dt;
-
-  // Animate generator glows (pulsing)
-  gGenerators.forEach(function(gen,i){
-    if(gen.glowGfx&&!gen.repaired){
-      var pulse=0.8+Math.sin(_gameTime*0.003+i)*0.3;
-      gen.glowGfx.setAlpha(pulse*0.15);
-    }
-  });
-
-  // Animate player glow
-  var allPlayers=[gMyPlayer].concat(gAIPlayers);
-  allPlayers.forEach(function(p){
-    if(p.glowFx){
-      var pulse=0.5+Math.sin(_gameTime*0.004)*0.2;
-      p.glowFx.setAlpha(pulse*0.4);
-      p.glowFx.setPosition(p.sprite.x,p.sprite.y);
-    }
-  });
-
-  // Animate gate glow when exit open
-  if(gExitOpen){
-    gGates.forEach(function(gate){
-      if(gate.glowGfx){
-        var gp=0.6+Math.sin(_gameTime*0.005)*0.4;
-        gate.glowGfx.setAlpha(gp*0.3);
-      }
-    });
-  }
-
-  // Animate hatch glow
-  if(gHatch&&gHatch.glowGfx){
-    var hp=0.7+Math.sin(_gameTime*0.006)*0.3;
-    gHatch.glowGfx.setAlpha(hp*0.25);
-  }
-
-  updateMyPlayer(dt);
-  updateAI(dt);
-  updateHooks(dt);
-  flushFloatBars();
-  updateHUD();
-  checkWinLose();
-}
-
-function checkWinLose(){
-  if(gGameEnded)return;
-  if(gIsKiller){
-    var any=gAIPlayers.some(function(a){return a.state!=='dead'&&a.state!=='hooked';});
-    var anyHooked=gAIPlayers.some(function(a){return a.state==='hooked';});
-    // killer wins when no survivor is alive (not hooked, not dead - dead means timer ran out)
-    var alive=gAIPlayers.filter(function(a){return a.state!=='dead';}).length;
-    if(alive===0){doEndGame(false,'Ты поймал всех выживших!');}
-  } else {
-    if(gMyPlayer.state==='dead'){doEndGame(false,'Тебя поймали!');}
-    if((gMyPlayer.state==='alive'||gMyPlayer.state==='injured')){
-      if(gExitOpen){
-        gGates.forEach(function(gate){
-          if(gate.opened&&dist(gMyPlayer.sprite,gate)<80){doEndGame(true,'Ты сбежал через ворота!');}
-        });
-        if(gHatch&&gHatchOpen&&!gHatchClosed&&dist(gMyPlayer.sprite,gHatch)<50){
-          doEndGame(true,'Ты сбежал через люк!');
+function getTelegramUser() {
+    try {
+        if (Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+            var u = Telegram.WebApp.initDataUnsafe.user;
+            return {
+                id: 'tg_' + u.id,
+                name: u.first_name || 'Игрок',
+                username: u.username || '',
+                photo: u.photo_url || ''
+            };
         }
-      }
-    }
-  }
+    } catch (e) {}
+    return null;
 }
 
-function doEndGame(won,msg){
-  if(gGameEnded)return;
-  gGameEnded=true;
-  setTimeout(function(){stopGame();UI.gameOver(won,msg);},600);
+function isRunningInTelegram() {
+    try {
+        return !!(Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user);
+    } catch (e) {
+        return false;
+    }
 }
 
-/* ─── My player ─── */
-function updateMyPlayer(dt){
-  var p=gMyPlayer,sp=p.sprite;
-  sp.setDepth(1000+sp.y);
-  if(p.role==='killer'){
-    if(gKillerStun>0){gKillerStun-=dt/1000;sp.body.setVelocity(0,0);return;}
-    var spd=C.KILLER_SPEED;
-    var v=normalize(gInputVec);
-    sp.body.setVelocity(v.x*spd,v.y*spd);
-    if(gActionPressed)killerAction(dt);
-  } else {
-    if(p.state==='hooked'){sp.body.setVelocity(0,0);return;}
-    if(p.state==='dead'){sp.body.setVelocity(0,0);return;}
-    var spd2=C.PLAYER_SPEED;
-    if(p.state==='injured')spd2=C.INJURED_SPEED;
-    if(p.state==='dying')spd2=C.DYING_SPEED;
-    if(gBoostTimer>0){gBoostTimer-=dt/1000;spd2=Math.min(spd2*1.25,C.PLAYER_SPEED*1.25);}
-    var v2=normalize(gInputVec);
-    sp.body.setVelocity(v2.x*spd2,v2.y*spd2);
-    if(gActionPressed)survivorAction(dt);
-    else cancelProgress(p);
-  }
-}
-
-function killerAction(dt){
-  var p=gMyPlayer,sp=p.sprite;
-  // Carrying survivor → go to hook
-  if(p.carryTarget){
-    var ct=p.carryTarget;
-    ct.sprite.setPosition(sp.x,sp.y-28);
-    var hook=nearestFreeHook(sp);
-    if(hook&&dist(sp,hook)<C.INTERACT_DIST+20){
-      hangSurvivor(ct,hook);
-      p.carryTarget=null;
-      UI.toast('🪝 Выживший повешен!');
-    }
-    return;
-  }
-  // Hit nearby survivor
-  var target=nearestAliveTarget(sp,C.HIT_DIST);
-  if(target){
-    var t=target._pRef;
-    if(!t)return;
-    if(t.state==='alive'){
-      t.state='injured';t.sprite.setTint(0xff8888);
-      gKillerStun=C.STUN_TIME;
-      if(t.isMe)gBoostTimer=C.BOOST_TIME;
-      UI.toast('💥 Выживший ранен!');
-    } else if(t.state==='injured'){
-      t.state='dying';t.sprite.setTint(0xff4444);
-      gKillerStun=C.STUN_TIME;
-      UI.toast('⬇️ Выживший упал!');
-    } else if(t.state==='dying'){
-      p.carryTarget=t;
-      UI.toast('💪 Поднимаешь выжившего...');
-    }
-    return;
-  }
-  // Break generator
-  gGenerators.forEach(function(gen){
-    if(gen.repaired||gen.progress<=0)return;
-    if(dist(sp,gen)<C.INTERACT_DIST){
-      gen.progress=Math.max(0,gen.progress-C.GEN_BREAK_RATE*(dt/1000));
-      drawBar(gen.barGfx,gen.bx,gen.by,gen.progress,0xff3322);
-      if(gen.progress<=0){gen.setTint(0x444444);if(gen.glowGfx)gen.glowGfx.setAlpha(0);UI.toast('💥 Генератор сломан!');}
-    }
-  });
-  // Close hatch
-  if(gHatch&&gHatchOpen&&!gHatchClosed&&dist(sp,gHatch)<C.INTERACT_DIST){
-    gHatchClosed=true;gHatchOpen=false;
-    gHatch.setTint(0x220000);
-    UI.toast('🔒 Маньяк закрыл люк!');
-  }
-}
-
-function survivorAction(dt){
-  var p=gMyPlayer,sp=p.sprite;
-  if(p.state==='dying'||p.state==='hooked')return;
-  var acted=false;
-  // Repair generator
-  if(!acted)gGenerators.some(function(gen){
-    if(gen.repaired)return false;
-    if(dist(sp,gen)<C.INTERACT_DIST){
-      acted=true;sp.body.setVelocity(0,0);
-      if(!p.progressAction||p.progressAction.target!==gen)p.progressAction={type:'repair',target:gen};
-      gen.progress=Math.min(100,gen.progress+C.GEN_REPAIR_RATE*(dt/1000));
-      drawBar(gen.barGfx,gen.bx,gen.by,gen.progress,0xffee00);
-      if(gen.progress>=100){gen.repaired=true;gen.setTint(0x22ff66);if(gen.glowGfx)gen.glowGfx.setAlpha(0);p.progressAction=null;UI.toast('✅ Генератор починен!');checkAllGens();}
-      return true;
-    }
-  });
-  // Unhook survivor
-  if(!acted)gHooks.some(function(hook){
-    if(!hook.occupied||!hook.hookedSurvivor)return false;
-    var hs=hook.hookedSurvivor;if(hs===p)return false;
-    if(dist(sp,hook)<C.INTERACT_DIST){
-      acted=true;sp.body.setVelocity(0,0);
-      if(!p.progressAction||p.progressAction.target!==hook)p.progressAction={type:'unhook',target:hook,pct:0};
-      p.progressAction.pct=Math.min(100,(p.progressAction.pct||0)+C.UNHOOK_RATE*(dt/1000));
-      _floatBars.push({wx:hook.bx,wy:hook.by-30,pct:p.progressAction.pct,color:0x88aaff});
-      if(p.progressAction.pct>=100){
-        hs.state='injured';hs.sprite.setTint(0xff8888);
-        hs.sprite.setPosition(hook.x+30,hook.y);hs.sprite.setVisible(true);
-        hook.occupied=false;hook.hookedSurvivor=null;hook.hookTimer=0;
-        p.progressAction=null;UI.toast('🙌 Снят с крюка!');
-      }
-      return true;
-    }
-  });
-  // Heal nearby survivor
-  if(!acted)gAIPlayers.some(function(ai){
-    if(ai.state!=='injured')return false;
-    if(dist(sp,ai.sprite)<C.INTERACT_DIST){
-      acted=true;sp.body.setVelocity(0,0);
-      if(!p.progressAction||p.progressAction.target!==ai)p.progressAction={type:'heal',target:ai,pct:0};
-      p.progressAction.pct=Math.min(100,(p.progressAction.pct||0)+C.HEAL_RATE*(dt/1000));
-      _floatBars.push({wx:ai.sprite.x,wy:ai.sprite.y-42,pct:p.progressAction.pct,color:0x44ff88});
-      if(p.progressAction.pct>=100){
-        ai.state='alive';ai.sprite.clearTint();
-        p.progressAction=null;UI.toast('💊 Вылечен!');
-      }
-      return true;
-    }
-  });
-  // Open gate
-  if(!acted)gGates.some(function(gate){
-    if(gate.opened)return false;
-    if(!gExitOpen)return false;
-    if(dist(sp,gate)<C.INTERACT_DIST+30){
-      acted=true;sp.body.setVelocity(0,0);
-      if(!p.progressAction||p.progressAction.target!==gate)p.progressAction={type:'gate',target:gate};
-      gate.progress=Math.min(100,gate.progress+C.GATE_RATE*(dt/1000));
-      drawBar(gate.barGfx,gate.bx,gate.by,gate.progress,0x66ffaa);
-      if(gate.progress>=100){gate.opened=true;gate.setTint(0x22ff66);p.progressAction=null;UI.toast('🚪 Ворота открыты! Беги!');}
-      return true;
-    }
-  });
-  if(!acted)cancelProgress(p);
-}
-
-function cancelProgress(p){p.progressAction=null;}
-
-function checkAllGens(){
-  var done=gGenerators.filter(function(g){return g.repaired;}).length;
-  if(done>=C.GEN_COUNT&&!gExitOpen){
-    gExitOpen=true;
-    UI.toast('⚡ Все генераторы! Открывай ворота!');
-    // Add glow to gates
-    gGates.forEach(function(gate){
-      gate.glowGfx=gScene.add.graphics();
-      gate.glowGfx.fillStyle(0x66ffaa,0.25);
-      gate.glowGfx.fillCircle(gate.x,gate.y,60);
-      gate.glowGfx.setDepth(gate.y-1);
-    });
-    spawnHatch();
-  }
-}
-
-function spawnHatch(){
-  if(gHatch)return;
-  var hx=400+Math.random()*(C.MAP_W-800),hy=400+Math.random()*(C.MAP_H-800);
-  // Glow aura
-  var glow=gScene.add.graphics();
-  glow.fillStyle(0xffaa00,0.2);
-  glow.fillCircle(hx,hy,60);
-  glow.setDepth(hy);
-  gHatch=gScene.add.sprite(hx,hy,'hatch').setDepth(hy+1).setScale(1.5);
-  gHatch.setTint(0xffaa00);gHatchOpen=true;
-  gHatch.glowGfx=glow;
-  UI.toast('🪤 Люк появился на карте!');
-}
-
-/* ─── Hooks ─── */
-function updateHooks(dt){
-  gHooks.forEach(function(hook){
-    if(!hook.occupied||!hook.hookedSurvivor)return;
-    var p=hook.hookedSurvivor;
-    p.sprite.setPosition(hook.x,hook.y-12);
-    p.hookTimer+=dt/1000;
-    var pct=100-(p.hookTimer/C.HOOK_TIME*100);
-    _floatBars.push({wx:hook.bx,wy:hook.by-32,pct:Math.max(0,pct),color:0xff4444});
-    if(p.hookTimer>=C.HOOK_TIME){
-      p.state='dead';p.sprite.setAlpha(0.15);
-      hook.occupied=false;hook.hookedSurvivor=null;
-      if(p.isMe){doEndGame(false,'Ты умер на крюке!');}
-      else{gSurvivorsAlive=Math.max(0,gSurvivorsAlive-1);}
-    }
-  });
-}
-
-/* ─── AI ─── */
-function updateAI(dt){
-  gAIPlayers.forEach(function(ai){
-    var sp=ai.sprite;
-    if(ai.state==='dead'){sp.body.setVelocity(0,0);return;}
-    if(ai.state==='hooked'){sp.body.setVelocity(0,0);return;}
-    sp.setDepth(1000+sp.y);
-
-    if(ai.isAIKiller){
-      // AI killer chases player
-      if(ai.aiHitCooldown>0)ai.aiHitCooldown-=dt/1000;
-      var target=gMyPlayer;
-      if(!target||target.state==='dead')return;
-      var d=dist(sp,target.sprite);
-      if(d<C.HIT_DIST){
-        sp.body.setVelocity(0,0);
-        if(ai.aiHitCooldown<=0){
-          ai.aiHitCooldown=C.STUN_TIME+0.3;
-          var p2=gMyPlayer;
-          if(p2.state==='alive'){p2.state='injured';p2.sprite.setTint(0xff8888);gBoostTimer=C.BOOST_TIME;UI.toast('💥 Ты ранен!');}
-          else if(p2.state==='injured'){p2.state='dying';p2.sprite.setTint(0xff4444);UI.toast('⬇️ Ты упал!');}
-          else if(p2.state==='dying'){
-            var hook=nearestFreeHook(sp);
-            if(hook){hangSurvivor(p2,hook);UI.toast('🪝 Тебя повесили!');}
-          }
+function getMyId() {
+    try {
+        if (Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+            return 'tg_' + Telegram.WebApp.initDataUnsafe.user.id;
         }
-      } else {
-        moveTo(sp,target.sprite.x,target.sprite.y,C.KILLER_SPEED);
-      }
-    } else {
-      // AI survivor: wander with occasional direction change
-      ai.aiTimer=(ai.aiTimer||0)-dt/1000;
-      if(ai.aiTimer<=0){
-        ai.aiTimer=0.8+Math.random()*2;
-        var ang=Math.random()*Math.PI*2;
-        ai.aiDir={x:Math.cos(ang),y:Math.sin(ang)};
-      }
-      // flee from killer if nearby
-      if(gIsKiller&&gMyPlayer){
-        var dk=dist(sp,gMyPlayer.sprite);
-        if(dk<180){
-          var ak=Math.atan2(sp.y-gMyPlayer.sprite.y,sp.x-gMyPlayer.sprite.x);
-          ai.aiDir={x:Math.cos(ak),y:Math.sin(ak)};ai.aiTimer=1.2;
+    } catch (e) {}
+    var s = localStorage.getItem('uid');
+    if (s) return s;
+    var id = 'g_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+    localStorage.setItem('uid', id);
+    return id;
+}
+
+function getPlayerName() {
+    try {
+        if (Telegram && Telegram.WebApp && Telegram.WebApp.initDataUnsafe) {
+            var u = Telegram.WebApp.initDataUnsafe.user;
+            if (u) return u.first_name || 'Игрок';
         }
-      }
-      var as=ai.state==='dying'?C.DYING_SPEED:ai.state==='injured'?C.INJURED_SPEED:C.PLAYER_SPEED;
-      sp.body.setVelocity(ai.aiDir.x*as,ai.aiDir.y*as);
+    } catch (e) {}
+    return 'Игрок';
+}
+
+function initUser(callback) {
+    gMyId = getMyId();
+    gIsTelegram = isRunningInTelegram();
+
+    if (gIsTelegram) {
+        try {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        } catch (e) {}
+
+        var tgUser = getTelegramUser();
+        if (tgUser && window.fsLoaded) {
+            window.fbFS.collection('users').doc(tgUser.id).get().then(function(doc) {
+                if (doc.exists) {
+                    gUser = { id: tgUser.id, name: tgUser.name, isNew: false };
+                } else {
+                    gUser = { id: tgUser.id, name: tgUser.name, isNew: true };
+                    window.fbFS.collection('users').doc(tgUser.id).set({
+                        id: tgUser.id,
+                        name: tgUser.name,
+                        username: tgUser.username,
+                        photo: tgUser.photo,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+                        gamesPlayed: 0,
+                        gamesWon: 0
+                    }).catch(function(e) { console.error('User write error:', e); });
+                }
+                callback && callback(gUser);
+            }).catch(function(e) {
+                console.error('User read error:', e);
+                callback && callback(null);
+            });
+            return;
+        }
     }
-  });
+
+    gUser = { id: gMyId, name: getPlayerName(), isNew: false };
+    callback && callback(gUser);
 }
 
-/* ─── HUD ─── */
-function updateHUD(){
-  var p=gMyPlayer;
-  var stateStr=p.state==='injured'?'🩸Ранен':p.state==='dying'?'💀Упал':p.state==='hooked'?'🪝Крюк':'жив';
-  var roleEl=document.getElementById('player-role');
-  var genEl=document.getElementById('gen-count');
-  var exitEl=document.getElementById('exit-state');
-  var aliveEl=document.getElementById('alive-count');
-  if(roleEl)roleEl.textContent=p.role==='killer'?'Убийца':stateStr;
-  var rep=gGenerators.filter(function(g){return g.repaired;}).length;
-  if(genEl)genEl.textContent=rep+'/'+C.GEN_COUNT;
-  if(exitEl)exitEl.textContent=gExitOpen?(gHatchClosed?'люк🔒':'открыт!'):'закрыт';
-  if(aliveEl){
-    if(gIsKiller){aliveEl.textContent='🏃 '+gAIPlayers.filter(function(a){return a.state!=='dead';}).length;}
-    else aliveEl.textContent='🏃 '+gSurvivorsAlive;
-  }
-}
-
-/* ─── Progress bars ─── */
-function drawBar(gfx,bx,by,pct,color){
-  gfx.clear();pct=Math.max(0,Math.min(100,pct));
-  gfx.fillStyle(0x000000,0.75);gfx.fillRect(bx-25,by-30,50,8);
-  gfx.fillStyle(color,1);gfx.fillRect(bx-24,by-29,48*(pct/100),6);
-}
-function flushFloatBars(){
-  if(!_floatBarGfx)return;
-  _floatBarGfx.clear();
-  _floatBars.forEach(function(b){
-    var pct=Math.max(0,Math.min(100,b.pct));
-    _floatBarGfx.fillStyle(0x000000,0.75);_floatBarGfx.fillRect(b.wx-25,b.wy,50,8);
-    _floatBarGfx.fillStyle(b.color,1);_floatBarGfx.fillRect(b.wx-24,b.wy+1,48*(pct/100),6);
-  });
-  _floatBars=[];
-}
-
-/* ─── Helpers ─── */
-function dist(a,b){var ax=a.x||0,ay=a.y||0,bx=b.x||0,by=b.y||0;return Math.sqrt((ax-bx)*(ax-bx)+(ay-by)*(ay-by));}
-function normalize(v){var len=Math.sqrt(v.x*v.x+v.y*v.y);if(len<0.01)return{x:0,y:0};return{x:v.x/len,y:v.y/len};}
-function moveTo(sp,tx,ty,spd){var dx=tx-sp.x,dy=ty-sp.y,d=Math.sqrt(dx*dx+dy*dy);if(d<2){sp.body.setVelocity(0,0);return;}sp.body.setVelocity(dx/d*spd,dy/d*spd);}
-function nearestAliveTarget(sp,maxD){
-  var best=null,bd=maxD;
-  var pool=gIsKiller?gAIPlayers:[gAIPlayers.find(function(a){return a.isAIKiller;})].filter(Boolean);
-  pool.forEach(function(ai){
-    if(!ai||ai.state==='dead')return;
-    var d=dist(sp,ai.sprite);if(d<bd){bd=d;best=ai.sprite;}
-  });
-  return best;
-}
-function nearestFreeHook(sp){
-  var best=null,bd=9999;
-  gHooks.forEach(function(h){if(h.occupied)return;var d=dist(sp,h);if(d<bd){bd=d;best=h;}});
-  return best;
-}
-function hangSurvivor(p,hook){
-  hook.occupied=true;hook.hookedSurvivor=p;p.hookTimer=0;
-  p.state='hooked';p.sprite.setTint(0xaaaaaa);p.sprite.setVisible(true);
-  p.sprite.setPosition(hook.x,hook.y-12);
-  if(!p.isMe)gSurvivorsAlive=Math.max(0,gSurvivorsAlive-1);
-}
-
-/* ═══════ CONTROLS ═══════ */
-function createControls(){
-  removeControls();
-  var joy=document.createElement('div');
-  joy.id='joystick-zone';
-  joy.style.cssText='position:fixed;bottom:28px;left:28px;width:114px;height:114px;z-index:99999;touch-action:none;';
-  joy.innerHTML='<div id="joy-base" style="width:100%;height:100%;background:rgba(255,255,255,0.12);border:3px solid rgba(255,255,255,0.3);border-radius:50%;position:relative;"><div id="joy-knob" style="width:46px;height:46px;background:rgba(220,50,50,0.88);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 10px rgba(220,50,50,0.5);"></div></div>';
-  document.body.appendChild(joy);
-
-  var ab=document.createElement('div');ab.id='action-btn';ab.textContent='⚡';
-  ab.style.cssText='position:fixed;bottom:48px;right:28px;width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#cc2200);border:3px solid rgba(255,255,255,0.4);color:#fff;font-size:30px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:99999;touch-action:none;box-shadow:0 0 16px rgba(255,80,0,0.5);';
-  document.body.appendChild(ab);
-
-  var jbase=document.getElementById('joy-base');
-  var knob=document.getElementById('joy-knob');
-  var maxD=44,tid=null,touching=false;
-
-  function updateJoy(cx,cy){
-    var r=jbase.getBoundingClientRect();
-    var dx=cx-(r.left+r.width/2),dy=cy-(r.top+r.height/2);
-    var d=Math.sqrt(dx*dx+dy*dy),lim=Math.min(d,maxD);
-    var ang=Math.atan2(dy,dx);
-    var nx=lim/maxD*Math.cos(ang),ny=lim/maxD*Math.sin(ang);
-    knob.style.transform='translate(calc(-50% + '+(nx*maxD)+'px), calc(-50% + '+(ny*maxD)+'px))';
-    gInputVec.x=nx;gInputVec.y=ny;
-  }
-  function resetJoy(){touching=false;tid=null;gInputVec.x=0;gInputVec.y=0;knob.style.transform='translate(-50%,-50%)';}
-
-  joy.addEventListener('touchstart',function(e){e.preventDefault();touching=true;tid=e.changedTouches[0].identifier;updateJoy(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
-  joy.addEventListener('touchmove',function(e){e.preventDefault();for(var i=0;i<e.changedTouches.length;i++)if(e.changedTouches[i].identifier===tid){updateJoy(e.changedTouches[i].clientX,e.changedTouches[i].clientY);break;}},{passive:false});
-  joy.addEventListener('touchend',resetJoy);joy.addEventListener('touchcancel',resetJoy);
-  joy.addEventListener('mousedown',function(e){touching=true;updateJoy(e.clientX,e.clientY);});
-  document.addEventListener('mousemove',function(e){if(touching)updateJoy(e.clientX,e.clientY);});
-  document.addEventListener('mouseup',function(){if(touching)resetJoy();});
-
-  ab.addEventListener('touchstart',function(e){e.preventDefault();gActionPressed=true;ab.style.transform='scale(0.92)';},{passive:false});
-  ab.addEventListener('touchend',function(e){e.preventDefault();gActionPressed=false;ab.style.transform='scale(1)';});
-  ab.addEventListener('touchcancel',function(){gActionPressed=false;ab.style.transform='scale(1)';});
-  ab.addEventListener('mousedown',function(){gActionPressed=true;ab.style.transform='scale(0.92)';});
-  ab.addEventListener('mouseup',function(){gActionPressed=false;ab.style.transform='scale(1)';});
-
-  document.addEventListener('keydown',onKey);document.addEventListener('keyup',onKey);
-}
-
-function onKey(e){
-  _keys[e.code]=(e.type==='keydown');
-  gInputVec.x=((_keys.ArrowRight||_keys.KeyD)?1:0)-((_keys.ArrowLeft||_keys.KeyA)?1:0);
-  gInputVec.y=((_keys.ArrowDown||_keys.KeyS)?1:0)-((_keys.ArrowUp||_keys.KeyW)?1:0);
-  var len=Math.sqrt(gInputVec.x*gInputVec.x+gInputVec.y*gInputVec.y);
-  if(len>1){gInputVec.x/=len;gInputVec.y/=len;}
-  if(e.code==='Space'||e.code==='KeyE')gActionPressed=(e.type==='keydown');
-}
-
-function removeControls(){
-  var j=document.getElementById('joystick-zone');if(j)j.remove();
-  var a=document.getElementById('action-btn');if(a)a.remove();
-  document.removeEventListener('keydown',onKey);document.removeEventListener('keyup',onKey);
-}
-
-/* ═══════ FIRESTORE LOBBY ═══════ */
-var gMyId=null,gRoomId=null,gIsHost=false,gMyRole=null;
-
-function getMyId(){
-  try{if(Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user)return'tg_'+Telegram.WebApp.initDataUnsafe.user.id;}catch(e){}
-  var s=localStorage.getItem('uid');if(s)return s;
-  var id='g_'+Date.now()+'_'+Math.random().toString(36).substr(2,6);localStorage.setItem('uid',id);return id;
-}
-
-function createLobby(){
-  if(!window.fsLoaded){UI.toast('Firestore не загружен');return;}
-  var code='ROOM_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
-  gRoomId=code;gIsHost=true;gMyRole='killer';
-  var hName=gUser?gUser.name:'Маньяк';
-  if(gIsTelegram){try{var u=Telegram.WebApp.initDataUnsafe.user;if(u)hName=u.first_name||'Маньяк';}catch(e){}}
-  UI.showScreen('lobby-create');
-  document.getElementById('lobby-status').textContent='Код лобби: '+code;
-  document.getElementById('display-room-code').textContent=code;
-  document.getElementById('btn-start-game').disabled=true;
-  document.getElementById('btn-start-game').style.background='#555';
-  document.getElementById('btn-start-game').textContent='Ждём игроков...';
-
-  var roomData={
-    code:code,
-    hostId:gMyId,
-    hostName:hName,
-    status:'waiting',
-    createdAt:Date.now(),
-    players:{
-      [gMyId]:{id:gMyId,name:hName,role:'killer',isHost:true}
+/* ═══════ LOBBY FUNCTIONS ═══════ */
+function createLobby() {
+    if (!window.isFirebaseReady()) {
+        UI.showToast('Firebase не загружен');
+        return;
     }
-  };
 
-  window.fbFS.collection('rooms').doc(code).set(roomData)
-    .then(function(){
-      listenRoomFirestore(code);
-      UI.toast('Лобби создано!');
-    })
-    .catch(function(e){UI.toast('Ошибка: '+e.message);});
-}
+    gMyId = getMyId();
+    gMyRole = 'killer';
+    gIsHost = true;
 
-function findAndJoinLobby(){
-  if(!window.fsLoaded){UI.toast('Firestore не загружен');return;}
-  UI.showScreen('lobby-join');
-  gMyRole='survivor';
-  document.getElementById('found-lobbies').innerHTML='<p style="color:#aaa">Поиск лобби...</p>';
-  var sName=gUser?gUser.name:'Выживший';
-  if(gIsTelegram){try{var u=Telegram.WebApp.initDataUnsafe.user;if(u)sName=u.first_name||'Выживший';}catch(e){}}
+    var hName = getPlayerName();
 
-  // Listen to all rooms in real-time and auto-join first available
-  if(window._lobbyUnsub)window._lobbyUnsub();
-  var joined=false;
-  window._lobbyUnsub=window.fbFS.collection('rooms')
-    .onSnapshot(function(snap){
-      if(joined)return;
-      var container=document.getElementById('found-lobbies');
-      if(!container)return;
-      snap.forEach(function(doc){
-        if(joined)return;
-        var rm=doc.data();
-        if(rm.status!=='waiting')return;
-        var pl=rm.players||{};
-        var playerCount=Object.keys(pl).length;
-        if(playerCount>=4)return;
-        // Found a lobby - join it
-        joined=true;
-        var code=doc.id;
-        gRoomId=code;gIsHost=false;
-        var playerData={id:gMyId,name:sName,role:'survivor',isHost:false};
-        window.fbFS.collection('rooms').doc(code).update({
-          ['players.'+gMyId]:playerData
-        }).then(function(){
-          if(window._lobbyUnsub){window._lobbyUnsub();window._lobbyUnsub=null;}
-          UI.showScreen('lobby-create');
-          document.getElementById('display-room-code').textContent=code;
-          document.getElementById('lobby-status').textContent='Вы присоединились!';
-          listenRoomFirestore(code);
-          UI.toast('Подключился к лобби!');
-        }).catch(function(e){UI.toast('Ошибка: '+e.message);});
-      });
-      if(!joined){
-        document.getElementById('found-lobbies').innerHTML='<p style="color:#666">Нет доступных лобби...</p>';
-      }
-    });
-
-  document.getElementById('btn-leave-search').onclick=function(){
-    if(window._lobbyUnsub){window._lobbyUnsub();window._lobbyUnsub=null;}
-    UI.showScreen('main-menu');
-  };
-}
-
-function joinLobbyById(code,sName){
-  if(window._lobbyUnsub){window._lobbyUnsub();window._lobbyUnsub=null;}
-  gRoomId=code;gIsHost=false;
-
-  var playerData={id:gMyId,name:sName,role:'survivor',isHost:false};
-  window.fbFS.collection('rooms').doc(code).update({
-    ['players.'+gMyId]:playerData
-  }).then(function(){
     UI.showScreen('lobby-create');
-    document.getElementById('display-room-code').textContent=code;
-    document.getElementById('lobby-status').textContent='Вы присоединились!';
-    listenRoomFirestore(code);
-    UI.toast('Подключился к лобби!');
-  }).catch(function(e){UI.toast('Ошибка: '+e.message);});
-}
+    document.getElementById('display-room-code').textContent = 'Создание...';
+    document.getElementById('lobby-status').textContent = 'Создание лобби...';
+    document.getElementById('btn-start-game').disabled = true;
+    document.getElementById('btn-start-game').style.background = '#555';
 
-function listenRoomFirestore(code){
-  if(gRoomUnsubFirestore)gRoomUnsubFirestore();
-  gRoomUnsubFirestore=window.fbFS.collection('rooms').doc(code)
-    .onSnapshot(function(doc){
-      if(!doc.exists){
-        UI.toast('Лобби закрыто!');
-        UI.showScreen('main-menu');
-        return;
-      }
-      var d=doc.data();
-      if(d.status==='closed'){
-        UI.toast('Маньяк покинул лобби!',5000);
-        UI.showScreen('main-menu');
-        return;
-      }
-      var pl=d.players||{};
-      var playerIds=Object.keys(pl);
-      var survivorCount=playerIds.filter(function(id){return pl[id].role==='survivor';}).length;
-
-      var el=document.getElementById('lobby-players');
-      if(el){
-        el.innerHTML='';
-        playerIds.forEach(function(pid){
-          if(pl[pid].role!=='killer')return;
-          var div=document.createElement('div');
-          div.className='player-slot host';
-          div.textContent='🔪 '+pl[pid].name+(pl[pid].isHost?' (хост)':'');
-          el.appendChild(div);
-        });
-        playerIds.forEach(function(pid){
-          if(pl[pid].role!=='survivor')return;
-          var div=document.createElement('div');
-          div.className='player-slot';
-          div.textContent='🏃 '+pl[pid].name;
-          el.appendChild(div);
-        });
-        for(var i=playerIds.length;i<4;i++){
-          var div2=document.createElement('div');
-          div2.className='player-slot empty';
-          div2.textContent='⏳ Ожидание...';
-          el.appendChild(div2);
-        }
-      }
-
-      var btn=document.getElementById('btn-start-game');
-      if(gIsHost&&gMyRole==='killer'){
-        if(survivorCount>=1){
-          btn.disabled=false;
-          btn.style.background='linear-gradient(135deg,#ff3333,#cc0000)';
-          btn.textContent='▶ Начать игру ('+playerIds.length+'/4)';
+    createRoom('Комната', 4, gMyId, hName).then(function(result) {
+        if (result.success) {
+            gRoomId = result.roomId;
+            document.getElementById('display-room-code').textContent = result.roomId;
+            document.getElementById('lobby-status').textContent = 'Код лобби: ' + result.roomId;
+            subscribeToLobby(gRoomId);
+            UI.showToast('Лобби создано: ' + result.roomId);
         } else {
-          btn.disabled=true;
-          btn.style.background='#555';
-          btn.textContent='Ждём игроков...';
+            UI.showToast('Ошибка: ' + result.error);
+            UI.showScreen('main-menu');
         }
-      }
-
-      if(d.status==='playing'){
-        if(gRoomUnsubFirestore){gRoomUnsubFirestore();gRoomUnsubFirestore=null;}
-        gIsKiller=(gMyRole==='killer');
-        resetState();
-        showGameScreen();
-        setTimeout(initPhaser,80);
-      }
-    },function(error){
-      console.error('Room listen error:',error);
+    }).catch(function(e) {
+        console.error('Create lobby error:', e);
+        UI.showToast('Ошибка создания лобби');
+        UI.showScreen('main-menu');
     });
 }
 
-window.leaveLobby=function(){
-  var wasKiller=(gMyRole==='killer');
-  if(wasKiller){
-    var confirmed=confirm('Ты уверен что хочешь выйти? Все выжившие будут исключены из лобби!');
-    if(!confirmed)return;
-    UI.toast('Лобби закрыто');
-  }
-  if(gRoomUnsubFirestore){gRoomUnsubFirestore();gRoomUnsubFirestore=null;}
-  if(window._lobbyUnsub){window._lobbyUnsub();window._lobbyUnsub=null;}
-
-  if(gRoomId&&window.fsLoaded){
-    if(wasKiller){
-      // Delete the room completely
-      window.fbFS.collection('rooms').doc(gRoomId).delete()
-        .catch(function(e){console.error('Delete room error:',e);});
-    } else {
-      // Just remove player from room
-      var update={};
-      update['players.'+gMyId]=firebase.firestore.FieldValue.delete();
-      window.fbFS.collection('rooms').doc(gRoomId).update(update)
-        .catch(function(e){console.error('Leave room error:',e);});
+function findAndJoinLobby() {
+    if (!window.isFirebaseReady()) {
+        UI.showToast('Firebase не загружен');
+        return;
     }
-  }
-  gRoomId=null;gIsHost=false;gMyRole=null;
-  UI.showScreen('main-menu');
-  if(!wasKiller)UI.toast('Вышли из лобби');
+
+    UI.showScreen('lobby-join');
+    gMyId = getMyId();
+    gMyRole = 'survivor';
+
+    var sName = getPlayerName();
+    document.getElementById('found-lobbies').innerHTML = '<p style="color:#aaa">Поиск лобби...</p>';
+
+    // Listen for available rooms
+    var roomsQuery = firebase.database().ref('rooms')
+        .orderByChild('status')
+        .equalTo('waiting');
+
+    var foundLobby = false;
+
+    roomsQuery.on('child_added', function(snapshot) {
+        if (foundLobby) return;
+
+        var room = snapshot.val();
+        var playerCount = Object.keys(room.players || {}).length;
+
+        if (playerCount < 4 && room.hostId !== gMyId) {
+            foundLobby = true;
+            roomsQuery.off();
+
+            joinRoom(snapshot.key, gMyId, sName).then(function(result) {
+                if (result.success) {
+                    gRoomId = result.roomId;
+                    gIsHost = false;
+                    UI.showScreen('lobby-create');
+                    document.getElementById('display-room-code').textContent = result.roomId;
+                    document.getElementById('lobby-status').textContent = 'Вы присоединились!';
+                    subscribeToLobby(gRoomId);
+                    UI.showToast('Подключился к лобби!');
+                } else {
+                    UI.showToast('Ошибка: ' + result.error);
+                    UI.showScreen('main-menu');
+                }
+            }).catch(function(e) {
+                console.error('Join lobby error:', e);
+                UI.showScreen('main-menu');
+            });
+        }
+    });
+
+    // Timeout if no lobby found
+    setTimeout(function() {
+        if (!foundLobby) {
+            roomsQuery.off();
+            document.getElementById('found-lobbies').innerHTML = '<p style="color:#666">Нет доступных лобби...</p>';
+        }
+    }, 10000);
+
+    document.getElementById('btn-leave-search').onclick = function() {
+        roomsQuery.off();
+        UI.showScreen('main-menu');
+    };
+}
+
+function subscribeToLobby(roomCode) {
+    if (window.gRoomUnsub) window.gRoomUnsub();
+
+    window.gRoomUnsub = firebase.database().ref('rooms/' + roomCode).on('value', function(snapshot) {
+        if (!snapshot.exists()) {
+            UI.showToast('Лобби закрыто!');
+            UI.showScreen('main-menu');
+            return;
+        }
+
+        var room = snapshot.val();
+
+        if (room.status === 'closed') {
+            UI.showToast('Лобби закрыто!', 3000);
+            UI.showScreen('main-menu');
+            return;
+        }
+
+        var players = room.players || {};
+        var playerIds = Object.keys(players);
+        var survivorCount = playerIds.filter(function(id) { return players[id].role === 'survivor'; }).length;
+
+        // Update player list
+        var el = document.getElementById('lobby-players');
+        if (el) {
+            el.innerHTML = '';
+
+            // Show killer first
+            playerIds.forEach(function(pid) {
+                if (players[pid].role !== 'killer') return;
+                var div = document.createElement('div');
+                div.className = 'player-slot host';
+                div.textContent = '🔪 ' + players[pid].name + (players[pid].isHost ? ' (хост)' : '');
+                el.appendChild(div);
+            });
+
+            // Show survivors
+            playerIds.forEach(function(pid) {
+                if (players[pid].role !== 'survivor') return;
+                var div = document.createElement('div');
+                div.className = 'player-slot';
+                div.textContent = '🏃 ' + players[pid].name;
+                el.appendChild(div);
+            });
+
+            // Empty slots
+            for (var i = playerIds.length; i < 4; i++) {
+                var div2 = document.createElement('div');
+                div2.className = 'player-slot empty';
+                div2.textContent = '⏳ Ожидание...';
+                el.appendChild(div2);
+            }
+        }
+
+        // Update start button
+        var btn = document.getElementById('btn-start-game');
+        if (gIsHost && gMyRole === 'killer') {
+            if (survivorCount >= 1) {
+                btn.disabled = false;
+                btn.style.background = 'linear-gradient(135deg,#ff3333,#cc0000)';
+                btn.textContent = '▶ Начать игру (' + playerIds.length + '/4)';
+            } else {
+                btn.disabled = true;
+                btn.style.background = '#555';
+                btn.textContent = 'Ждём игроков...';
+            }
+        }
+
+        // Game started
+        if (room.status === 'playing') {
+            if (window.gRoomUnsub) {
+                window.gRoomUnsub();
+                window.gRoomUnsub = null;
+            }
+
+            gIsKiller = (gMyRole === 'killer');
+            gGameSessionId = roomCode;
+
+            // Initialize game session for sync
+            initGameSession(roomCode, gMyId, gIsKiller).then(function() {
+                console.log('Game session initialized');
+            }).catch(function(e) {
+                console.error('Game session error:', e);
+            });
+
+            // Start the game
+            if (typeof Game !== 'undefined') {
+                Game.start(gIsKiller, true, roomCode, gMyId);
+            }
+        }
+    }, function(error) {
+        console.error('Lobby listen error:', error);
+    });
+}
+
+window.leaveLobby = function() {
+    var wasKiller = (gMyRole === 'killer');
+
+    if (wasKiller) {
+        var confirmed = confirm('Ты уверен что хочешь выйти? Все выжившие будут исключены из лобби!');
+        if (!confirmed) return;
+
+        // Delete room
+        if (gRoomId) {
+            firebase.database().ref('rooms/' + gRoomId).remove().catch(function() {});
+        }
+        UI.showToast('Лобби закрыто');
+    } else {
+        // Just leave
+        if (gRoomId) {
+            firebase.database().ref('rooms/' + gRoomId + '/players/' + gMyId).remove().catch(function() {});
+        }
+    }
+
+    if (window.gRoomUnsub) {
+        window.gRoomUnsub();
+        window.gRoomUnsub = null;
+    }
+
+    gRoomId = null;
+    gIsHost = false;
+    gMyRole = null;
+    UI.showScreen('main-menu');
+
+    if (!wasKiller) UI.showToast('Вышли из лобби');
 };
+
+/* ═══════ SOLO GAME ═══════ */
+function startSoloGame(killerMode) {
+    if (typeof Game !== 'undefined') {
+        Game.start(killerMode, false, null, null);
+    }
+}
+
+/* ═══════ BUTTON SETUP ═══════ */
+function setupButtons() {
+    function on(id, fn) {
+        var el = document.getElementById(id);
+        if (el) el.onclick = fn;
+    }
+
+    on('btn-create-lobby', createLobby);
+    on('btn-find-lobby', findAndJoinLobby);
+    on('btn-solo', function() { UI.showScreen('role-select'); });
+    on('btn-back-role', function() { UI.showScreen('main-menu'); });
+    on('btn-play-killer', function() { startSoloGame(true); });
+    on('btn-play-survivor', function() { startSoloGame(false); });
+    on('btn-back-menu', function() {
+        if (typeof Game !== 'undefined') Game.stop();
+        UI.showScreen('main-menu');
+    });
+    on('btn-start-game', function() {
+        if (!gRoomId || !gIsHost) return;
+        UI.showToast('Начинаем игру...');
+        startGame(gRoomId).catch(function(e) {
+            console.error('Start game error:', e);
+            UI.showToast('Ошибка запуска игры');
+        });
+    });
+    on('btn-leave-lobby', window.leaveLobby);
+}
 
 /* ═══════ APP INIT ═══════ */
-function setupButtons(){
-  function on(id,fn){var el=document.getElementById(id);if(el)el.onclick=fn;}
-  on('btn-create-lobby',function(){createLobby();});
-  on('btn-find-lobby',function(){findAndJoinLobby();});
-  on('btn-solo',function(){UI.showScreen('role-select');});
-  on('btn-multi',function(){UI.showScreen('role-select');});
-  on('btn-back-role',function(){UI.showScreen('main-menu');});
-  on('btn-play-killer',function(){startSoloGame(true);});
-  on('btn-play-survivor',function(){startSoloGame(false);});
-  on('btn-back-menu',function(){stopGame();UI.showScreen('main-menu');});
-  on('btn-start-game',function(){
-    if(!gRoomId||!gIsHost)return;
-    window.fbFS.collection('rooms').doc(gRoomId).update({status:'playing'})
-      .catch(function(e){UI.toast('Ошибка: '+e.message);});
-  });
-  on('btn-leave-lobby',window.leaveLobby);
+var _initTries = 0;
+
+function tryInit() {
+    if (typeof Phaser !== 'undefined' && typeof Phaser.Game !== 'undefined') {
+        // Initialize Firebase
+        initFirebaseDB().then(function() {
+            console.log('Firebase DB initialized');
+        }).catch(function(e) {
+            console.error('Firebase DB init error:', e);
+        });
+
+        // Initialize user
+        initUser(function(user) {
+            document.getElementById('loading-screen').classList.remove('active');
+            document.getElementById('main-menu').classList.add('active');
+            setupButtons();
+            console.log('App ready. User:', user);
+        });
+        return;
+    }
+
+    if (++_initTries < 80) {
+        setTimeout(tryInit, 100);
+    } else {
+        var t = document.getElementById('load-text');
+        if (t) t.textContent = 'Ошибка загрузки Phaser';
+    }
 }
 
-var _initTries=0;
-function tryInit(){
-  if(typeof Phaser!=='undefined'&&typeof Phaser.Game!=='undefined'){
-    initUser(function(user){
-      gMyId=getMyId();
-      document.getElementById('loading-screen').classList.remove('active');
-      document.getElementById('main-menu').classList.add('active');
-      setupButtons();
-      if(gIsTelegram){try{Telegram.WebApp.ready();Telegram.WebApp.expand();}catch(e){}}
-      console.log('App ready. User:', user);
-    });
-    return;
-  }
-  if(++_initTries<80)setTimeout(tryInit,100);
-  else{var t=document.getElementById('load-text');if(t)t.textContent='Ошибка загрузки Phaser';}
-}
+// Start initialization
 tryInit();
 })();
 </script>
