@@ -321,11 +321,12 @@ function startGame(roomCode) {
                 return { success: false, error: 'Нужно минимум 2 игрока' };
             }
 
-            var updates = { status: 'playing', startedAt: Date.now() };
+             var updates = { status: 'playing', startedAt: Date.now() };
 
-            playerIds.forEach(function(id, index) {
-                updates['players/' + id + '/role'] = (index === 0) ? 'killer' : 'survivor';
-            });
+             playerIds.forEach(function(id) {
+                 // Хост (создатель комнаты) всегда становится убийцей
+                 updates['players/' + id + '/role'] = (id === roomData.hostId) ? 'killer' : 'survivor';
+             });
 
             return db.ref('rooms/' + roomCode).update(updates)
                 .then(function() {
@@ -661,25 +662,27 @@ function subscribeToLobby(roomCode) {
             }
         }
 
-        // Game started
-        if (room.status === 'playing') {
-            if (gRoomUnsub) {
-                gRoomUnsub();
-                gRoomUnsub = null;
-            }
-
-            var isKiller = (gMyRole === 'killer');
-            gGameSessionId = roomCode;
-
-            initGameSession(roomCode, gMyId, isKiller).then(function() {
-                console.log('Game session initialized');
-                if (typeof Game !== 'undefined') {
-                    Game.start(isKiller, true, roomCode, gMyId);
-                }
-            }).catch(function(e) {
-                console.error('Game session error:', e);
-            });
-        }
+         // Game started
+         if (room.status === 'playing') {
+             // Проверяем, не запущена ли уже игра, чтобы избежать двойного запуска
+             if (gGameSessionId) {
+                 return; // Игра уже запущена
+             }
+ 
+             var isKiller = (gMyRole === 'killer');
+             gGameSessionId = roomCode;
+ 
+             initGameSession(roomCode, gMyId, isKiller).then(function() {
+                 console.log('Game session initialized for', gMyRole);
+                 if (typeof Game !== 'undefined') {
+                     Game.start(isKiller, true, roomCode, gMyId);
+                 }
+             }).catch(function(e) {
+                 console.error('Game session error:', e);
+                 // В случае ошибки сбрасываем gGameSessionId
+                 gGameSessionId = null;
+             });
+         }
     }, function(error) {
         console.error('Lobby listen error:', error);
     });
@@ -749,18 +752,7 @@ function setupButtons() {
          startGame(gRoomId).then(function(result) {
              console.log('startGame result:', result);
              if (result.success) {
-                 // Принудительно обновляем статус комнаты до playing для локальной синхронизации
-                 var isKiller = (gMyRole === 'killer');
-                 gGameSessionId = gRoomId;
-                 
-                 initGameSession(gRoomId, gMyId, isKiller).then(function() {
-                     console.log('Game session initialized');
-                     if (typeof Game !== 'undefined') {
-                         Game.start(isKiller, true, gRoomId, gMyId);
-                     }
-                 }).catch(function(e) {
-                     console.error('Game session error:', e);
-                 });
+                 showToast('Игра начинается...');
              } else {
                  showToast('Ошибка: ' + result.error);
              }
