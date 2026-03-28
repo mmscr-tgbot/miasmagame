@@ -140,6 +140,7 @@ var gMyPlayer=null,gAIPlayers=[];
 var gKillerStun=0,gBoostTimer=0,gActionPressed=false,gInputVec={x:0,y:0};
 var _floatBars=[],_floatBarGfx=null,_keys={};
 var gGameEnded=false;
+var gRoomUnsubFirestore=null;
 
 /* ═══════ TEXTURES ═══════ */
 function buildTextures(sc){
@@ -1270,8 +1271,8 @@ function removeControls(){
   document.removeEventListener('keydown',onKey);document.removeEventListener('keyup',onKey);
 }
 
-/* ═══════ LOBBY ═══════ */
-var gMyId=null,gRoomId=null,gIsHost=false,gRoomUnsub=null,gMyRole=null; // 'killer' or 'survivor'
+/* ═══════ FIRESTORE LOBBY ═══════ */
+var gMyId=null,gRoomId=null,gIsHost=false,gMyRole=null;
 
 function getMyId(){
   try{if(Telegram&&Telegram.WebApp&&Telegram.WebApp.initDataUnsafe&&Telegram.WebApp.initDataUnsafe.user)return'tg_'+Telegram.WebApp.initDataUnsafe.user.id;}catch(e){}
@@ -1280,7 +1281,7 @@ function getMyId(){
 }
 
 function createLobby(){
-  if(!window.firebaseLoaded){UI.toast('Firebase не загружена');return;}
+  if(!window.fsLoaded){UI.toast('Firestore не загружен');return;}
   var code='ROOM_'+Date.now()+'_'+Math.random().toString(36).substr(2,5);
   gRoomId=code;gIsHost=true;gMyRole='killer';
   var hName=gUser?gUser.name:'Маньяк';
@@ -1291,162 +1292,167 @@ function createLobby(){
   document.getElementById('btn-start-game').disabled=true;
   document.getElementById('btn-start-game').style.background='#555';
   document.getElementById('btn-start-game').textContent='Ждём игроков...';
-  window.fbDB.ref('rooms/'+code).set({
-    code:code,hostId:gMyId,hostName:hName,status:'waiting',createdAt:Date.now(),
-    players:{[gMyId]:{id:gMyId,name:hName,role:'killer',isHost:true}}
-  }).then(function(){
-    listenRoom(code);
-    UI.toast('Лобби создано!');
-  }).catch(function(e){UI.toast('Ошибка: '+e.message);});
+
+  var roomData={
+    code:code,
+    hostId:gMyId,
+    hostName:hName,
+    status:'waiting',
+    createdAt:Date.now(),
+    players:{
+      [gMyId]:{id:gMyId,name:hName,role:'killer',isHost:true}
+    }
+  };
+
+  window.fbFS.collection('rooms').doc(code).set(roomData)
+    .then(function(){
+      listenRoomFirestore(code);
+      UI.toast('Лобби создано!');
+    })
+    .catch(function(e){UI.toast('Ошибка: '+e.message);});
 }
 
 function findAndJoinLobby(){
-  if(!window.firebaseLoaded){UI.toast('Firebase не загружена');return;}
+  if(!window.fsLoaded){UI.toast('Firestore не загружен');return;}
   UI.showScreen('lobby-join');
   gMyRole='survivor';
   document.getElementById('found-lobbies').innerHTML='<p style="color:#aaa">Ищу лобби...</p>';
   var sName=gUser?gUser.name:'Выживший';
   if(gIsTelegram){try{var u=Telegram.WebApp.initDataUnsafe.user;if(u)sName=u.first_name||'Выживший';}catch(e){}}
 
-  // Use Firebase listener instead of polling
-  var ref=window.fbDB.ref('rooms');
-  function renderLobbies(snap){
-    var rooms=snap.val();
-    var container=document.getElementById('found-lobbies');
-    if(!container)return;
-    console.log('Rooms snapshot:', rooms);
-    var html='';
-    var found=false;
-    if(rooms){
-      Object.keys(rooms).forEach(function(rid){
-        var rm=rooms[rid];
-        console.log('Room', rid, ':', rm);
-        if(!rm || rm.status!=='waiting')return;
+  // Listen to all rooms in real-time
+  if(window._lobbyUnsub)window._lobbyUnsub();
+  window._lobbyUnsub=window.fbFS.collection('rooms')
+    .onSnapshot(function(snap){
+      var container=document.getElementById('found-lobbies');
+      if(!container)return;
+      var html='';
+      var found=false;
+      snap.forEach(function(doc){
+        var rm=doc.data();
+        if(rm.status!=='waiting')return;
         var pl=rm.players||{};
         var playerCount=Object.keys(pl).length;
-        if(playerCount>=4)return; // full
+        if(playerCount>=4)return;
         found=true;
-        html+='<div class="player-slot" style="cursor:pointer;border:2px solid #ff3333" onclick="joinLobbyById(\''+rid+'\',\''+sName.replace(/'/g,"\\'")+'\')">🔪 '+rm.hostName+' <span style="color:#aaa;font-size:12px">('+playerCount+'/4 игроков)</span></div>';
+        html+='<div class="player-slot" style="cursor:pointer;border:2px solid #ff3333" onclick="joinLobbyById(\''+doc.id+'\',\''+sName.replace(/'/g,"\\'")+'\')">🔪 '+rm.hostName+' <span style="color:#aaa;font-size:12px">('+playerCount+'/4 игроков)</span></div>';
       });
-    }
-    container.innerHTML=found?html:'<p style="color:#666">Нет доступных лобби. Стань маньяком!</p>';
-    document.getElementById('search-status').textContent=found?'Нажми на лобби для входа':'Нет лобби — создай своё!';
-  }
-
-  // Initial load
-  ref.once('value',renderLobbies);
-  // Real-time updates
-  ref.on('value',renderLobbies);
-
-  // Store unsubscribe for cleanup
-  if(window._lobbySearchUnsub)window._lobbySearchUnsub();
-  window._lobbySearchUnsub=function(){ref.off('value',renderLobbies);};
+      container.innerHTML=found?html:'<p style="color:#666">Нет доступных лобби. Стань маньяком!</p>';
+      document.getElementById('search-status').textContent=found?'Нажми на лобби для входа':'Нет лобби — создай своё!';
+    });
 
   document.getElementById('btn-leave-search').onclick=function(){
-    if(window._lobbySearchUnsub){window._lobbySearchUnsub();window._lobbySearchUnsub=null;}
+    if(window._lobbyUnsub){window._lobbyUnsub();window._lobbyUnsub=null;}
     UI.showScreen('main-menu');
   };
 }
 
 function joinLobbyById(code,sName){
-  if(gSearchInterval){clearInterval(gSearchInterval);gSearchInterval=null;}
+  if(window._lobbyUnsub){window._lobbyUnsub();window._lobbyUnsub=null;}
   gRoomId=code;gIsHost=false;
-  window.fbDB.ref('rooms/'+code+'/players/'+gMyId).set({id:gMyId,name:sName,role:'survivor',isHost:false}).then(function(){
+
+  var playerData={id:gMyId,name:sName,role:'survivor',isHost:false};
+  window.fbFS.collection('rooms').doc(code).update({
+    ['players.'+gMyId]:playerData
+  }).then(function(){
     UI.showScreen('lobby-create');
     document.getElementById('display-room-code').textContent=code;
     document.getElementById('lobby-status').textContent='Вы присоединились!';
-    listenRoom(code);
+    listenRoomFirestore(code);
     UI.toast('Подключился к лобби!');
   }).catch(function(e){UI.toast('Ошибка: '+e.message);});
 }
 
-function listenRoom(code){
-  if(gRoomUnsub)gRoomUnsub();
-  var ref=window.fbDB.ref('rooms/'+code);
-  var kicked=false;
-  ref.on('value',function(snap){
-    if(kicked)return;
-    if(!snap.exists()){kicked=true;UI.toast('Лобби закрыто!');UI.showScreen('main-menu');return;}
-    var d=snap.val();
-    if(d.status==='closed'){
-      kicked=true;
-      UI.toast('Маньяк покинул лобби!',5000);
-      UI.showScreen('main-menu');
-      return;
-    }
-    var pl=d.players||{};
-    var playerIds=Object.keys(pl);
-    var survivorCount=playerIds.filter(function(id){return pl[id].role==='survivor';}).length;
-    var el=document.getElementById('lobby-players');
-    if(el){
-      el.innerHTML='';
-      // Show killer first
-      playerIds.forEach(function(pid){
-        if(pl[pid].role!=='killer')return;
-        var div=document.createElement('div');
-        div.className='player-slot host';
-        div.textContent='🔪 '+pl[pid].name+(pl[pid].isHost?' (хост)':'');
-        el.appendChild(div);
-      });
-      // Then survivors
-      playerIds.forEach(function(pid){
-        if(pl[pid].role!=='survivor')return;
-        var div=document.createElement('div');
-        div.className='player-slot';
-        div.textContent='🏃 '+pl[pid].name;
-        el.appendChild(div);
-      });
-      for(var i=playerIds.length;i<4;i++){
-        var div2=document.createElement('div');
-        div2.className='player-slot empty';
-        div2.textContent='⏳ Ожидание...';
-        el.appendChild(div2);
+function listenRoomFirestore(code){
+  if(gRoomUnsubFirestore)gRoomUnsubFirestore();
+  gRoomUnsubFirestore=window.fbFS.collection('rooms').doc(code)
+    .onSnapshot(function(doc){
+      if(!doc.exists){
+        UI.toast('Лобби закрыто!');
+        UI.showScreen('main-menu');
+        return;
       }
-    }
-    var btn=document.getElementById('btn-start-game');
-    if(gIsHost&&gMyRole==='killer'){
-      if(survivorCount>=1){
-        btn.disabled=false;
-        btn.style.background='linear-gradient(135deg,#ff3333,#cc0000)';
-        btn.textContent='▶ Начать игру ('+playerIds.length+'/4)';
-      } else {
-        btn.disabled=true;
-        btn.style.background='#555';
-        btn.textContent='Ждём игроков...';
+      var d=doc.data();
+      if(d.status==='closed'){
+        UI.toast('Маньяк покинул лобби!',5000);
+        UI.showScreen('main-menu');
+        return;
       }
-    }
-    if(d.status==='playing'){
-      ref.off();
-      gIsKiller=(gMyRole==='killer');
-      resetState();
-      showGameScreen();
-      setTimeout(initPhaser,80);
-    }
-  });
-  gRoomUnsub=function(){ref.off();};
+      var pl=d.players||{};
+      var playerIds=Object.keys(pl);
+      var survivorCount=playerIds.filter(function(id){return pl[id].role==='survivor';}).length;
+
+      var el=document.getElementById('lobby-players');
+      if(el){
+        el.innerHTML='';
+        playerIds.forEach(function(pid){
+          if(pl[pid].role!=='killer')return;
+          var div=document.createElement('div');
+          div.className='player-slot host';
+          div.textContent='🔪 '+pl[pid].name+(pl[pid].isHost?' (хост)':'');
+          el.appendChild(div);
+        });
+        playerIds.forEach(function(pid){
+          if(pl[pid].role!=='survivor')return;
+          var div=document.createElement('div');
+          div.className='player-slot';
+          div.textContent='🏃 '+pl[pid].name;
+          el.appendChild(div);
+        });
+        for(var i=playerIds.length;i<4;i++){
+          var div2=document.createElement('div');
+          div2.className='player-slot empty';
+          div2.textContent='⏳ Ожидание...';
+          el.appendChild(div2);
+        }
+      }
+
+      var btn=document.getElementById('btn-start-game');
+      if(gIsHost&&gMyRole==='killer'){
+        if(survivorCount>=1){
+          btn.disabled=false;
+          btn.style.background='linear-gradient(135deg,#ff3333,#cc0000)';
+          btn.textContent='▶ Начать игру ('+playerIds.length+'/4)';
+        } else {
+          btn.disabled=true;
+          btn.style.background='#555';
+          btn.textContent='Ждём игроков...';
+        }
+      }
+
+      if(d.status==='playing'){
+        if(gRoomUnsubFirestore){gRoomUnsubFirestore();gRoomUnsubFirestore=null;}
+        gIsKiller=(gMyRole==='killer');
+        resetState();
+        showGameScreen();
+        setTimeout(initPhaser,80);
+      }
+    },function(error){
+      console.error('Room listen error:',error);
+    });
 }
 
 window.leaveLobby=function(){
   var wasKiller=(gMyRole==='killer');
-  // Killer needs confirmation before leaving
   if(wasKiller){
     var confirmed=confirm('Ты уверен что хочешь выйти? Все выжившие будут исключены из лобби!');
     if(!confirmed)return;
     UI.toast('Лобби закрыто');
   }
-  if(gRoomUnsub){gRoomUnsub();gRoomUnsub=null;}
-  if(window._lobbySearchUnsub){window._lobbySearchUnsub();window._lobbySearchUnsub=null;}
-  if(gRoomId&&window.firebaseLoaded){
+  if(gRoomUnsubFirestore){gRoomUnsubFirestore();gRoomUnsubFirestore=null;}
+  if(window._lobbyUnsub){window._lobbyUnsub();window._lobbyUnsub=null;}
+
+  if(gRoomId&&window.fsLoaded){
     if(wasKiller){
-      // Mark room as closed and notify players
-      window.fbDB.ref('rooms/'+gRoomId).update({status:'closed',closedBy:'killer',closedAt:Date.now()}).catch(function(){});
-      // Remove all players from room
-      window.fbDB.ref('rooms/'+gRoomId+'/players').remove().catch(function(){});
-      // Delete the room
-      window.fbDB.ref('rooms/'+gRoomId).remove().catch(function(){});
+      // Delete the room completely
+      window.fbFS.collection('rooms').doc(gRoomId).delete()
+        .catch(function(e){console.error('Delete room error:',e);});
     } else {
-      // Survivor just leaves
-      window.fbDB.ref('rooms/'+gRoomId+'/players/'+gMyId).remove().catch(function(){});
+      // Just remove player from room
+      var update={};
+      update['players.'+gMyId]=firebase.firestore.FieldValue.delete();
+      window.fbFS.collection('rooms').doc(gRoomId).update(update)
+        .catch(function(e){console.error('Leave room error:',e);});
     }
   }
   gRoomId=null;gIsHost=false;gMyRole=null;
@@ -1467,7 +1473,8 @@ function setupButtons(){
   on('btn-back-menu',function(){stopGame();UI.showScreen('main-menu');});
   on('btn-start-game',function(){
     if(!gRoomId||!gIsHost)return;
-    window.fbDB.ref('rooms/'+gRoomId).update({status:'playing'});
+    window.fbFS.collection('rooms').doc(gRoomId).update({status:'playing'})
+      .catch(function(e){UI.toast('Ошибка: '+e.message);});
   });
   on('btn-leave-lobby',window.leaveLobby);
 }
