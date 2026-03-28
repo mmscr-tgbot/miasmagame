@@ -109,6 +109,7 @@ const POS_UPDATE_INTERVAL = 50;
 // ═══════ GAME FUNCTIONS ═══════
 
 function startGame(killerMode, multiplayer = false, code = null, pid = null) {
+    console.log('startGame called', {killerMode, multiplayer, code, pid});
     isKiller = killerMode;
     isMultiplayer = multiplayer;
     roomCode = code;

@@ -46,6 +46,7 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="src/game/game.js"></script>
 </head>
 <body>
 <div id="app">
@@ -104,6 +105,7 @@ const CONFIG = {
     PLAYER_SPEED: 145,
     KILLER_SPEED: 162,
     INJURED_SPEED: 115,
+    DYING_SPEED: 38,
     GENERATOR_COUNT: 5,
     GENERATOR_REPAIR_RATE: 100 / 28,
     GENERATOR_BREAK_RATE: 100 / 10,
@@ -323,8 +325,7 @@ function startGame(roomCode) {
 
              var updates = { status: 'playing', startedAt: Date.now() };
 
-             playerIds.forEach(function(id) {
-                 // Хост (создатель комнаты) всегда становится убийцей
+             playerIds.forEach(function(id, index) {
                  updates['players/' + id + '/role'] = (id === roomData.hostId) ? 'killer' : 'survivor';
              });
 
@@ -664,23 +665,21 @@ function subscribeToLobby(roomCode) {
 
          // Game started
          if (room.status === 'playing') {
-             // Проверяем, не запущена ли уже игра, чтобы избежать двойного запуска
-             if (gGameSessionId) {
-                 return; // Игра уже запущена
+             if (gRoomUnsub) {
+                 gRoomUnsub();
+                 gRoomUnsub = null;
              }
  
              var isKiller = (gMyRole === 'killer');
              gGameSessionId = roomCode;
  
              initGameSession(roomCode, gMyId, isKiller).then(function() {
-                 console.log('Game session initialized for', gMyRole);
+                 console.log('Game session initialized');
                  if (typeof Game !== 'undefined') {
                      Game.start(isKiller, true, roomCode, gMyId);
                  }
              }).catch(function(e) {
                  console.error('Game session error:', e);
-                 // В случае ошибки сбрасываем gGameSessionId
-                 gGameSessionId = null;
              });
          }
     }, function(error) {
@@ -784,6 +783,25 @@ function initializeGenerators(roomCode) {
     db.ref('gameSessions/' + roomCode).child('generators').set(generators)
         .catch(() => {});
 }
+
+/* ═══════ EXPORT FOR GAME.JS ═══════ */
+window.initializeGenerators = initializeGenerators;
+window.hookSurvivor = hookSurvivor;
+window.unhookSurvivor = unhookSurvivor;
+window.setPlayerDead = setPlayerDead;
+window.setPlayerInjured = setPlayerInjured;
+window.setPlayerDying = setPlayerDying;
+window.setPlayerCarrying = setPlayerCarrying;
+window.updateGeneratorProgress = updateGeneratorProgress;
+window.setGateOpened = setGateOpened;
+window.setHatchSpawned = setHatchSpawned;
+window.closeHatch = closeHatch;
+window.setGameResult = setGameResult;
+window.subscribeToGameSession = subscribeToGameSession;
+window.leaveGameSession = leaveGameSession;
+window.sendPlayerPosition = sendPlayerPosition;
+window.updatePlayerState = updatePlayerState;
+window.updatePlayerHealth = updatePlayerHealth;
 
 /* ═══════ APP INIT ═══════ */
 var _initTries = 0;
