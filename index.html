@@ -727,6 +727,11 @@ function setupButtons() {
       console.log('startGame result:', result);
       if (result.success) {
         showToast('Игра начинается...');
+        // Запускаем саму игру
+        var isKiller = (gMyRole === 'killer');
+        if (typeof Game !== 'undefined') {
+          Game.start(isKiller, true, gRoomId, gMyId);
+        }
       } else {
         showToast('Ошибка: ' + result.error);
       }

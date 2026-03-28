@@ -994,26 +994,30 @@ function update(time, dt) {
                 const dx = gen.bx - sp.x;
                 const dy = gen.by - sp.y;
                 const angle = Math.atan2(dy, dx);
+                const dist = Math.sqrt(dx * dx + dy * dy);
 
-                // Arm animation phase - rapid back and forth
-                p.repairAnimPhase += dt * 0.015;
-                const armOffset = Math.sin(p.repairAnimPhase) * 8;
-                const armExtend = 10 + Math.sin(p.repairAnimPhase * 2) * 4;
+                // Simple rhythmic arm pump - smooth sine wave motion
+                p.repairAnimPhase += dt * 0.008;
+                const armPump = Math.sin(p.repairAnimPhase) * 12; // How far arms move back and forth
 
-                // Left arm position (front)
-                const leftArmAngle = angle - 0.3;
-                const leftArmX = sp.x + Math.cos(leftArmAngle) * armExtend + Math.cos(angle + Math.PI/2) * 5;
-                const leftArmY = sp.y + Math.sin(leftArmAngle) * armExtend + Math.sin(angle + Math.PI/2) * 5 - 20;
+                // Arms extend from body toward generator, with rhythmic pumping motion
+                // Base position is in front of and below the survivor's body
+                const armBaseDist = 18; // Distance from body center
+                const armBaseY = 8; // Slightly below body center
+
+                // Both arms move together rhythmically toward/away from generator
+                // Left arm
+                const leftArmX = sp.x + Math.cos(angle) * (armBaseDist + armPump);
+                const leftArmY = sp.y + armBaseY + Math.sin(angle) * (armBaseDist + armPump) * 0.3;
                 p.repairArms.left.setPosition(leftArmX, leftArmY);
-                p.repairArms.left.setRotation(angle);
+                p.repairArms.left.setRotation(angle + Math.sin(p.repairAnimPhase) * 0.15);
                 p.repairArms.left.setAlpha(0.9);
 
-                // Right arm position (front, offset)
-                const rightArmAngle = angle + 0.3;
-                const rightArmX = sp.x + Math.cos(rightArmAngle) * armExtend + Math.cos(angle - Math.PI/2) * 5;
-                const rightArmY = sp.y + Math.sin(rightArmAngle) * armExtend + Math.sin(angle - Math.PI/2) * 5 - 20;
+                // Right arm (slightly offset in phase for natural feel)
+                const rightArmX = sp.x + Math.cos(angle) * (armBaseDist + armPump * 0.9);
+                const rightArmY = sp.y + armBaseY + Math.sin(angle) * (armBaseDist + armPump * 0.9) * 0.3;
                 p.repairArms.right.setPosition(rightArmX, rightArmY);
-                p.repairArms.right.setRotation(angle);
+                p.repairArms.right.setRotation(angle + Math.sin(p.repairAnimPhase + 0.5) * 0.15);
                 p.repairArms.right.setAlpha(0.9);
             }
 
