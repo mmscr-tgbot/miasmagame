@@ -1311,20 +1311,24 @@ function findAndJoinLobby(){
   // Use Firebase listener instead of polling
   var ref=window.fbDB.ref('rooms');
   function renderLobbies(snap){
-    var rooms=snap.val()||{};
+    var rooms=snap.val();
     var container=document.getElementById('found-lobbies');
     if(!container)return;
+    console.log('Rooms snapshot:', rooms);
     var html='';
     var found=false;
-    Object.keys(rooms).forEach(function(rid){
-      var rm=rooms[rid];
-      if(rm.status!=='waiting')return;
-      var pl=rm.players||{};
-      var playerCount=Object.keys(pl).length;
-      if(playerCount>=4)return; // full
-      found=true;
-      html+='<div class="player-slot" style="cursor:pointer;border:2px solid #ff3333" onclick="joinLobbyById(\''+rid+'\',\''+sName.replace(/'/g,"\\'")+'\')">🔪 '+rm.hostName+' <span style="color:#aaa;font-size:12px">('+playerCount+'/4 игроков)</span></div>';
-    });
+    if(rooms){
+      Object.keys(rooms).forEach(function(rid){
+        var rm=rooms[rid];
+        console.log('Room', rid, ':', rm);
+        if(!rm || rm.status!=='waiting')return;
+        var pl=rm.players||{};
+        var playerCount=Object.keys(pl).length;
+        if(playerCount>=4)return; // full
+        found=true;
+        html+='<div class="player-slot" style="cursor:pointer;border:2px solid #ff3333" onclick="joinLobbyById(\''+rid+'\',\''+sName.replace(/'/g,"\\'")+'\')">🔪 '+rm.hostName+' <span style="color:#aaa;font-size:12px">('+playerCount+'/4 игроков)</span></div>';
+      });
+    }
     container.innerHTML=found?html:'<p style="color:#666">Нет доступных лобби. Стань маньяком!</p>';
     document.getElementById('search-status').textContent=found?'Нажми на лобби для входа':'Нет лобби — создай своё!';
   }
