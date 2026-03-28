@@ -739,14 +739,36 @@ function setupButtons() {
         if (typeof Game !== 'undefined') Game.stop();
         showScreen('main-menu');
     });
-    on('btn-start-game', function() {
-        if (!gRoomId || !gIsHost) return;
-        showToast('Начинаем игру...');
-        startGame(gRoomId).catch(function(e) {
-            console.error('Start game error:', e);
-            showToast('Ошибка запуска игры');
-        });
-    });
+     on('btn-start-game', function() {
+         console.log('btn-start-game clicked, gRoomId:', gRoomId, 'gIsHost:', gIsHost);
+         if (!gRoomId || !gIsHost) {
+             console.log('Blocked: gRoomId=', gRoomId, 'gIsHost=', gIsHost);
+             return;
+         }
+         showToast('Начинаем игру...');
+         startGame(gRoomId).then(function(result) {
+             console.log('startGame result:', result);
+             if (result.success) {
+                 // Принудительно обновляем статус комнаты до playing для локальной синхронизации
+                 var isKiller = (gMyRole === 'killer');
+                 gGameSessionId = gRoomId;
+                 
+                 initGameSession(gRoomId, gMyId, isKiller).then(function() {
+                     console.log('Game session initialized');
+                     if (typeof Game !== 'undefined') {
+                         Game.start(isKiller, true, gRoomId, gMyId);
+                     }
+                 }).catch(function(e) {
+                     console.error('Game session error:', e);
+                 });
+             } else {
+                 showToast('Ошибка: ' + result.error);
+             }
+         }).catch(function(e) {
+             console.error('Start game error:', e);
+             showToast('Ошибка запуска игры: ' + e.message);
+         });
+     });
     on('btn-leave-lobby', window.leaveLobby);
 }
 
