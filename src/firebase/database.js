@@ -297,22 +297,32 @@ function leaveGameSession(roomCode, playerId) {
     unsubscribeFromGameSession();
 }
 
-// Инициализировать генераторы
+// Инициализировать генераторы (только если их ещё нет)
 function initializeGenerators(roomCode) {
     if (!firebaseReady || !db) return;
 
-    const generators = {};
-    for (let i = 0; i < CONFIG.GENERATOR_COUNT; i++) {
-        generators[i] = {
-            id: i,
-            progress: 0,
-            repaired: false,
-            repairingBy: null,
-            lastUpdate: Date.now()
-        };
-    }
+    // Проверяем, существуют ли уже генераторы
+    db.ref('gameSessions/' + roomCode).child('generators').once('value')
+        .then((snapshot) => {
+            if (snapshot.exists()) {
+                console.log('Генераторы уже существуют, не перезаписываем');
+                return;
+            }
 
-    db.ref('gameSessions/' + roomCode).child('generators').set(generators)
+            const generators = {};
+            for (let i = 0; i < CONFIG.GENERATOR_COUNT; i++) {
+                generators[i] = {
+                    id: i,
+                    progress: 0,
+                    repaired: false,
+                    repairingBy: null,
+                    lastUpdate: Date.now()
+                };
+            }
+
+            db.ref('gameSessions/' + roomCode).child('generators').set(generators)
+                .catch(() => {});
+        })
         .catch(() => {});
 }
 

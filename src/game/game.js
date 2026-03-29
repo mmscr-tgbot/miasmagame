@@ -6,6 +6,7 @@ const CONFIG = {
     INJURED_SPEED: 115,
     DYING_SPEED: 38,
     GENERATOR_COUNT: 5,
+    GENS_REQUIRED_FOR_EXIT: 4,
     GENERATOR_REPAIR_RATE: 100 / 28,
     GENERATOR_BREAK_RATE: 100 / 10,
     HEAL_RATE: 100 / 18,
@@ -105,6 +106,7 @@ let localPlayerId = null;
 let remotePlayers = {};
 let lastPosUpdate = 0;
 const POS_UPDATE_INTERVAL = 50;
+const POS_LERP_SPEED = 0.15; // Smooth interpolation factor (0.1-0.2 is good)
 
 // ═══════ GAME FUNCTIONS ═══════
 
@@ -628,21 +630,6 @@ function createRepairingTextures(g, name, shirtColor, hairColor) {
     g.fillStyle(0xffccaa); g.fillRect(35, 16, 4, 5);
     g.generateTexture(name + '_repair', 56, 80);
     g.clear();
-
-    // Repair arm texture (will be animated separately)
-    // Left arm reaching out
-    g.fillStyle(0xffccaa); g.fillRect(0, 0, 20, 7);
-    g.fillStyle(0xeeaa88); g.fillRect(0, 0, 5, 7);
-    g.fillStyle(0xffccaa); g.fillCircle(22, 3, 5);
-    g.generateTexture(name + '_arm_l', 28, 14);
-    g.clear();
-
-    // Right arm reaching out
-    g.fillStyle(0xffccaa); g.fillRect(0, 0, 20, 7);
-    g.fillStyle(0xeeaa88); g.fillRect(0, 0, 5, 7);
-    g.fillStyle(0xffccaa); g.fillCircle(22, 3, 5);
-    g.generateTexture(name + '_arm_r', 28, 14);
-    g.clear();
 }
 
 // ═══════ CREATE SCENE ═══════
@@ -743,6 +730,7 @@ function create() {
             const sp = this.add.sprite(p.x, p.y, 'gate').setDepth(p.y + 1).setScale(1.8);
             sp.progress = 0;
             sp.opened = false;
+            sp.isOpening = false;
             sp.barGfx = this.add.graphics().setDepth(p.y + 2);
             sp.bx = p.x;
             sp.by = p.y;
@@ -903,27 +891,12 @@ function makePlayer(scene, x, y, tex, isMe) {
         glowColor: glowColor,
         isRepairing: false,
         repairAnimPhase: 0,
-        repairArms: null,
         repairSparks: null,
         repairBobPhase: 0
     };
 
-    // Create repair arms if survivor
-    if (tex !== 'killer') {
-        const armL = scene.add.sprite(0, 0, tex + '_arm_l');
-        armL.setVisible(false);
-        armL.setDepth(sp.depth + 1);
-        const armR = scene.add.sprite(0, 0, tex + '_arm_r');
-        armR.setVisible(false);
-        armR.setDepth(sp.depth + 1);
-        p.repairArms = { left: armL, right: armR };
-
-        // Create spark particles graphics
-        const sparks = scene.add.graphics();
-        sparks.setVisible(false);
-        sparks.setDepth(sp.depth + 2);
-        p.repairSparks = sparks;
-    }
+    // Repair animation uses the _repair texture which has arms built in
+    // No separate arm sprites needed
 
     sp._pRef = p;
     return p;
@@ -980,45 +953,9 @@ function update(time, dt) {
             const gen = p.progressAction.target;
             const sp = p.sprite;
 
-            // Show repair texture (crouching)
+            // Show repair texture (crouching) - this already has arms built in
             if (!sp.texture.key.includes('_repair')) {
                 sp.setTexture(p.tex + '_repair');
-            }
-
-            // Position repair arms extending toward generator
-            if (p.repairArms) {
-                p.repairArms.left.setVisible(true);
-                p.repairArms.right.setVisible(true);
-
-                // Calculate direction to generator
-                const dx = gen.bx - sp.x;
-                const dy = gen.by - sp.y;
-                const angle = Math.atan2(dy, dx);
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                // Simple rhythmic arm pump - smooth sine wave motion
-                p.repairAnimPhase += dt * 0.008;
-                const armPump = Math.sin(p.repairAnimPhase) * 12; // How far arms move back and forth
-
-                // Arms extend from body toward generator, with rhythmic pumping motion
-                // Base position is in front of and below the survivor's body
-                const armBaseDist = 18; // Distance from body center
-                const armBaseY = 8; // Slightly below body center
-
-                // Both arms move together rhythmically toward/away from generator
-                // Left arm
-                const leftArmX = sp.x + Math.cos(angle) * (armBaseDist + armPump);
-                const leftArmY = sp.y + armBaseY + Math.sin(angle) * (armBaseDist + armPump) * 0.3;
-                p.repairArms.left.setPosition(leftArmX, leftArmY);
-                p.repairArms.left.setRotation(angle + Math.sin(p.repairAnimPhase) * 0.15);
-                p.repairArms.left.setAlpha(0.9);
-
-                // Right arm (slightly offset in phase for natural feel)
-                const rightArmX = sp.x + Math.cos(angle) * (armBaseDist + armPump * 0.9);
-                const rightArmY = sp.y + armBaseY + Math.sin(angle) * (armBaseDist + armPump * 0.9) * 0.3;
-                p.repairArms.right.setPosition(rightArmX, rightArmY);
-                p.repairArms.right.setRotation(angle + Math.sin(p.repairAnimPhase + 0.5) * 0.15);
-                p.repairArms.right.setAlpha(0.9);
             }
 
             // Spark particles effect
@@ -1062,6 +999,11 @@ function update(time, dt) {
     flushFloatBars();
     updateHUD();
     checkWinLose();
+
+    // Smooth interpolation for remote players in multiplayer
+    if (isMultiplayer) {
+        interpolateRemotePlayers(dt);
+    }
 
     // Send position update in multiplayer
     if (isMultiplayer && roomCode && playerId) {
@@ -1235,9 +1177,7 @@ function survivorAction(dt) {
                     if (gen.lightSprite) gen.lightSprite.setAlpha(0.3);
                     p.progressAction = null;
                     p.isRepairing = false;
-                    p.repairArms.left.setVisible(false);
-                    p.repairArms.right.setVisible(false);
-                    p.repairSparks.setVisible(false);
+                    if (p.repairSparks) p.repairSparks.setVisible(false);
                     // Reset to normal texture
                     sp.setTexture(p.tex);
                     UI.showToast('✅ Генератор починен!', 2000);
@@ -1313,42 +1253,55 @@ function survivorAction(dt) {
 
     // Open gate
     if (!acted) {
-        gates.some(gate => {
-            if (gate.opened || !exitOpen) return false;
-            if (dist(sp, gate) < CONFIG.INTERACT_DISTANCE + 30) {
-                acted = true;
-                sp.body.setVelocity(0, 0);
-                if (!p.progressAction || p.progressAction.target !== gate) {
-                    p.progressAction = { type: 'gate', target: gate };
-                }
-                gate.progress = Math.min(100, gate.progress + CONFIG.GATE_RATE * (dt / 1000));
-                drawBar(gate.barGfx, gate.bx, gate.by, gate.progress, 0x66ffaa);
-
-                if (gate.progress >= 100) {
-                    gate.opened = true;
-                    gate.setTint(0x22ff66);
-                    p.progressAction = null;
-                    UI.showToast('🚪 Ворота открыты! Беги!', 2000);
-
-                    if (isMultiplayer && roomCode) {
-                        setGateOpened(roomCode, true);
+        const repairedCount = generators.filter(g => g.repaired).length;
+        if (repairedCount >= CONFIG.GENS_REQUIRED_FOR_EXIT) {
+            gates.some(gate => {
+                if (gate.opened || gate.isOpening) return false;
+                if (dist(sp, gate) < CONFIG.INTERACT_DISTANCE + 30) {
+                    acted = true;
+                    sp.body.setVelocity(0, 0);
+                    if (!p.progressAction || p.progressAction.target !== gate) {
+                        p.progressAction = { type: 'gate', target: gate };
+                        gate.isOpening = true;
                     }
+                    gate.progress = Math.min(100, gate.progress + CONFIG.GATE_RATE * (dt / 1000));
+                    drawBar(gate.barGfx, gate.bx, gate.by, gate.progress, 0x66ffaa);
+
+                    // Animate gate opening - scale up and fade
+                    const openPct = gate.progress / 100;
+                    gate.setScale(1.8 + openPct * 0.5);
+                    gate.setAlpha(1 - openPct * 0.5);
+
+                    if (gate.progress >= 100) {
+                        gate.opened = true;
+                        gate.setTint(0x22ff66);
+                        gate.setScale(2.3);
+                        gate.setAlpha(0);
+                        p.progressAction = null;
+                        UI.showToast('🚪 Ворота открыты! Беги!', 2000);
+
+                        if (isMultiplayer && roomCode) {
+                            setGateOpened(roomCode, true);
+                        }
+                    }
+                    return true;
                 }
-                return true;
-            }
-        });
+            });
+        }
     }
 
     if (!acted) cancelProgress(p);
 }
 
 function cancelProgress(p) {
+    // Reset gate opening state if player was opening gate
+    if (p.progressAction && p.progressAction.type === 'gate' && p.progressAction.target) {
+        p.progressAction.target.isOpening = false;
+        p.progressAction.target.setScale(1.8);
+        p.progressAction.target.setAlpha(1);
+    }
     p.progressAction = null;
     p.isRepairing = false;
-    if (p.repairArms) {
-        p.repairArms.left.setVisible(false);
-        p.repairArms.right.setVisible(false);
-    }
     if (p.repairSparks) {
         p.repairSparks.setVisible(false);
     }
@@ -1359,9 +1312,9 @@ function cancelProgress(p) {
 
 function checkAllGens() {
     const done = generators.filter(g => g.repaired).length;
-    if (done >= CONFIG.GENERATOR_COUNT && !exitOpen) {
+    if (done >= CONFIG.GENS_REQUIRED_FOR_EXIT && !exitOpen) {
         exitOpen = true;
-        UI.showToast('⚡ Все генераторы! Открывай ворота!', 3000);
+        UI.showToast('⚡ Ворота можно открывать!', 3000);
 
         gates.forEach(gate => {
             gate.glowGfx = scene.add.graphics();
@@ -1370,11 +1323,14 @@ function checkAllGens() {
             gate.glowGfx.setDepth(gate.y - 1);
         });
 
-        spawnHatch();
-
         if (isMultiplayer && roomCode) {
             setGateOpened(roomCode, true);
         }
+    }
+
+    // Hatch spawns when ALL 5 generators are done
+    if (done >= CONFIG.GENERATOR_COUNT && !hatch) {
+        spawnHatch();
     }
 }
 
@@ -1670,24 +1626,22 @@ function updateRemotePlayers(players) {
         const pdata = players[pid];
 
         if (remotePlayers[pid]) {
-            // Update existing
+            // Update existing - store target position for interpolation
             const rp = remotePlayers[pid];
-            rp.sprite.x = pdata.x || rp.sprite.x;
-            rp.sprite.y = pdata.y || rp.sprite.y;
+            rp.targetX = pdata.x;
+            rp.targetY = pdata.y;
             rp.state = pdata.state || rp.state;
 
             if (pdata.state === 'dead') {
                 rp.sprite.setAlpha(0.3);
             } else if (pdata.state === 'hooked') {
-                // Find hook and position
+                // Find hook and position - no interpolation for hooked players
                 const hook = hooks.find(h => h.hookId === pdata.hookId);
                 if (hook) {
                     rp.sprite.setPosition(hook.x, hook.y - 12);
+                    rp.targetX = hook.x;
+                    rp.targetY = hook.y - 12;
                 }
-            }
-
-            if (rp.glowFx) {
-                rp.glowFx.setPosition(rp.sprite.x, rp.sprite.y);
             }
         } else {
             // Create new remote player
@@ -1708,7 +1662,9 @@ function updateRemotePlayers(players) {
                 glowFx: glow,
                 role: pdata.role,
                 state: pdata.state || 'alive',
-                playerId: pid
+                playerId: pid,
+                targetX: pdata.x || 1200,
+                targetY: pdata.y || 900
             };
         }
     });
@@ -1755,6 +1711,38 @@ function updateGeneratorsFromServer(gens) {
         if (!gen.repaired && gen.progress > 0) {
             drawBar(gen.barGfx, gen.bx, gen.by, gen.progress, 0xffee00);
         }
+    });
+}
+
+function interpolateRemotePlayers(dt) {
+    if (!scene) return;
+
+    const lerpFactor = 1 - Math.pow(1 - POS_LERP_SPEED, dt / 16.67);
+
+    Object.values(remotePlayers).forEach(rp => {
+        if (rp.targetX === undefined || rp.targetY === undefined) return;
+        if (rp.state === 'dead' || rp.state === 'hooked') return;
+
+        const dx = rp.targetX - rp.sprite.x;
+        const dy = rp.targetY - rp.sprite.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Snap if very close to avoid drifting
+        if (dist < 1) {
+            rp.sprite.x = rp.targetX;
+            rp.sprite.y = rp.targetY;
+        } else {
+            rp.sprite.x += dx * lerpFactor;
+            rp.sprite.y += dy * lerpFactor;
+        }
+
+        // Update glow position
+        if (rp.glowFx) {
+            rp.glowFx.setPosition(rp.sprite.x, rp.sprite.y);
+        }
+
+        // Update sprite depth
+        rp.sprite.setDepth(1000 + rp.sprite.y);
     });
 }
 
