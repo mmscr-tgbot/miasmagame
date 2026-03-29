@@ -2125,126 +2125,131 @@ function createRepairingTextures(g, name, shirtColor, hairColor) {
 // Create dying (crawling on ground) textures for survivors
 function createDyingTextures(g, name, shirtColor, hairColor) {
     // ═══════ DYING (CRAWLING) SURVIVOR ═══════
-    // Shadow - much wider and flatter for lying on ground
-    g.fillStyle(0x000000, 0.5); g.fillEllipse(36, 88, 70, 14);
+    // Maintain similar aspect ratio to standing texture (72x120)
+    // This texture is 72x110 - more vertical for proper scaling
     
-    // Legs - lying flat on ground with detail
-    g.fillStyle(0x2c3e70); g.fillRect(8, 68, 16, 12);
-    g.fillStyle(0x3c4e80); g.fillRect(8, 68, 4, 12);
-    g.fillStyle(0x1c2e60); g.fillRect(8, 68, 16, 2);
+    // Shadow - oval under the crawling body
+    g.fillStyle(0x000000, 0.4); g.fillEllipse(36, 105, 55, 12);
     
-    g.fillStyle(0x2c3e70); g.fillRect(52, 68, 16, 12);
-    g.fillStyle(0x3c4e80); g.fillRect(52, 68, 4, 12);
-    g.fillStyle(0x1c2e60); g.fillRect(52, 68, 16, 2);
+    // Legs - bent/crawling pose, slightly behind
+    g.fillStyle(0x2c3e70); g.fillRect(16, 82, 14, 22);
+    g.fillStyle(0x3c4e80); g.fillRect(16, 82, 5, 22);
+    g.fillStyle(0x1c2e60); g.fillRect(16, 82, 14, 3);
     
-    // Feet pointing outward (crawling pose)
-    g.fillStyle(0x4a4a4a); g.fillRect(0, 64, 12, 8);
-    g.fillStyle(0x5a5a5a); g.fillRect(0, 64, 4, 8);
-    g.fillStyle(0x2a2a2a); g.fillRect(-2, 70, 16, 4);
+    g.fillStyle(0x2c3e70); g.fillRect(42, 82, 14, 22);
+    g.fillStyle(0x3c4e80); g.fillRect(42, 82, 5, 22);
+    g.fillStyle(0x1c2e60); g.fillRect(42, 82, 14, 3);
     
-    g.fillStyle(0x4a4a4a); g.fillRect(64, 64, 12, 8);
-    g.fillStyle(0x5a5a5a); g.fillRect(64, 64, 4, 8);
-    g.fillStyle(0x2a2a2a); g.fillRect(62, 70, 16, 4);
+    // Feet - on ground, crawling
+    g.fillStyle(0x4a4a4a); g.fillRect(10, 98, 18, 10);
+    g.fillStyle(0x5a5a5a); g.fillRect(10, 98, 6, 10);
+    g.fillStyle(0x2a2a2a); g.fillRect(10, 104, 20, 4);
     
-    // Body - lying flat/horizontal
-    g.fillStyle(shirtColor); g.fillRect(12, 50, 52, 22);
-    g.fillStyle(shirtColor + 0x111111); g.fillRect(12, 50, 8, 22);
-    g.fillStyle(shirtColor + 0x111111); g.fillRect(56, 50, 8, 22);
-    g.fillStyle(shirtColor + 0x222222); g.fillRect(12, 50, 52, 2);
+    g.fillStyle(0x4a4a4a); g.fillRect(44, 98, 18, 10);
+    g.fillStyle(0x5a5a5a); g.fillRect(44, 98, 6, 10);
+    g.fillStyle(0x2a2a2a); g.fillRect(44, 104, 20, 4);
     
-    // Arms - crawling pose
-    g.fillStyle(shirtColor); g.fillRect(-8, 52, 22, 10);
-    g.fillStyle(shirtColor - 0x111111); g.fillRect(-8, 52, 6, 10);
+    // Body - horizontal/crawling pose
+    g.fillStyle(shirtColor); g.fillRect(18, 60, 38, 26);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(18, 60, 8, 26);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(48, 60, 8, 26);
+    g.fillStyle(shirtColor + 0x222222); g.fillRect(18, 60, 38, 3);
     
-    g.fillStyle(shirtColor); g.fillRect(62, 52, 22, 10);
-    g.fillStyle(shirtColor - 0x111111); g.fillRect(76, 52, 6, 10);
+    // Arms - extended forward (crawling)
+    g.fillStyle(shirtColor); g.fillRect(-6, 58, 28, 10);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(-6, 58, 6, 10);
+    
+    g.fillStyle(shirtColor); g.fillRect(50, 58, 28, 10);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(72, 58, 6, 10);
     
     // Hands - touching ground
-    g.fillStyle(0xffccaa); g.fillRect(-16, 56, 14, 10);
-    g.fillStyle(0xeebb99); g.fillRect(-16, 56, 4, 10);
-    g.fillStyle(0xffccaa); g.fillCircle(-10, 64, 6);
-    g.fillStyle(0xeebb99); g.fillCircle(-10, 63, 5);
+    g.fillStyle(0xffccaa); g.fillRect(-20, 62, 18, 12);
+    g.fillStyle(0xeebb99); g.fillRect(-20, 62, 5, 12);
+    g.fillStyle(0xffccaa); g.fillCircle(-12, 72, 7);
+    g.fillStyle(0xeebb99); g.fillCircle(-12, 71, 5);
     // Fingers
-    g.fillStyle(0xffccaa); g.fillRect(-20, 62, 4, 8);
-    g.fillStyle(0xffccaa); g.fillRect(-14, 64, 4, 9);
-    g.fillStyle(0xffccaa); g.fillRect(-8, 62, 4, 8);
+    g.fillStyle(0xffccaa); g.fillRect(-24, 68, 4, 10);
+    g.fillStyle(0xffccaa); g.fillRect(-16, 70, 4, 11);
+    g.fillStyle(0xffccaa); g.fillRect(-8, 68, 4, 10);
     
-    g.fillStyle(0xffccaa); g.fillRect(82, 56, 14, 10);
-    g.fillStyle(0xeebb99); g.fillRect(82, 56, 4, 10);
-    g.fillStyle(0xffccaa); g.fillCircle(88, 64, 6);
-    g.fillStyle(0xeebb99); g.fillCircle(88, 63, 5);
-    g.fillStyle(0xffccaa); g.fillRect(92, 62, 4, 8);
-    g.fillStyle(0xffccaa); g.fillRect(86, 64, 4, 9);
-    g.fillStyle(0xffccaa); g.fillRect(80, 62, 4, 8);
+    g.fillStyle(0xffccaa); g.fillRect(74, 62, 18, 12);
+    g.fillStyle(0xeebb99); g.fillRect(87, 62, 5, 12);
+    g.fillStyle(0xffccaa); g.fillCircle(82, 72, 7);
+    g.fillStyle(0xeebb99); g.fillCircle(82, 71, 5);
+    g.fillStyle(0xffccaa); g.fillRect(76, 68, 4, 10);
+    g.fillStyle(0xffccaa); g.fillRect(84, 70, 4, 11);
+    g.fillStyle(0xffccaa); g.fillRect(92, 68, 4, 10);
     
     // Sleeves
-    g.fillStyle(shirtColor); g.fillRect(-6, 50, 12, 6);
-    g.fillStyle(shirtColor); g.fillRect(70, 50, 12, 6);
+    g.fillStyle(shirtColor); g.fillRect(-4, 56, 14, 8);
+    g.fillStyle(shirtColor); g.fillRect(62, 56, 14, 8);
     
-    // Head - very low to ground
-    g.fillStyle(0xffccaa); g.fillCircle(36, 38, 16);
-    g.fillStyle(0xeebb99); g.fillCircle(36, 40, 14);
-    g.fillStyle(0xddbbaa); g.fillCircle(36, 42, 12);
+    // Head - low to ground, looking up slightly
+    g.fillStyle(0xffccaa); g.fillCircle(36, 38, 18);
+    g.fillStyle(0xeebb99); g.fillCircle(36, 40, 15);
+    g.fillStyle(0xddbbaa); g.fillCircle(36, 42, 13);
     
     // Cheekbones
-    g.fillStyle(0xeebb99); g.fillCircle(24, 40, 6);
-    g.fillStyle(0xeebb99); g.fillCircle(48, 40, 6);
+    g.fillStyle(0xeebb99); g.fillCircle(24, 40, 7);
+    g.fillStyle(0xeebb99); g.fillCircle(48, 40, 7);
     
-    // Hair - flattened, disheveled
-    g.fillStyle(hairColor); g.fillCircle(36, 28, 14);
-    g.fillStyle(hairColor - 0x111111); g.fillCircle(36, 30, 12);
-    g.fillStyle(hairColor - 0x222222); g.fillCircle(36, 32, 10);
-    // Hair falling flat
-    g.fillStyle(hairColor); g.fillRect(22, 28, 28, 8);
-    g.fillStyle(hairColor - 0x111111); g.fillRect(24, 30, 24, 5);
+    // Hair - disheveled, falling forward
+    g.fillStyle(hairColor); g.fillCircle(36, 26, 16);
+    g.fillStyle(hairColor - 0x111111); g.fillCircle(36, 28, 14);
+    g.fillStyle(hairColor - 0x222222); g.fillCircle(36, 30, 12);
+    // Hair strands falling
+    g.fillStyle(hairColor); g.fillRect(20, 26, 32, 10);
+    g.fillStyle(hairColor - 0x111111); g.fillRect(22, 28, 28, 6);
+    g.fillStyle(hairColor); g.fillRect(16, 32, 8, 12);
+    g.fillStyle(hairColor); g.fillRect(48, 32, 8, 12);
     
-    // Eyes - looking forward/distressed, wide open
-    g.fillStyle(0xffffff); g.fillCircle(28, 38, 6);
-    g.fillStyle(0xffffff); g.fillCircle(44, 38, 6);
-    g.fillStyle(0x333333); g.fillCircle(28, 38, 4);
-    g.fillStyle(0x333333); g.fillCircle(44, 38, 4);
-    g.fillStyle(0x111111); g.fillCircle(28, 38, 2);
-    g.fillStyle(0x111111); g.fillCircle(44, 38, 2);
-    g.fillStyle(0xffffff); g.fillCircle(27, 37, 1.5);
-    g.fillStyle(0xffffff); g.fillCircle(43, 37, 1.5);
-    // Eye shadow/bags - exhausted
-    g.fillStyle(0xddbbaa); g.fillRect(22, 32, 12, 3);
-    g.fillStyle(0xddbbaa); g.fillRect(40, 32, 12, 3);
+    // Eyes - distressed, looking forward
+    g.fillStyle(0xffffff); g.fillCircle(28, 38, 7);
+    g.fillStyle(0xffffff); g.fillCircle(44, 38, 7);
+    g.fillStyle(0x333333); g.fillCircle(28, 38, 5);
+    g.fillStyle(0x333333); g.fillCircle(44, 38, 5);
+    g.fillStyle(0x111111); g.fillCircle(28, 38, 3);
+    g.fillStyle(0x111111); g.fillCircle(44, 38, 3);
+    g.fillStyle(0xffffff); g.fillCircle(27, 37, 2);
+    g.fillStyle(0xffffff); g.fillCircle(43, 37, 2);
+    // Eye shadow/bags
+    g.fillStyle(0xddbbaa); g.fillRect(22, 31, 12, 3);
+    g.fillStyle(0xddbbaa); g.fillRect(40, 31, 12, 3);
     
     // Eyebrows - worried
-    g.fillStyle(hairColor - 0x333333); g.fillRect(22, 30, 10, 2);
-    g.fillStyle(hairColor - 0x444444); g.fillRect(22, 30, 10, 1);
-    g.fillStyle(hairColor - 0x333333); g.fillRect(42, 30, 10, 2);
-    g.fillStyle(hairColor - 0x444444); g.fillRect(42, 30, 10, 1);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(22, 29, 10, 2);
+    g.fillStyle(hairColor - 0x444444); g.fillRect(22, 29, 10, 1);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(42, 29, 10, 2);
+    g.fillStyle(hairColor - 0x444444); g.fillRect(42, 29, 10, 1);
     
     // Nose
-    g.fillStyle(0xeebb99); g.fillEllipse(36, 42, 4, 5);
-    g.fillStyle(0xddbbaa); g.fillEllipse(36, 43, 2, 2);
+    g.fillStyle(0xeebb99); g.fillEllipse(36, 44, 4, 5);
+    g.fillStyle(0xddbbaa); g.fillEllipse(36, 45, 2, 2);
     
     // Mouth - gasping/in pain
-    g.fillStyle(0xcc8877); g.fillRect(30, 48, 12, 4);
-    g.fillStyle(0xdd9988); g.fillRect(30, 48, 12, 2);
-    g.fillStyle(0xbb7766); g.fillRect(32, 50, 8, 1);
+    g.fillStyle(0xcc8877); g.fillRect(30, 50, 12, 5);
+    g.fillStyle(0xdd9988); g.fillRect(30, 50, 12, 2);
+    g.fillStyle(0xbb7766); g.fillRect(32, 53, 8, 2);
     // Teeth showing
-    g.fillStyle(0xffffff); g.fillRect(31, 49, 2, 2);
-    g.fillStyle(0xffffff); g.fillRect(35, 49, 2, 2);
-    g.fillStyle(0xffffff); g.fillRect(39, 49, 2, 2);
+    g.fillStyle(0xffffff); g.fillRect(31, 51, 2, 2);
+    g.fillStyle(0xffffff); g.fillRect(35, 51, 2, 2);
+    g.fillStyle(0xffffff); g.fillRect(39, 51, 2, 2);
     
     // Ears
-    g.fillStyle(0xffccaa); g.fillCircle(20, 38, 4);
-    g.fillStyle(0xeebb99); g.fillCircle(20, 37, 3);
-    g.fillStyle(0xffccaa); g.fillCircle(52, 38, 4);
-    g.fillStyle(0xeebb99); g.fillCircle(52, 37, 3);
+    g.fillStyle(0xffccaa); g.fillCircle(18, 40, 5);
+    g.fillStyle(0xeebb99); g.fillCircle(18, 39, 3);
+    g.fillStyle(0xffccaa); g.fillCircle(54, 40, 5);
+    g.fillStyle(0xeebb99); g.fillCircle(54, 39, 3);
     
     // Sweat drops - distressed
-    g.fillStyle(0x88ccff, 0.6); g.fillCircle(22, 34, 2);
-    g.fillStyle(0x88ccff, 0.6); g.fillCircle(50, 36, 2);
+    g.fillStyle(0x88ccff, 0.6); g.fillCircle(22, 34, 3);
+    g.fillStyle(0x88ccff, 0.6); g.fillCircle(50, 36, 3);
     
     // Tear drops
-    g.fillStyle(0x88ccff, 0.5); g.fillCircle(24, 44, 2);
-    g.fillStyle(0x88ccff, 0.5); g.fillCircle(48, 44, 2);
+    g.fillStyle(0x88ccff, 0.5); g.fillCircle(24, 46, 2);
+    g.fillStyle(0x88ccff, 0.5); g.fillCircle(48, 46, 2);
     
-    g.generateTexture(name + '_dying', 96, 90);
+    g.generateTexture(name + '_dying', 72, 110);
     g.clear();
 }
 
@@ -3189,19 +3194,9 @@ function update(time, dt) {
             if (!sp.texture.key.includes('_dying')) {
                 sp.setTexture(getTexWithFallback(p.tex, '_dying'));
             }
-            // Crawling animation - slight scale oscillation when moving
-            const v = p.sprite.body ? { x: p.sprite.body.velocity.x, y: p.sprite.body.velocity.y } : { x: 0, y: 0 };
-            const speed = Math.sqrt(v.x * v.x + v.y * v.y);
-            if (speed > 5) {
-                // Add crawling wobble effect
-                p._crawlPhase = (p._crawlPhase || 0) + dt * 0.015;
-                const wobble = Math.sin(p._crawlPhase * 3) * 0.08;
-                sp.setScale(1 + wobble, 1 - wobble * 0.5);
-            } else {
-                // Reset scale when not moving
-                sp.setScale(1, 1);
-                p._crawlPhase = 0;
-            }
+            // Keep scale at 1,1 - no distortion
+            sp.setScale(1, 1);
+            // Rotation wobble handled separately
         } else if (p.carryTarget) {
             // Update carried texture for the carried survivor
             const carried = p.carryTarget;
@@ -3309,7 +3304,7 @@ function updatePlayer(dt) {
         }
         
         // Handle attack on button press (only when not in cooldown and not during strike animation)
-        if (actionPressed && killerAttackCooldown <= 0 && killerStrikeTimer <= 0 && !p.carryTarget) {
+        if (actionPressed && killerAttackCooldown <= 0 && killerStrikeTimer <= 0) {
             killerAction(dt);
         }
         
@@ -3326,6 +3321,15 @@ function updatePlayer(dt) {
         
         const v = normalize(inputVec);
         sp.body.setVelocity(v.x * killerSpd, v.y * killerSpd);
+        
+        // Flip killer sprite based on horizontal movement direction
+        if (v.x < -0.1) {
+            sp.setFlipX(true);
+        } else if (v.x > 0.1) {
+            sp.setFlipX(false);
+        }
+        // Ensure killer never rotates upside down
+        sp.setRotation(0);
         
         // Update carried survivor position
         if (p.carryTarget) {
@@ -3375,24 +3379,17 @@ function updatePlayer(dt) {
                 p._carryAnimTimer = 0;
             }
             
-            // Apply animation based on phase
+            // Apply animation based on phase - no scale distortion
             if (p._carryAnimPhase === 'arms_up') {
-                const progress = p._carryAnimTimer / p._carryAnimDuration;
-                const armWave = Math.sin(progress * Math.PI) * 0.15;
-                sp.setScale(1 + armWave, 1 - armWave * 0.5);
+                sp.setScale(1, 1);
                 sp.setRotation(0);
             } else if (p._carryAnimPhase === 'legs_flex') {
-                const progress = p._carryAnimTimer / p._carryAnimDuration;
-                const legFlex = Math.sin(progress * Math.PI) * 0.1;
-                sp.setScale(1 - legFlex * 0.3, 1 + legFlex * 0.5);
+                sp.setScale(1, 1);
                 sp.setRotation(0);
             } else {
-                // Idle - slight natural sway
-                if (!p._carryIdlePhase) p._carryIdlePhase = 0;
-                p._carryIdlePhase += dt * 0.002;
-                const idleSway = Math.sin(p._carryIdlePhase) * 0.02;
-                sp.setRotation(idleSway);
+                // Idle - no rotation for carried survivors
                 sp.setScale(1, 1);
+                sp.setRotation(0);
             }
             return;
         }
@@ -3448,7 +3445,7 @@ function killerAction(dt) {
         
         // Reset carried texture if not already set
         if (!ct.sprite.texture.key.includes('_carried')) {
-            ct.sprite.setTexture(ct.tex + '_carried');
+            ct.sprite.setTexture(getTexWithFallback(ct.tex, '_carried'));
         }
         
         const hook = nearestFreeHook(sp);
@@ -4248,21 +4245,14 @@ function updateAI(dt) {
                     }
                     
                     if (ct._carryAnimPhase === 'arms_up') {
-                        const progress = ct._carryAnimTimer / ct._carryAnimDuration;
-                        const armWave = Math.sin(progress * Math.PI) * 0.15;
-                        ct.sprite.setScale(1 + armWave, 1 - armWave * 0.5);
+                        ct.sprite.setScale(1, 1);
                         ct.sprite.setRotation(0);
                     } else if (ct._carryAnimPhase === 'legs_flex') {
-                        const progress = ct._carryAnimTimer / ct._carryAnimDuration;
-                        const legFlex = Math.sin(progress * Math.PI) * 0.1;
-                        ct.sprite.setScale(1 - legFlex * 0.3, 1 + legFlex * 0.5);
+                        ct.sprite.setScale(1, 1);
                         ct.sprite.setRotation(0);
                     } else {
-                        if (!ct._carryIdlePhase) ct._carryIdlePhase = 0;
-                        ct._carryIdlePhase += dt * 0.002;
-                        const idleSway = Math.sin(ct._carryIdlePhase) * 0.02;
-                        ct.sprite.setRotation(idleSway);
                         ct.sprite.setScale(1, 1);
+                        ct.sprite.setRotation(0);
                     }
                     
                     // AI killer auto-moves to nearest hook
@@ -4336,21 +4326,12 @@ function updateAI(dt) {
                 sp.rotation += (diff * 0.15) * (Math.PI / 180);
             }
 
-            // Update dying texture for AI survivors
+            // Update dying texture for AI survivors - no scale distortion
             if (ai.state === 'dying') {
                 if (!sp.texture.key.includes('_dying')) {
                     sp.setTexture(getTexWithFallback(ai.tex, '_dying'));
                 }
-                // Crawling animation for AI
-                const speed = Math.sqrt(ai.aiDir.x * ai.aiDir.x + ai.aiDir.y * ai.aiDir.y) * as;
-                if (speed > 5) {
-                    ai._crawlPhase = (ai._crawlPhase || 0) + dt * 0.015;
-                    const wobble = Math.sin(ai._crawlPhase * 3) * 0.08;
-                    sp.setScale(1 + wobble, 1 - wobble * 0.5);
-                } else {
-                    sp.setScale(1, 1);
-                    ai._crawlPhase = 0;
-                }
+                sp.setScale(1, 1);
             } else if (sp.texture.key.includes('_dying')) {
                 sp.setTexture(ai.tex);
                 sp.setScale(1, 1);
@@ -4644,21 +4625,14 @@ function updateRemotePlayers(players) {
                 }
                 
                 if (rp._carryAnimPhase === 'arms_up') {
-                    const progress = rp._carryAnimTimer / rp._carryAnimDuration;
-                    const armWave = Math.sin(progress * Math.PI) * 0.15;
-                    rp.sprite.setScale(1 + armWave, 1 - armWave * 0.5);
+                    rp.sprite.setScale(1, 1);
                     rp.sprite.setRotation(0);
                 } else if (rp._carryAnimPhase === 'legs_flex') {
-                    const progress = rp._carryAnimTimer / rp._carryAnimDuration;
-                    const legFlex = Math.sin(progress * Math.PI) * 0.1;
-                    rp.sprite.setScale(1 - legFlex * 0.3, 1 + legFlex * 0.5);
+                    rp.sprite.setScale(1, 1);
                     rp.sprite.setRotation(0);
                 } else {
-                    if (!rp._carryIdlePhase) rp._carryIdlePhase = 0;
-                    rp._carryIdlePhase += 0.002;
-                    const idleSway = Math.sin(rp._carryIdlePhase) * 0.02;
-                    rp.sprite.setRotation(idleSway);
                     rp.sprite.setScale(1, 1);
+                    rp.sprite.setRotation(0);
                 }
             } else if (pdata.state === 'hooked') {
                 // Find hook and position - no interpolation for hooked players
@@ -4866,12 +4840,8 @@ function interpolateRemotePlayers(dt) {
             rp.glowFx.setPosition(rp.sprite.x, rp.sprite.y);
         }
 
-        // Crawling animation for dying state
-        if (rp.state === 'dying' && dist > 5) {
-            rp._crawlPhase = (rp._crawlPhase || 0) + dt * 0.015;
-            const wobble = Math.sin(rp._crawlPhase * 3) * 0.08;
-            rp.sprite.setScale(1 + wobble, 1 - wobble * 0.5);
-        } else if (rp.state === 'dying') {
+        // Crawling animation for dying state - keep scale normal
+        if (rp.state === 'dying') {
             rp.sprite.setScale(1, 1);
             rp._crawlPhase = 0;
         } else if (rp.state === 'carried') {
