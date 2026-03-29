@@ -4,7 +4,7 @@ const CONFIG = {
     PLAYER_SPEED: 145,
     KILLER_SPEED: 162,
     INJURED_SPEED: 115,
-    DYING_SPEED: 38,
+    DYING_SPEED: 18,
     GENERATOR_COUNT: 5,
     GENS_REQUIRED_FOR_EXIT: 4,
     GENERATOR_REPAIR_RATE: 100 / 28,
@@ -359,19 +359,202 @@ function preload() {
     g.generateTexture('stone5', 28, 28);
     g.clear();
 
-    // Tree
-    g.fillStyle(0x4a3020); g.fillRect(16, 40, 10, 30);
-    g.fillStyle(0x1a5a10); g.fillCircle(21, 35, 20);
-    g.fillStyle(0x228a20); g.fillCircle(21, 30, 17);
-    g.fillStyle(0x2aaa2a); g.fillCircle(15, 25, 12); g.fillCircle(27, 25, 12); g.fillCircle(21, 20, 10);
-    g.generateTexture('tree', 42, 72);
+    // ═══════ DETAILED 3D-STYLE TREE ═══════
+    // Shadow under tree
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(35, 95, 50, 18);
+    
+    // Tree trunk - detailed bark texture
+    g.fillStyle(0x3d2817); g.fillRect(28, 45, 14, 52);
+    g.fillStyle(0x4d3827); g.fillRect(28, 45, 5, 52); // Trunk highlight
+    g.fillStyle(0x2d1807); g.fillRect(38, 45, 4, 52); // Trunk shadow
+    // Bark texture lines
+    g.fillStyle(0x5d4837); g.fillRect(30, 50, 1, 20);
+    g.fillStyle(0x5d4837); g.fillRect(35, 60, 1, 25);
+    g.fillStyle(0x5d4837); g.fillRect(39, 55, 1, 18);
+    g.fillStyle(0x3d2817); g.fillRect(32, 48, 2, 5); // Bark knot
+    g.fillStyle(0x3d2817); g.fillRect(36, 70, 2, 4);
+    
+    // Tree roots - visible at base
+    g.fillStyle(0x3d2817); g.fillRect(20, 88, 8, 8);
+    g.fillStyle(0x2d1807); g.fillRect(20, 88, 3, 8);
+    g.fillStyle(0x3d2817); g.fillRect(42, 88, 8, 8);
+    g.fillStyle(0x4d3827); g.fillRect(42, 88, 3, 8);
+    g.fillStyle(0x3d2817); g.fillRect(30, 90, 5, 6);
+    g.fillStyle(0x3d2817); g.fillRect(38, 91, 4, 5);
+    
+    // Main foliage - large rounded canopy with depth
+    g.fillStyle(0x1a4a0d); g.fillCircle(35, 38, 32);
+    g.fillStyle(0x2a5a15); g.fillCircle(35, 35, 28);
+    g.fillStyle(0x3a6a1f); g.fillCircle(35, 32, 24);
+    g.fillStyle(0x4a7a2a); g.fillCircle(35, 30, 20);
+    
+    // Foliage highlights - sunlit areas
+    g.fillStyle(0x5a8a35); g.fillCircle(30, 24, 14);
+    g.fillStyle(0x6a9a45); g.fillCircle(28, 22, 10);
+    g.fillStyle(0x7aaa55); g.fillCircle(26, 20, 6);
+    
+    // Foliage shadows
+    g.fillStyle(0x1a3a0d); g.fillCircle(45, 45, 12);
+    g.fillStyle(0x1a3a0d); g.fillCircle(22, 42, 10);
+    g.fillStyle(0x1a3a0d); g.fillCircle(35, 52, 8);
+    
+    // Individual leaf clusters for depth
+    g.fillStyle(0x3a6a1f); g.fillCircle(18, 35, 10);
+    g.fillStyle(0x4a7a2a); g.fillCircle(15, 32, 8);
+    g.fillStyle(0x3a6a1f); g.fillCircle(52, 35, 10);
+    g.fillStyle(0x4a7a2a); g.fillCircle(55, 32, 8);
+    g.fillStyle(0x3a6a1f); g.fillCircle(35, 12, 12);
+    g.fillStyle(0x4a7a2a); g.fillCircle(35, 8, 9);
+    
+    // Branch tips visible
+    g.fillStyle(0x2a5a15); g.fillCircle(12, 38, 5);
+    g.fillStyle(0x2a5a15); g.fillCircle(58, 38, 5);
+    g.fillStyle(0x2a5a15); g.fillCircle(25, 15, 4);
+    g.fillStyle(0x2a5a15); g.fillCircle(45, 15, 4);
+    
+    g.generateTexture('tree', 70, 100);
     g.clear();
 
-    // Bush
-    g.fillStyle(0x1a5a10); g.fillCircle(18, 16, 16);
-    g.fillStyle(0x228a20); g.fillCircle(9, 14, 10); g.fillCircle(26, 12, 11); g.fillCircle(18, 8, 9);
-    g.fillStyle(0x8B0000); g.fillCircle(12, 10, 2); g.fillCircle(24, 14, 2);
-    g.generateTexture('bush', 36, 30);
+    // ═══════ DETAILED 3D-STYLE BUSH ═══════
+    // Shadow under bush
+    g.fillStyle(0x000000, 0.25); g.fillEllipse(30, 38, 44, 12);
+    
+    // Bush base layer - dark green
+    g.fillStyle(0x1a4a0d); g.fillCircle(30, 28, 22);
+    g.fillStyle(0x1a4a0d); g.fillCircle(14, 26, 14);
+    g.fillStyle(0x1a4a0d); g.fillCircle(46, 26, 14);
+    
+    // Bush mid layer
+    g.fillStyle(0x2a5a15); g.fillCircle(30, 24, 18);
+    g.fillStyle(0x2a5a15); g.fillCircle(16, 22, 12);
+    g.fillStyle(0x2a5a15); g.fillCircle(44, 22, 12);
+    
+    // Bush top layer - lighter green
+    g.fillStyle(0x3a6a1f); g.fillCircle(30, 20, 15);
+    g.fillStyle(0x3a6a1f); g.fillCircle(18, 18, 10);
+    g.fillStyle(0x3a6a1f); g.fillCircle(42, 18, 10);
+    
+    // Bush highlights
+    g.fillStyle(0x4a7a2a); g.fillCircle(26, 14, 8);
+    g.fillStyle(0x5a8a35); g.fillCircle(24, 12, 6);
+    g.fillStyle(0x5a8a35); g.fillCircle(36, 16, 5);
+    
+    // Red berries for color
+    g.fillStyle(0x8B0000); g.fillCircle(20, 18, 3);
+    g.fillStyle(0xaa2222); g.fillCircle(20, 17, 2);
+    g.fillStyle(0x8B0000); g.fillCircle(38, 22, 3);
+    g.fillStyle(0xaa2222); g.fillCircle(38, 21, 2);
+    g.fillStyle(0x8B0000); g.fillCircle(28, 24, 2);
+    g.fillStyle(0x8B0000); g.fillCircle(14, 28, 2);
+    g.fillStyle(0x8B0000); g.fillCircle(46, 28, 2);
+    
+    // Leaf texture details
+    g.fillStyle(0x3a6a1f); g.fillCircle(12, 24, 6);
+    g.fillStyle(0x4a7a2a); g.fillCircle(48, 24, 6);
+    g.fillStyle(0x2a5a15); g.fillCircle(30, 32, 8);
+    
+    g.generateTexture('bush', 60, 45);
+    g.clear();
+
+    // ═══════ SMALL TREE (THIN) ═══════
+    g.fillStyle(0x000000, 0.25); g.fillEllipse(20, 72, 28, 10);
+    
+    g.fillStyle(0x4a3020); g.fillRect(16, 35, 8, 38);
+    g.fillStyle(0x5d4037); g.fillRect(16, 35, 3, 38);
+    g.fillStyle(0x3d2817); g.fillRect(20, 35, 4, 38);
+    
+    g.fillStyle(0x1a4a0d); g.fillCircle(20, 28, 18);
+    g.fillStyle(0x2a5a15); g.fillCircle(20, 25, 15);
+    g.fillStyle(0x3a6a1f); g.fillCircle(20, 22, 12);
+    g.fillStyle(0x4a7a2a); g.fillCircle(18, 18, 8);
+    g.fillStyle(0x5a8a35); g.fillCircle(16, 15, 5);
+    
+    g.fillStyle(0x1a4a0d); g.fillCircle(8, 30, 8);
+    g.fillStyle(0x2a5a15); g.fillCircle(32, 30, 8);
+    
+    g.generateTexture('tree_small', 40, 80);
+    g.clear();
+
+    // ═══════ PINE TREE ═══════
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(25, 88, 30, 10);
+    
+    g.fillStyle(0x4a3020); g.fillRect(21, 55, 8, 34);
+    g.fillStyle(0x5d4037); g.fillRect(21, 55, 3, 34);
+    
+    // Layered pine foliage
+    g.fillStyle(0x1a3a0d); g.fillCircle(25, 52, 20);
+    g.fillStyle(0x2a4a12); g.fillCircle(25, 48, 17);
+    g.fillStyle(0x1a3a0d); g.fillCircle(25, 38, 18);
+    g.fillStyle(0x2a4a12); g.fillCircle(25, 34, 15);
+    g.fillStyle(0x1a3a0d); g.fillCircle(25, 24, 16);
+    g.fillStyle(0x2a4a12); g.fillCircle(25, 20, 13);
+    g.fillStyle(0x1a3a0d); g.fillCircle(25, 12, 12);
+    g.fillStyle(0x2a4a12); g.fillCircle(25, 8, 10);
+    
+    // Pine highlights
+    g.fillStyle(0x3a5a18); g.fillCircle(22, 45, 8);
+    g.fillStyle(0x3a5a18); g.fillCircle(22, 30, 7);
+    g.fillStyle(0x3a5a18); g.fillCircle(22, 16, 6);
+    
+    g.generateTexture('pine_tree', 50, 95);
+    g.clear();
+
+    // ═══════ TALL GRASS ═══════
+    g.fillStyle(0x2a5a15); g.fillRect(8, 12, 3, 22);
+    g.fillStyle(0x3a6a1f); g.fillRect(8, 12, 1, 22);
+    g.fillStyle(0x4a7a2a); g.fillRect(16, 8, 3, 26);
+    g.fillStyle(0x3a6a1f); g.fillRect(16, 8, 1, 26);
+    g.fillStyle(0x2a5a15); g.fillRect(24, 14, 3, 20);
+    g.fillStyle(0x4a7a2a); g.fillRect(24, 14, 1, 20);
+    g.fillStyle(0x2a5a15); g.fillRect(32, 10, 3, 24);
+    g.fillStyle(0x3a6a1f); g.fillRect(32, 10, 1, 24);
+    g.fillStyle(0x4a7a2a); g.fillRect(40, 12, 3, 22);
+    g.fillStyle(0x2a5a15); g.fillRect(40, 12, 1, 22);
+    
+    g.generateTexture('tall_grass', 50, 40);
+    g.clear();
+
+    // ═══════ FLOWER PATCH ═══════
+    g.fillStyle(0x2a5a15); g.fillRect(4, 18, 3, 16);
+    g.fillStyle(0xff69b4); g.fillCircle(5, 16, 4);
+    g.fillStyle(0xff85c1); g.fillCircle(4, 15, 2);
+    
+    g.fillStyle(0x2a5a15); g.fillRect(14, 20, 3, 14);
+    g.fillStyle(0xffd700); g.fillCircle(15, 18, 4);
+    g.fillStyle(0xffe44d); g.fillCircle(14, 17, 2);
+    
+    g.fillStyle(0x2a5a15); g.fillRect(24, 16, 3, 18);
+    g.fillStyle(0xff6347); g.fillCircle(25, 14, 4);
+    g.fillStyle(0xff7f50); g.fillCircle(24, 13, 2);
+    
+    g.fillStyle(0x2a5a15); g.fillRect(34, 22, 3, 12);
+    g.fillStyle(0x9370db); g.fillCircle(35, 20, 4);
+    g.fillStyle(0xba55d3); g.fillCircle(34, 19, 2);
+    
+    g.fillStyle(0x2a5a15); g.fillRect(44, 18, 3, 16);
+    g.fillStyle(0x00ced1); g.fillCircle(45, 16, 4);
+    g.fillStyle(0x40e0d0); g.fillCircle(44, 15, 2);
+    
+    g.generateTexture('flower_patch', 52, 35);
+    g.clear();
+
+    // ═══════ DETAILED ROCK ═══════
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(28, 34, 40, 14);
+    
+    g.fillStyle(0x4a4a4a); g.fillCircle(28, 28, 18);
+    g.fillStyle(0x5a5a5a); g.fillCircle(28, 26, 15);
+    g.fillStyle(0x6a6a6a); g.fillCircle(26, 24, 12);
+    g.fillStyle(0x7a7a7a); g.fillCircle(24, 22, 8);
+    g.fillStyle(0x8a8a8a); g.fillCircle(22, 20, 5);
+    
+    g.fillStyle(0x3a3a3a); g.fillCircle(40, 32, 10);
+    g.fillStyle(0x4a4a4a); g.fillCircle(40, 30, 8);
+    g.fillStyle(0x5a5a5a); g.fillCircle(38, 28, 6);
+    
+    g.fillStyle(0x3a3a3a); g.fillCircle(16, 30, 8);
+    g.fillStyle(0x4a4a4a); g.fillCircle(16, 28, 6);
+    
+    g.generateTexture('rock_detailed', 56, 45);
     g.clear();
 
     // Shack wall
@@ -683,7 +866,10 @@ function preload() {
     createSurvivorTextures(g, 's1', 0xc0392b, 0x3d2314);
     createSurvivorTextures(g, 's2', 0x8e44ad, 0x4a3020);
     createSurvivorTextures(g, 's3', 0x27ae60, 0x1a1a1a);
-    createSurvivorTextures(g, 's4', 0xf1c40f, 0x8B4513);
+    // CSS Pixel Art Survivor (s4) - uses createCSSPixelSurvivor below
+    createCSSPixelSurvivor(g, 's4');
+    // Copy s3 textures for s4's other states (dying, carried, repair)
+    // These will be created below using s3's colors
 
     // Repairing textures for survivors
     createRepairingTextures(g, 's1', 0xc0392b, 0x3d2314);
@@ -703,590 +889,1340 @@ function preload() {
     createCarriedTextures(g, 's3', 0x27ae60, 0x1a1a1a);
     createCarriedTextures(g, 's4', 0xf1c40f, 0x8B4513);
 
-    // ═══════ KILLER - DETAILED HUMAN WITH LEATHER JACKET ═══════
-    // Shadow under feet
-    g.fillStyle(0x000000, 0.35); g.fillEllipse(30, 86, 38, 11);
+    // ═══════ HIGHLY DETAILED 3D-STYLE KILLER ═══════
+    // Shadow under feet - realistic oval shadow
+    g.fillStyle(0x000000, 0.4); g.fillEllipse(45, 118, 55, 16);
     
-    // Boots - detailed military style
-    g.fillStyle(0x0a0a0a); g.fillRect(14, 70, 13, 10);
-    g.fillStyle(0x151515); g.fillRect(14, 70, 4, 10);
-    g.fillStyle(0x0d0d0d); g.fillRect(12, 78, 17, 4); // Boot sole
-    g.fillStyle(0x1a1a1a); g.fillRect(12, 78, 5, 4); // Boot sole highlight
+    // ═══════ BOOTS - Military tactical boots ═══════
+    // Left boot - detailed
+    g.fillStyle(0x0a0a0a); g.fillRect(22, 98, 16, 16);
+    g.fillStyle(0x151515); g.fillRect(22, 98, 5, 16);
+    g.fillStyle(0x1a1a1a); g.fillRect(22, 98, 16, 3);
+    // Boot sole
+    g.fillStyle(0x080808); g.fillRect(20, 110, 20, 6);
+    g.fillStyle(0x0c0c0c); g.fillRect(20, 110, 6, 6);
+    // Boot toe
+    g.fillStyle(0x0a0a0a); g.fillCircle(30, 106, 6);
+    g.fillStyle(0x151515); g.fillCircle(29, 105, 4);
+    // Boot laces detail
+    g.fillStyle(0x2a2a2a); g.fillRect(24, 100, 1, 8);
+    g.fillStyle(0x2a2a2a); g.fillRect(27, 100, 1, 8);
+    g.fillStyle(0x2a2a2a); g.fillRect(30, 100, 1, 8);
     
-    g.fillStyle(0x0a0a0a); g.fillRect(33, 70, 13, 10);
-    g.fillStyle(0x151515); g.fillRect(33, 70, 4, 10);
-    g.fillStyle(0x0d0d0d); g.fillRect(31, 78, 17, 4);
-    g.fillStyle(0x1a1a1a); g.fillRect(31, 78, 5, 4);
+    // Right boot
+    g.fillStyle(0x0a0a0a); g.fillRect(50, 98, 16, 16);
+    g.fillStyle(0x151515); g.fillRect(50, 98, 5, 16);
+    g.fillStyle(0x1a1a1a); g.fillRect(50, 98, 16, 3);
+    g.fillStyle(0x080808); g.fillRect(48, 110, 20, 6);
+    g.fillStyle(0x0c0c0c); g.fillRect(48, 110, 6, 6);
+    g.fillStyle(0x0a0a0a); g.fillCircle(58, 106, 6);
+    g.fillStyle(0x151515); g.fillCircle(57, 105, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(52, 100, 1, 8);
+    g.fillStyle(0x2a2a2a); g.fillRect(55, 100, 1, 8);
+    g.fillStyle(0x2a2a2a); g.fillRect(58, 100, 1, 8);
     
-    // Pants - dark tactical pants
-    g.fillStyle(0x1a1a1a); g.fillRect(16, 54, 10, 26);
-    g.fillStyle(0x222222); g.fillRect(16, 54, 3, 26); // Pant crease
-    g.fillStyle(0x1a1a1a); g.fillRect(34, 54, 10, 26);
-    g.fillStyle(0x222222); g.fillRect(34, 54, 3, 26);
+    // ═══════ PANTS - Tactical cargo pants ═══════
+    // Left leg
+    g.fillStyle(0x1a1a1a); g.fillRect(24, 70, 14, 32);
+    g.fillStyle(0x252525); g.fillRect(24, 70, 4, 32);
+    g.fillStyle(0x0f0f0f); g.fillRect(24, 70, 14, 2);
+    // Cargo pocket
+    g.fillStyle(0x1a1a1a); g.fillRect(25, 82, 10, 8);
+    g.fillStyle(0x151515); g.fillRect(25, 82, 10, 2);
+    g.fillStyle(0x2a2a2a); g.fillRect(28, 88, 4, 1);
     
-    // Belt with buckle
-    g.fillStyle(0x2a2a2a); g.fillRect(14, 52, 32, 4);
-    g.fillStyle(0x3a3a3a); g.fillRect(26, 51, 8, 6); // Buckle
-    g.fillStyle(0x4a4a4a); g.fillRect(28, 52, 4, 4); // Buckle center
+    // Right leg
+    g.fillStyle(0x1a1a1a); g.fillRect(50, 70, 14, 32);
+    g.fillStyle(0x252525); g.fillRect(50, 70, 4, 32);
+    g.fillStyle(0x0f0f0f); g.fillRect(50, 70, 14, 2);
+    g.fillStyle(0x1a1a1a); g.fillRect(51, 82, 10, 8);
+    g.fillStyle(0x151515); g.fillRect(51, 82, 10, 2);
+    g.fillStyle(0x2a2a2a); g.fillRect(54, 88, 4, 1);
     
-    // ═══════ BLACK LEATHER JACKET ═══════
-    // Main jacket body - leather texture
-    g.fillStyle(0x1a1a1a); g.fillRect(10, 26, 40, 28);
-    g.fillStyle(0x222222); g.fillRect(10, 26, 6, 28); // Left lapel shadow
-    g.fillStyle(0x252525); g.fillRect(44, 26, 6, 28); // Right lapel shadow
+    // Knee pads
+    g.fillStyle(0x2a2a2a); g.fillCircle(31, 88, 5);
+    g.fillStyle(0x353535); g.fillCircle(31, 88, 4);
+    g.fillStyle(0x2a2a2a); g.fillCircle(57, 88, 5);
+    g.fillStyle(0x353535); g.fillCircle(57, 88, 4);
     
-    // Jacket collar - leather lapels
-    g.fillStyle(0x2a2a2a); g.fillRect(8, 20, 12, 10);
-    g.fillStyle(0x1a1a1a); g.fillRect(40, 20, 12, 10);
-    g.fillStyle(0x333333); g.fillRect(8, 20, 4, 10); // Collar highlight
-    g.fillStyle(0x333333); g.fillRect(48, 20, 4, 10);
+    // ═══════ BELT ═══════
+    g.fillStyle(0x2a2a2a); g.fillRect(22, 66, 44, 6);
+    g.fillStyle(0x333333); g.fillRect(22, 66, 44, 2);
+    // Belt buckle
+    g.fillStyle(0x4a4a4a); g.fillRect(40, 65, 8, 8);
+    g.fillStyle(0x5a5a5a); g.fillRect(41, 66, 6, 6);
+    g.fillStyle(0x4a4a4a); g.fillRect(42, 67, 4, 4);
+    // Belt loops
+    g.fillStyle(0x252525); g.fillRect(26, 66, 3, 6);
+    g.fillStyle(0x252525); g.fillRect(58, 66, 3, 6);
     
-    // Jacket zipper - center
-    g.fillStyle(0x4a4a4a); g.fillRect(28, 26, 4, 26);
-    g.fillStyle(0x5a5a5a); g.fillRect(29, 26, 2, 26);
-    g.fillStyle(0x3a3a3a); g.fillCircle(30, 50, 2); // Zipper pull
+    // ═══════ LEATHER JACKET - Premium quality ═══════
+    // Main torso body
+    g.fillStyle(0x1a1a1a); g.fillRect(18, 32, 52, 38);
+    g.fillStyle(0x222222); g.fillRect(18, 32, 8, 38);
+    g.fillStyle(0x282828); g.fillRect(62, 32, 8, 38);
     
-    // Jacket pockets with zippers
-    g.fillStyle(0x1a1a1a); g.fillRect(12, 40, 10, 8);
-    g.fillStyle(0x151515); g.fillRect(12, 40, 10, 2); // Pocket flap
-    g.fillStyle(0x4a4a4a); g.fillRect(14, 46, 6, 1); // Pocket zipper
+    // Jacket texture shading
+    g.fillStyle(0x1e1e1e); g.fillRect(20, 34, 48, 34);
+    g.fillStyle(0x252525); g.fillRect(20, 34, 48, 2);
     
-    g.fillStyle(0x1a1a1a); g.fillRect(38, 40, 10, 8);
-    g.fillStyle(0x151515); g.fillRect(38, 40, 10, 2);
-    g.fillStyle(0x4a4a4a); g.fillRect(40, 46, 6, 1);
+    // ═══════ JACKET COLLAR - Raised lapels ═══════
+    g.fillStyle(0x2a2a2a); g.fillRect(14, 26, 14, 14);
+    g.fillStyle(0x333333); g.fillRect(14, 26, 4, 14);
+    g.fillStyle(0x2a2a2a); g.fillRect(60, 26, 14, 14);
+    g.fillStyle(0x333333); g.fillRect(14, 26, 4, 4);
     
-    // Leather jacket stitching details
-    g.fillStyle(0x333333); g.fillRect(10, 28, 40, 1);
-    g.fillStyle(0x333333); g.fillRect(10, 38, 40, 1);
-    g.fillStyle(0x333333); g.fillRect(10, 48, 40, 1);
+    // Collar inner shadow
+    g.fillStyle(0x151515); g.fillRect(18, 28, 4, 8);
+    g.fillStyle(0x151515); g.fillRect(66, 28, 4, 8);
     
-    // Shoulder epaulettes
-    g.fillStyle(0x2a2a2a); g.fillRect(8, 24, 10, 4);
-    g.fillStyle(0x333333); g.fillRect(8, 24, 10, 2); // Epaulette highlight
-    g.fillStyle(0x2a2a2a); g.fillRect(42, 24, 10, 4);
-    g.fillStyle(0x333333); g.fillRect(42, 24, 10, 2);
+    // ═══════ JACKET ZIPPER - Center front ═══════
+    g.fillStyle(0x4a4a4a); g.fillRect(43, 32, 4, 36);
+    g.fillStyle(0x5a5a5a); g.fillRect(44, 32, 2, 36);
+    g.fillStyle(0x3a3a3a); g.fillCircle(45, 66, 3);
+    g.fillStyle(0x4a4a4a); g.fillCircle(45, 66, 2);
     
-    // Shoulder straps
-    g.fillStyle(0x1a1a1a); g.fillCircle(10, 26, 4);
-    g.fillStyle(0x252525); g.fillCircle(10, 26, 3);
-    g.fillStyle(0x1a1a1a); g.fillCircle(50, 26, 4);
-    g.fillStyle(0x252525); g.fillCircle(50, 26, 3);
+    // ═══════ CHEST POCKETS ═══════
+    g.fillStyle(0x1a1a1a); g.fillRect(22, 38, 14, 12);
+    g.fillStyle(0x151515); g.fillRect(22, 38, 14, 3);
+    g.fillStyle(0x4a4a4a); g.fillRect(27, 48, 6, 1);
+    // Pocket flap
+    g.fillStyle(0x202020); g.fillRect(22, 38, 14, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(22, 38, 14, 2);
     
-    // ═══════ ARMS WITH LEATHER SLEEVES ═══════
-    // Left arm - leather sleeve
-    g.fillStyle(0x1a1a1a); g.fillRect(-2, 26, 12, 20);
-    g.fillStyle(0x252525); g.fillRect(-2, 26, 4, 20); // Sleeve highlight
-    g.fillStyle(0x1a1a1a); g.fillRect(-4, 40, 14, 10); // Forearm
-    g.fillStyle(0x151515); g.fillRect(-4, 40, 4, 10); // Forearm shadow
+    g.fillStyle(0x1a1a1a); g.fillRect(52, 38, 14, 12);
+    g.fillStyle(0x151515); g.fillRect(52, 38, 14, 3);
+    g.fillStyle(0x4a4a4a); g.fillRect(57, 48, 6, 1);
+    g.fillStyle(0x202020); g.fillRect(52, 38, 14, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(52, 38, 14, 2);
     
-    // Left sleeve zipper detail
-    g.fillStyle(0x3a3a3a); g.fillRect(6, 30, 1, 16);
+    // ═══════ JACKET STITCHING ═══════
+    g.fillStyle(0x3a3a3a); g.fillRect(18, 38, 52, 1);
+    g.fillStyle(0x3a3a3a); g.fillRect(18, 52, 52, 1);
+    g.fillStyle(0x3a3a3a); g.fillRect(18, 64, 52, 1);
     
-    // Left hand - gloved
-    g.fillStyle(0x0a0a0a); g.fillCircle(2, 52, 6);
-    g.fillStyle(0x151515); g.fillCircle(2, 51, 4);
+    // ═══════ SHOULDER EPPAULETTES ═══════
+    g.fillStyle(0x2a2a2a); g.fillRect(14, 30, 14, 6);
+    g.fillStyle(0x333333); g.fillRect(14, 30, 14, 2);
+    g.fillStyle(0x2a2a2a); g.fillRect(60, 30, 14, 6);
+    g.fillStyle(0x333333); g.fillRect(60, 30, 14, 2);
     
-    // Left gloved fingers
-    g.fillStyle(0x0a0a0a); g.fillRect(-2, 54, 3, 8); g.fillRect(1, 55, 3, 9); g.fillRect(4, 54, 3, 8); g.fillRect(7, 53, 3, 7);
-    g.fillStyle(0x1a1a1a); g.fillRect(-2, 54, 1, 8); g.fillRect(1, 55, 1, 9); g.fillRect(4, 54, 1, 8); g.fillRect(7, 53, 1, 7);
+    // Shoulder pads
+    g.fillStyle(0x1a1a1a); g.fillCircle(16, 34, 6);
+    g.fillStyle(0x252525); g.fillCircle(16, 33, 5);
+    g.fillStyle(0x2a2a2a); g.fillCircle(16, 32, 3);
+    g.fillStyle(0x1a1a1a); g.fillCircle(72, 34, 6);
+    g.fillStyle(0x252525); g.fillCircle(72, 33, 5);
+    g.fillStyle(0x2a2a2a); g.fillCircle(72, 32, 3);
     
-    // Right arm - leather sleeve
-    g.fillStyle(0x1a1a1a); g.fillRect(50, 26, 12, 20);
-    g.fillStyle(0x252525); g.fillRect(54, 26, 4, 20);
-    g.fillStyle(0x1a1a1a); g.fillRect(50, 40, 14, 10);
-    g.fillStyle(0x151515); g.fillRect(59, 40, 5, 10);
+    // ═══════ ARMS - Detailed sleeves ═══════
+    // Left arm upper
+    g.fillStyle(0x1a1a1a); g.fillRect(4, 34, 14, 24);
+    g.fillStyle(0x252525); g.fillRect(4, 34, 4, 24);
+    // Sleeve zipper
+    g.fillStyle(0x3a3a3a); g.fillRect(15, 38, 1, 18);
     
-    // Right sleeve zipper
-    g.fillStyle(0x3a3a3a); g.fillRect(53, 30, 1, 16);
+    // Left forearm
+    g.fillStyle(0x1a1a1a); g.fillRect(2, 52, 16, 14);
+    g.fillStyle(0x202020); g.fillRect(2, 52, 4, 14);
+    // Forearm muscle definition
+    g.fillStyle(0x1a1a1a); g.fillCircle(6, 58, 4);
+    g.fillStyle(0x1a1a1a); g.fillCircle(14, 58, 4);
     
-    // Right hand - gloved
-    g.fillStyle(0x0a0a0a); g.fillCircle(58, 52, 6);
-    g.fillStyle(0x151515); g.fillCircle(58, 51, 4);
+    // Left glove
+    g.fillStyle(0x0a0a0a); g.fillRect(-2, 62, 10, 12);
+    g.fillStyle(0x151515); g.fillRect(-2, 62, 3, 12);
+    g.fillStyle(0x0a0a0a); g.fillCircle(4, 72, 6);
+    g.fillStyle(0x151515); g.fillCircle(4, 71, 4);
+    // Glove fingers
+    g.fillStyle(0x0a0a0a); g.fillRect(-4, 70, 3, 8);
+    g.fillStyle(0x0a0a0a); g.fillRect(0, 72, 3, 9);
+    g.fillStyle(0x0a0a0a); g.fillRect(4, 70, 3, 8);
+    g.fillStyle(0x0a0a0a); g.fillRect(8, 68, 3, 7);
     
-    // Right gloved fingers
-    g.fillStyle(0x0a0a0a); g.fillRect(50, 53, 3, 7); g.fillRect(53, 54, 3, 8); g.fillRect(56, 55, 3, 9); g.fillRect(59, 54, 3, 8);
-    g.fillStyle(0x1a1a1a); g.fillRect(50, 53, 1, 7); g.fillRect(53, 54, 1, 8); g.fillRect(56, 55, 1, 9); g.fillRect(59, 54, 1, 8);
+    // Right arm upper
+    g.fillStyle(0x1a1a1a); g.fillRect(70, 34, 14, 24);
+    g.fillStyle(0x252525); g.fillRect(72, 34, 4, 24);
+    g.fillStyle(0x3a3a3a); g.fillRect(72, 38, 1, 18);
     
-    // Neck - visible above collar
-    g.fillStyle(0x3d2817); g.fillRect(24, 20, 12, 6);
-    g.fillStyle(0x4d3827); g.fillRect(24, 20, 4, 6);
+    // Right forearm
+    g.fillStyle(0x1a1a1a); g.fillRect(70, 52, 16, 14);
+    g.fillStyle(0x202020); g.fillRect(78, 52, 4, 14);
+    g.fillStyle(0x1a1a1a); g.fillCircle(74, 58, 4);
+    g.fillStyle(0x1a1a1a); g.fillCircle(82, 58, 4);
     
-    // ═══════ HEAD WITH SUNGLASSES ═══════
-    // Head shape - more natural, slightly angular jaw
-    g.fillStyle(0x3d2817); g.fillCircle(30, 10, 14);
-    g.fillStyle(0x4d3827); g.fillCircle(30, 8, 12);
-    g.fillStyle(0x5d4837); g.fillCircle(30, 6, 10);
+    // Right glove
+    g.fillStyle(0x0a0a0a); g.fillRect(80, 62, 10, 12);
+    g.fillStyle(0x151515); g.fillRect(85, 62, 3, 12);
+    g.fillStyle(0x0a0a0a); g.fillCircle(84, 72, 6);
+    g.fillStyle(0x151515); g.fillCircle(84, 71, 4);
+    g.fillStyle(0x0a0a0a); g.fillRect(78, 70, 3, 8);
+    g.fillStyle(0x0a0a0a); g.fillRect(82, 72, 3, 9);
+    g.fillStyle(0x0a0a0a); g.fillRect(86, 70, 3, 8);
+    g.fillStyle(0x0a0a0a); g.fillRect(90, 68, 3, 7);
     
-    // Ears
-    g.fillStyle(0x3d2817); g.fillCircle(16, 10, 4);
-    g.fillStyle(0x4d3827); g.fillCircle(16, 10, 3);
-    g.fillStyle(0x3d2817); g.fillCircle(44, 10, 4);
-    g.fillStyle(0x4d3827); g.fillCircle(44, 10, 3);
+    // ═══════ NECK ═══════
+    g.fillStyle(0x4d3827); g.fillRect(38, 24, 12, 10);
+    g.fillStyle(0x5d4837); g.fillRect(38, 24, 4, 10);
+    // Neck tendon
+    g.fillStyle(0x5d4837); g.fillRect(40, 26, 2, 6);
+    g.fillStyle(0x5d4837); g.fillRect(46, 26, 2, 6);
     
-    // Hair - short dark hair
-    g.fillStyle(0x1a1a1a); g.fillCircle(30, 4, 12);
-    g.fillStyle(0x222222); g.fillCircle(30, 2, 10);
-    g.fillStyle(0x2a2a2a); g.fillCircle(28, 0, 6);
-    g.fillStyle(0x1a1a1a); g.fillRect(18, 2, 24, 6);
+    // ═══════ HEAD - 3D realistic ═══════
+    // Skull base
+    g.fillStyle(0x4d3827); g.fillCircle(45, 14, 18);
+    g.fillStyle(0x5d4837); g.fillCircle(45, 12, 16);
+    g.fillStyle(0x6d5847); g.fillCircle(45, 10, 14);
+    g.fillStyle(0x7d6857); g.fillCircle(45, 8, 12);
     
-    // Hair texture lines
-    g.fillStyle(0x333333); g.fillRect(22, 2, 1, 4);
-    g.fillStyle(0x333333); g.fillRect(28, 1, 1, 5);
-    g.fillStyle(0x333333); g.fillRect(34, 1, 1, 5);
-    g.fillStyle(0x333333); g.fillRect(40, 2, 1, 4);
+    // Cheekbones
+    g.fillStyle(0x5d4837); g.fillCircle(34, 14, 6);
+    g.fillStyle(0x5d4837); g.fillCircle(56, 14, 6);
     
-    // Sideburns
-    g.fillStyle(0x1a1a1a); g.fillRect(17, 8, 3, 8);
-    g.fillStyle(0x1a1a1a); g.fillRect(40, 8, 3, 8);
+    // Jaw line
+    g.fillStyle(0x4d3827); g.fillRect(34, 20, 22, 8);
+    g.fillStyle(0x3d2817); g.fillRect(36, 26, 18, 4);
     
-    // ═══════ BLACK SUNGLASSES ═══════
-    // Sunglasses frame - black plastic/metal
-    g.fillStyle(0x0a0a0a); g.fillRect(16, 6, 28, 8);
-    g.fillStyle(0x151515); g.fillRect(16, 6, 28, 2); // Frame top highlight
+    // ═══════ EARS ═══════
+    g.fillStyle(0x4d3827); g.fillCircle(27, 14, 5);
+    g.fillStyle(0x5d4837); g.fillCircle(27, 13, 4);
+    g.fillStyle(0x6d5847); g.fillCircle(27, 12, 3);
+    // Ear detail
+    g.fillStyle(0x3d2817); g.fillCircle(27, 14, 2);
     
-    // Left lens
-    g.fillStyle(0x050505); g.fillRect(17, 7, 11, 6);
-    g.fillStyle(0x080808); g.fillRect(17, 7, 11, 2); // Lens reflection
+    g.fillStyle(0x4d3827); g.fillCircle(63, 14, 5);
+    g.fillStyle(0x5d4837); g.fillCircle(63, 13, 4);
+    g.fillStyle(0x6d5847); g.fillCircle(63, 12, 3);
+    g.fillStyle(0x3d2817); g.fillCircle(63, 14, 2);
     
-    // Right lens
-    g.fillStyle(0x050505); g.fillRect(32, 7, 11, 6);
-    g.fillStyle(0x080808); g.fillRect(32, 7, 11, 2);
+    // ═══════ HAIR - Short styled ═══════
+    g.fillStyle(0x1a1a1a); g.fillCircle(45, 4, 16);
+    g.fillStyle(0x222222); g.fillCircle(45, 2, 14);
+    g.fillStyle(0x2a2a2a); g.fillCircle(45, 0, 12);
+    g.fillStyle(0x333333); g.fillCircle(43, -2, 8);
     
-    // Bridge of sunglasses
-    g.fillStyle(0x0a0a0a); g.fillRect(28, 9, 4, 3);
-    g.fillStyle(0x151515); g.fillRect(28, 9, 2, 2);
+    // Hair volume
+    g.fillStyle(0x1a1a1a); g.fillRect(30, -2, 30, 10);
+    g.fillStyle(0x1a1a1a); g.fillCircle(32, 2, 8);
+    g.fillStyle(0x1a1a1a); g.fillCircle(58, 2, 8);
     
-    // Temple arms of glasses
-    g.fillStyle(0x0a0a0a); g.fillRect(14, 8, 3, 2);
-    g.fillStyle(0x0a0a0a); g.fillRect(43, 8, 3, 2);
-    
-    // Sunglasses shine/reflection
-    g.fillStyle(0x2a2a2a, 0.3); g.fillRect(18, 7, 4, 1);
-    g.fillStyle(0x2a2a2a, 0.3); g.fillRect(33, 7, 4, 1);
-    
-    // Nose - natural shape
-    g.fillStyle(0x4d3827); g.fillEllipse(30, 16, 4, 5);
-    g.fillStyle(0x3d2817); g.fillEllipse(30, 17, 2, 2);
-    
-    // Mouth - neutral expression
-    g.fillStyle(0x3d2817); g.fillRect(24, 20, 12, 2);
-    g.fillStyle(0x4d3827); g.fillRect(24, 20, 12, 1); // Upper lip highlight
-    g.fillStyle(0x2d1807); g.fillRect(25, 21, 10, 1); // Lower lip shadow
-    
-    // Subtle stubble/beard shadow
-    g.fillStyle(0x2a1a0a, 0.3); g.fillRect(20, 16, 20, 8);
-    
-    // Neck shadow
-    g.fillStyle(0x2d1807, 0.3); g.fillRect(24, 24, 12, 3);
-    
-    g.generateTexture('killer', 60, 90);
-    g.clear();
-
-    // ═══════ KILLER STRIKE ANIMATION ═══════
-    // Shadow under feet - wider for impact
-    g.fillStyle(0x000000, 0.4); g.fillEllipse(32, 86, 42, 13);
-    
-    // Boots - planted stance
-    g.fillStyle(0x0a0a0a); g.fillRect(16, 70, 12, 10);
-    g.fillStyle(0x151515); g.fillRect(16, 70, 4, 10);
-    g.fillStyle(0x0d0d0d); g.fillRect(14, 78, 16, 4);
-    g.fillStyle(0x1a1a1a); g.fillRect(14, 78, 4, 4);
-    
-    g.fillStyle(0x0a0a0a); g.fillRect(32, 70, 12, 10);
-    g.fillStyle(0x151515); g.fillRect(32, 70, 4, 10);
-    g.fillStyle(0x0d0d0d); g.fillRect(30, 78, 16, 4);
-    g.fillStyle(0x1a1a1a); g.fillRect(30, 78, 4, 4);
-    
-    // Pants - wider stance
-    g.fillStyle(0x1a1a1a); g.fillRect(17, 54, 10, 26);
-    g.fillStyle(0x222222); g.fillRect(17, 54, 3, 26);
-    g.fillStyle(0x1a1a1a); g.fillRect(33, 54, 10, 26);
-    g.fillStyle(0x222222); g.fillRect(33, 54, 3, 26);
-    
-    // Belt
-    g.fillStyle(0x2a2a2a); g.fillRect(15, 52, 30, 4);
-    g.fillStyle(0x3a3a3a); g.fillRect(27, 51, 6, 6);
-    
-    // ═══════ LEATHER JACKET - STRIKE POSE ═══════
-    // Jacket body - leaning forward
-    g.fillStyle(0x1a1a1a); g.fillRect(12, 26, 36, 28);
-    g.fillStyle(0x222222); g.fillRect(12, 26, 6, 28);
-    g.fillStyle(0x252525); g.fillRect(42, 26, 6, 28);
-    
-    // Collar - flared back
-    g.fillStyle(0x2a2a2a); g.fillRect(10, 20, 10, 10);
-    g.fillStyle(0x1a1a1a); g.fillRect(40, 20, 10, 10);
-    g.fillStyle(0x333333); g.fillRect(10, 20, 3, 10);
-    g.fillStyle(0x333333); g.fillRect(47, 20, 3, 10);
-    
-    // Jacket details
-    g.fillStyle(0x1a1a1a); g.fillRect(14, 40, 8, 8);
-    g.fillStyle(0x151515); g.fillRect(14, 40, 8, 2);
-    g.fillStyle(0x4a4a4a); g.fillRect(16, 46, 4, 1);
-    
-    g.fillStyle(0x1a1a1a); g.fillRect(38, 40, 8, 8);
-    g.fillStyle(0x151515); g.fillRect(38, 40, 8, 2);
-    g.fillStyle(0x4a4a4a); g.fillRect(40, 46, 4, 1);
-    
-    // Zipper
-    g.fillStyle(0x4a4a4a); g.fillRect(30, 26, 4, 26);
-    g.fillStyle(0x5a5a5a); g.fillRect(31, 26, 2, 26);
-    
-    // Stitching
-    g.fillStyle(0x333333); g.fillRect(12, 28, 36, 1);
-    g.fillStyle(0x333333); g.fillRect(12, 38, 36, 1);
-    g.fillStyle(0x333333); g.fillRect(12, 48, 36, 1);
-    
-    // Epaulettes
-    g.fillStyle(0x2a2a2a); g.fillRect(10, 24, 10, 4);
-    g.fillStyle(0x333333); g.fillRect(10, 24, 10, 2);
-    g.fillStyle(0x2a2a2a); g.fillRect(40, 24, 10, 4);
-    g.fillStyle(0x333333); g.fillRect(40, 24, 10, 2);
-    
-    // Shoulders
-    g.fillStyle(0x1a1a1a); g.fillCircle(12, 26, 5);
-    g.fillStyle(0x252525); g.fillCircle(12, 26, 4);
-    g.fillStyle(0x1a1a1a); g.fillCircle(48, 26, 5);
-    g.fillStyle(0x252525); g.fillCircle(48, 26, 4);
-    
-    // Left arm - raised high
-    g.fillStyle(0x1a1a1a); g.fillRect(2, 16, 10, 20);
-    g.fillStyle(0x252525); g.fillRect(2, 16, 3, 20);
-    g.fillStyle(0x1a1a1a); g.fillRect(-6, 8, 12, 10);
-    g.fillStyle(0x151515); g.fillRect(-6, 8, 4, 10);
-    g.fillStyle(0x3a3a3a); g.fillRect(4, 20, 1, 16);
-    
-    // Left gloved fist - clenched
-    g.fillStyle(0x0a0a0a); g.fillCircle(0, 20, 7);
-    g.fillStyle(0x151515); g.fillCircle(0, 19, 5);
-    g.fillStyle(0x0a0a0a); g.fillRect(-4, 22, 3, 6); g.fillRect(-1, 23, 3, 7); g.fillRect(2, 22, 3, 6); g.fillRect(5, 21, 3, 5);
-    
-    // Right arm - thrust forward aggressively
-    g.fillStyle(0x1a1a1a); g.fillRect(48, 24, 12, 18);
-    g.fillStyle(0x252525); g.fillRect(54, 24, 4, 18);
-    g.fillStyle(0x1a1a1a); g.fillRect(56, 28, 20, 12);
-    g.fillStyle(0x151515); g.fillRect(56, 28, 5, 12);
-    g.fillStyle(0x3a3a3a); g.fillRect(50, 28, 1, 14);
-    
-    // Right gloved fist - striking
-    g.fillStyle(0x0a0a0a); g.fillCircle(78, 34, 8);
-    g.fillStyle(0x151515); g.fillCircle(78, 33, 6);
-    g.fillStyle(0x0a0a0a); g.fillRect(74, 36, 3, 8); g.fillRect(77, 37, 3, 9); g.fillRect(80, 36, 3, 8); g.fillRect(83, 34, 3, 7);
-    g.fillStyle(0x1a1a1a); g.fillRect(74, 36, 1, 8); g.fillRect(77, 37, 1, 9); g.fillRect(80, 36, 1, 8); g.fillRect(83, 34, 1, 7);
-    
-    // Motion lines for punch
-    g.fillStyle(0x2a2a2a, 0.4); g.fillRect(60, 31, 16, 4);
-    g.fillStyle(0x3a3a3a, 0.3); g.fillRect(62, 32, 12, 3);
-    g.fillStyle(0x4a4a4a, 0.2); g.fillRect(64, 33, 8, 2);
-    
-    // Impact effect
-    g.fillStyle(0xffffff, 0.3); g.fillCircle(86, 34, 4);
-    g.fillStyle(0xcccccc, 0.2); g.fillCircle(88, 32, 3);
-    g.fillStyle(0xaaaaaa, 0.15); g.fillCircle(90, 36, 2);
-    
-    // Neck - tense
-    g.fillStyle(0x3d2817); g.fillRect(26, 20, 8, 6);
-    g.fillStyle(0x4d3827); g.fillRect(26, 20, 3, 6);
-    
-    // ═══════ HEAD - STRIKE EXPRESSION ═══════
-    // Head - tilted forward aggressively
-    g.fillStyle(0x3d2817); g.fillCircle(32, 10, 14);
-    g.fillStyle(0x4d3827); g.fillCircle(32, 8, 12);
-    g.fillStyle(0x5d4837); g.fillCircle(32, 6, 10);
-    
-    // Ears
-    g.fillStyle(0x3d2817); g.fillCircle(18, 10, 4);
-    g.fillStyle(0x4d3827); g.fillCircle(18, 10, 3);
-    g.fillStyle(0x3d2817); g.fillCircle(46, 10, 4);
-    g.fillStyle(0x4d3827); g.fillCircle(46, 10, 3);
-    
-    // Hair - swept back from motion
-    g.fillStyle(0x1a1a1a); g.fillCircle(32, 4, 12);
-    g.fillStyle(0x222222); g.fillCircle(32, 2, 10);
-    g.fillStyle(0x2a2a2a); g.fillCircle(34, 0, 6);
-    g.fillStyle(0x1a1a1a); g.fillRect(20, 2, 24, 6);
-    
-    // Hair motion lines
-    g.fillStyle(0x333333); g.fillRect(18, 2, 1, 4);
-    g.fillStyle(0x333333); g.fillRect(24, 1, 1, 5);
-    g.fillStyle(0x333333); g.fillRect(30, 0, 1, 5);
-    g.fillStyle(0x333333); g.fillRect(36, 1, 1, 5);
-    g.fillStyle(0x333333); g.fillRect(42, 2, 1, 4);
+    // Hair texture
+    g.fillStyle(0x2a2a2a); g.fillRect(38, -2, 2, 6);
+    g.fillStyle(0x2a2a2a); g.fillRect(44, -3, 2, 7);
+    g.fillStyle(0x2a2a2a); g.fillRect(50, -2, 2, 6);
     
     // Sideburns
-    g.fillStyle(0x1a1a1a); g.fillRect(19, 8, 3, 8);
-    g.fillStyle(0x1a1a1a); g.fillRect(42, 8, 3, 8);
+    g.fillStyle(0x1a1a1a); g.fillRect(28, 8, 4, 10);
+    g.fillStyle(0x222222); g.fillRect(28, 8, 2, 10);
+    g.fillStyle(0x1a1a1a); g.fillRect(56, 8, 4, 10);
+    g.fillStyle(0x222222); g.fillRect(58, 8, 2, 10);
     
-    // ═══════ BLACK SUNGLASSES - STRIKE ═══════
-    g.fillStyle(0x0a0a0a); g.fillRect(20, 6, 24, 8);
-    g.fillStyle(0x151515); g.fillRect(20, 6, 24, 2);
+    // ═══════ BLACK SUNGLASSES - Premium aviators ═══════
+    // Frame top bar
+    g.fillStyle(0x0a0a0a); g.fillRect(30, 8, 30, 3);
+    g.fillStyle(0x151515); g.fillRect(30, 8, 30, 1);
     
-    // Left lens
-    g.fillStyle(0x050505); g.fillRect(21, 7, 9, 6);
-    g.fillStyle(0x080808); g.fillRect(21, 7, 9, 2);
+    // Left lens frame
+    g.fillStyle(0x0a0a0a); g.fillRect(30, 10, 13, 10);
+    g.fillStyle(0x0a0a0a); g.fillCircle(36, 14, 7);
+    g.fillStyle(0x0a0a0a); g.fillCircle(36, 14, 6);
+    
+    // Left lens - dark tinted
+    g.fillStyle(0x050505); g.fillRect(32, 11, 9, 8);
+    g.fillStyle(0x080808); g.fillRect(32, 11, 9, 2);
+    // Lens reflection
+    g.fillStyle(0x1a1a1a, 0.4); g.fillRect(33, 12, 3, 1);
+    g.fillStyle(0x1a1a1a, 0.3); g.fillRect(34, 13, 2, 1);
+    
+    // Right lens frame
+    g.fillStyle(0x0a0a0a); g.fillRect(47, 10, 13, 10);
+    g.fillStyle(0x0a0a0a); g.fillCircle(53, 14, 7);
+    g.fillStyle(0x0a0a0a); g.fillCircle(53, 14, 6);
     
     // Right lens
-    g.fillStyle(0x050505); g.fillRect(32, 7, 9, 6);
-    g.fillStyle(0x080808); g.fillRect(32, 7, 9, 2);
+    g.fillStyle(0x050505); g.fillRect(49, 11, 9, 8);
+    g.fillStyle(0x080808); g.fillRect(49, 11, 9, 2);
+    g.fillStyle(0x1a1a1a, 0.4); g.fillRect(50, 12, 3, 1);
+    g.fillStyle(0x1a1a1a, 0.3); g.fillRect(51, 13, 2, 1);
     
     // Bridge
-    g.fillStyle(0x0a0a0a); g.fillRect(30, 9, 4, 3);
-    g.fillStyle(0x151515); g.fillRect(30, 9, 2, 2);
+    g.fillStyle(0x0a0a0a); g.fillRect(43, 12, 4, 4);
+    g.fillStyle(0x151515); g.fillRect(43, 12, 2, 3);
     
     // Temple arms
-    g.fillStyle(0x0a0a0a); g.fillRect(18, 8, 3, 2);
-    g.fillStyle(0x0a0a0a); g.fillRect(43, 8, 3, 2);
+    g.fillStyle(0x0a0a0a); g.fillRect(27, 10, 4, 3);
+    g.fillStyle(0x0a0a0a); g.fillRect(59, 10, 4, 3);
     
-    // Lens reflection
-    g.fillStyle(0x2a2a2a, 0.3); g.fillRect(22, 7, 3, 1);
-    g.fillStyle(0x2a2a2a, 0.3); g.fillRect(33, 7, 3, 1);
+    // ═══════ NOSE - 3D shape ═══════
+    g.fillStyle(0x5d4837); g.fillEllipse(45, 22, 5, 6);
+    g.fillStyle(0x4d3827); g.fillEllipse(45, 23, 3, 3);
+    // Nose bridge
+    g.fillStyle(0x5d4837); g.fillRect(43, 18, 4, 6);
     
-    // Nose
-    g.fillStyle(0x4d3827); g.fillEllipse(32, 16, 4, 5);
-    g.fillStyle(0x3d2817); g.fillEllipse(32, 17, 2, 2);
+    // ═══════ MOUTH - Neutral expression ═══════
+    g.fillStyle(0x4d3827); g.fillRect(38, 28, 14, 3);
+    g.fillStyle(0x5d4837); g.fillRect(38, 28, 14, 1);
+    // Lips
+    g.fillStyle(0x5d4837); g.fillRect(40, 29, 10, 2);
     
-    // Mouth - gritting teeth slightly
-    g.fillStyle(0x3d2817); g.fillRect(26, 20, 12, 3);
-    g.fillStyle(0x2a1807); g.fillRect(28, 22, 8, 1); // Teeth hint
-    
-    // Stubble
-    g.fillStyle(0x2a1a0a, 0.3); g.fillRect(22, 16, 20, 8);
+    // ═══════ STUBBLE - Facial hair ═══════
+    g.fillStyle(0x2a1a0a, 0.4); g.fillRect(32, 20, 26, 12);
+    g.fillStyle(0x2a1a0a, 0.3); g.fillCircle(36, 24, 3);
+    g.fillStyle(0x2a1a0a, 0.3); g.fillCircle(50, 24, 3);
     
     // Neck shadow
-    g.fillStyle(0x2d1807, 0.3); g.fillRect(26, 24, 12, 3);
+    g.fillStyle(0x3d2817, 0.3); g.fillRect(38, 30, 14, 4);
     
-    // Motion blur effect around figure
-    g.fillStyle(0x1a1a1a, 0.1); g.fillCircle(32, 45, 45);
-    g.fillStyle(0x0a0a0a, 0.05); g.fillCircle(32, 45, 55);
+    // ═══════ 3D LIGHTING EFFECTS ═══════
+    // Rim light
+    g.fillStyle(0x3a3a3a, 0.15); g.fillRect(18, 32, 2, 38);
+    g.fillStyle(0x3a3a3a, 0.1); g.fillRect(16, 34, 2, 34);
     
-    g.generateTexture('killer_strike', 100, 95);
+    // Ambient occlusion shadows
+    g.fillStyle(0x000000, 0.1); g.fillRect(22, 68, 44, 2);
+    g.fillStyle(0x000000, 0.1); g.fillRect(18, 68, 4, 2);
+    g.fillStyle(0x000000, 0.1); g.fillRect(66, 68, 4, 2);
+    
+    g.generateTexture('killer', 90, 125);
+    g.clear();
+
+    // ═══════ KILLER STRIKE - Dynamic attack pose ═══════
+    // Shadow - wider for action
+    g.fillStyle(0x000000, 0.45); g.fillEllipse(50, 118, 65, 18);
+    
+    // ═══════ LEGS - Wide stance ═══════
+    // Left leg - planted back
+    g.fillStyle(0x1a1a1a); g.fillRect(26, 72, 14, 30);
+    g.fillStyle(0x252525); g.fillRect(26, 72, 4, 30);
+    g.fillStyle(0x0f0f0f); g.fillRect(26, 72, 14, 2);
+    g.fillStyle(0x1a1a1a); g.fillRect(28, 84, 10, 8);
+    g.fillStyle(0x2a2a2a); g.fillCircle(33, 90, 5);
+    g.fillStyle(0x353535); g.fillCircle(33, 90, 4);
+    
+    // Left boot
+    g.fillStyle(0x0a0a0a); g.fillRect(24, 98, 16, 14);
+    g.fillStyle(0x151515); g.fillRect(24, 98, 5, 14);
+    g.fillStyle(0x080808); g.fillRect(22, 108, 20, 6);
+    g.fillStyle(0x0a0a0a); g.fillCircle(32, 104, 6);
+    g.fillStyle(0x151515); g.fillCircle(31, 103, 4);
+    
+    // Right leg - forward lunge
+    g.fillStyle(0x1a1a1a); g.fillRect(50, 74, 14, 28);
+    g.fillStyle(0x252525); g.fillRect(50, 74, 4, 28);
+    g.fillStyle(0x0f0f0f); g.fillRect(50, 74, 14, 2);
+    g.fillStyle(0x1a1a1a); g.fillRect(52, 86, 10, 8);
+    g.fillStyle(0x2a2a2a); g.fillCircle(57, 92, 5);
+    g.fillStyle(0x353535); g.fillCircle(57, 92, 4);
+    
+    // Right boot - extended
+    g.fillStyle(0x0a0a0a); g.fillRect(52, 98, 16, 14);
+    g.fillStyle(0x151515); g.fillRect(52, 98, 5, 14);
+    g.fillStyle(0x080808); g.fillRect(50, 108, 20, 6);
+    g.fillStyle(0x0a0a0a); g.fillCircle(60, 104, 6);
+    g.fillStyle(0x151515); g.fillCircle(59, 103, 4);
+    
+    // Belt
+    g.fillStyle(0x2a2a2a); g.fillRect(24, 68, 42, 6);
+    g.fillStyle(0x333333); g.fillRect(24, 68, 42, 2);
+    g.fillStyle(0x4a4a4a); g.fillRect(42, 67, 8, 8);
+    g.fillStyle(0x5a5a5a); g.fillRect(43, 68, 6, 6);
+    g.fillStyle(0x4a4a4a); g.fillRect(44, 69, 4, 4);
+    
+    // ═══════ JACKET - Leaning forward ═══════
+    g.fillStyle(0x1a1a1a); g.fillRect(20, 32, 50, 40);
+    g.fillStyle(0x222222); g.fillRect(20, 32, 8, 40);
+    g.fillStyle(0x282828); g.fillRect(62, 32, 8, 40);
+    g.fillStyle(0x1e1e1e); g.fillRect(22, 34, 46, 36);
+    
+    // Motion blur effect on jacket
+    g.fillStyle(0x151515, 0.3); g.fillRect(18, 36, 4, 32);
+    g.fillStyle(0x151515, 0.2); g.fillRect(14, 38, 4, 28);
+    
+    // Collar flared back
+    g.fillStyle(0x2a2a2a); g.fillRect(16, 24, 12, 14);
+    g.fillStyle(0x333333); g.fillRect(16, 24, 4, 14);
+    g.fillStyle(0x2a2a2a); g.fillRect(62, 24, 12, 14);
+    g.fillStyle(0x333333); g.fillRect(14, 26, 4, 4);
+    
+    // Chest pockets
+    g.fillStyle(0x1a1a1a); g.fillRect(24, 38, 14, 12);
+    g.fillStyle(0x151515); g.fillRect(24, 38, 14, 3);
+    g.fillStyle(0x202020); g.fillRect(24, 38, 14, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(24, 38, 14, 2);
+    g.fillStyle(0x4a4a4a); g.fillRect(29, 48, 6, 1);
+    
+    g.fillStyle(0x1a1a1a); g.fillRect(52, 38, 14, 12);
+    g.fillStyle(0x151515); g.fillRect(52, 38, 14, 3);
+    g.fillStyle(0x202020); g.fillRect(52, 38, 14, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(52, 38, 14, 2);
+    g.fillStyle(0x4a4a4a); g.fillRect(57, 48, 6, 1);
+    
+    // Zipper
+    g.fillStyle(0x4a4a4a); g.fillRect(44, 32, 4, 38);
+    g.fillStyle(0x5a5a5a); g.fillRect(45, 32, 2, 38);
+    g.fillStyle(0x3a3a3a); g.fillCircle(46, 68, 3);
+    
+    // Stitching
+    g.fillStyle(0x3a3a3a); g.fillRect(20, 40, 50, 1);
+    g.fillStyle(0x3a3a3a); g.fillRect(20, 54, 50, 1);
+    g.fillStyle(0x3a3a3a); g.fillRect(20, 66, 50, 1);
+    
+    // Shoulders
+    g.fillStyle(0x1a1a1a); g.fillCircle(18, 36, 7);
+    g.fillStyle(0x252525); g.fillCircle(18, 35, 6);
+    g.fillStyle(0x2a2a2a); g.fillCircle(18, 34, 4);
+    g.fillStyle(0x1a1a1a); g.fillCircle(72, 36, 7);
+    g.fillStyle(0x252525); g.fillCircle(72, 35, 6);
+    g.fillStyle(0x2a2a2a); g.fillCircle(72, 34, 4);
+    
+    // Epaulettes
+    g.fillStyle(0x2a2a2a); g.fillRect(16, 32, 12, 6);
+    g.fillStyle(0x333333); g.fillRect(16, 32, 12, 2);
+    g.fillStyle(0x2a2a2a); g.fillRect(62, 32, 12, 6);
+    g.fillStyle(0x333333); g.fillRect(62, 32, 12, 2);
+    
+    // ═══════ LEFT ARM - Raised high ═══════
+    g.fillStyle(0x1a1a1a); g.fillRect(6, 18, 14, 24);
+    g.fillStyle(0x252525); g.fillRect(6, 18, 4, 24);
+    g.fillStyle(0x3a3a3a); g.fillRect(17, 22, 1, 18);
+    
+    // Left forearm - raised
+    g.fillStyle(0x1a1a1a); g.fillRect(0, 6, 16, 14);
+    g.fillStyle(0x202020); g.fillRect(0, 6, 4, 14);
+    g.fillStyle(0x1a1a1a); g.fillCircle(4, 10, 5);
+    g.fillStyle(0x1a1a1a); g.fillCircle(12, 10, 5);
+    
+    // Left fist - clenched
+    g.fillStyle(0x0a0a0a); g.fillRect(-4, 14, 12, 14);
+    g.fillStyle(0x151515); g.fillRect(-4, 14, 4, 14);
+    g.fillStyle(0x0a0a0a); g.fillCircle(4, 24, 8);
+    g.fillStyle(0x151515); g.fillCircle(4, 23, 6);
+    g.fillStyle(0x0a0a0a); g.fillCircle(4, 23, 5);
+    // Knuckles
+    g.fillStyle(0x151515); g.fillCircle(0, 22, 2);
+    g.fillStyle(0x151515); g.fillCircle(4, 22, 2);
+    g.fillStyle(0x151515); g.fillCircle(8, 22, 2);
+    
+    // ═══════ RIGHT ARM - Thrust forward ═══════
+    g.fillStyle(0x1a1a1a); g.fillRect(70, 28, 14, 22);
+    g.fillStyle(0x252525); g.fillRect(74, 28, 4, 22);
+    g.fillStyle(0x3a3a3a); g.fillRect(72, 32, 1, 16);
+    
+    // Right forearm - extended
+    g.fillStyle(0x1a1a1a); g.fillRect(82, 30, 24, 14);
+    g.fillStyle(0x202020); g.fillRect(82, 30, 5, 14);
+    g.fillStyle(0x1a1a1a); g.fillCircle(88, 36, 5);
+    g.fillStyle(0x1a1a1a); g.fillCircle(98, 36, 5);
+    
+    // Right fist - striking
+    g.fillStyle(0x0a0a0a); g.fillRect(104, 30, 14, 14);
+    g.fillStyle(0x151515); g.fillRect(104, 30, 4, 14);
+    g.fillStyle(0x0a0a0a); g.fillCircle(112, 38, 9);
+    g.fillStyle(0x151515); g.fillCircle(112, 37, 7);
+    g.fillStyle(0x0a0a0a); g.fillCircle(112, 36, 6);
+    // Knuckles
+    g.fillStyle(0x1a1a1a); g.fillCircle(108, 36, 2);
+    g.fillStyle(0x1a1a1a); g.fillCircle(112, 36, 2);
+    g.fillStyle(0x1a1a1a); g.fillCircle(116, 36, 2);
+    
+    // Motion lines for punch
+    g.fillStyle(0x2a2a2a, 0.5); g.fillRect(86, 34, 20, 4);
+    g.fillStyle(0x3a3a3a, 0.4); g.fillRect(88, 35, 16, 3);
+    g.fillStyle(0x4a4a4a, 0.3); g.fillRect(90, 36, 12, 2);
+    g.fillStyle(0x5a5a5a, 0.2); g.fillRect(92, 37, 8, 2);
+    
+    // Impact effect
+    g.fillStyle(0xffffff, 0.4); g.fillCircle(122, 38, 5);
+    g.fillStyle(0xcccccc, 0.3); g.fillCircle(124, 36, 4);
+    g.fillStyle(0xaaaaaa, 0.2); g.fillCircle(126, 40, 3);
+    
+    // ═══════ NECK - Tense ═══════
+    g.fillStyle(0x4d3827); g.fillRect(40, 26, 12, 8);
+    g.fillStyle(0x5d4837); g.fillRect(40, 26, 4, 8);
+    g.fillStyle(0x5d4837); g.fillRect(42, 28, 2, 5);
+    g.fillStyle(0x5d4837); g.fillRect(48, 28, 2, 5);
+    
+    // ═══════ HEAD - Aggressive tilt ═══════
+    g.fillStyle(0x4d3827); g.fillCircle(48, 14, 18);
+    g.fillStyle(0x5d4837); g.fillCircle(48, 12, 16);
+    g.fillStyle(0x6d5847); g.fillCircle(48, 10, 14);
+    g.fillStyle(0x7d6857); g.fillCircle(48, 8, 12);
+    
+    // Cheekbones
+    g.fillStyle(0x5d4837); g.fillCircle(37, 14, 6);
+    g.fillStyle(0x5d4837); g.fillCircle(59, 14, 6);
+    
+    // Jaw - clenched
+    g.fillStyle(0x4d3827); g.fillRect(36, 20, 24, 8);
+    g.fillStyle(0x3d2817); g.fillRect(38, 26, 20, 4);
+    
+    // ═══════ EARS ═══════
+    g.fillStyle(0x4d3827); g.fillCircle(30, 14, 5);
+    g.fillStyle(0x5d4837); g.fillCircle(30, 13, 4);
+    g.fillStyle(0x6d5847); g.fillCircle(30, 12, 3);
+    g.fillStyle(0x3d2817); g.fillCircle(30, 14, 2);
+    
+    g.fillStyle(0x4d3827); g.fillCircle(66, 14, 5);
+    g.fillStyle(0x5d4837); g.fillCircle(66, 13, 4);
+    g.fillStyle(0x6d5847); g.fillCircle(66, 12, 3);
+    g.fillStyle(0x3d2817); g.fillCircle(66, 14, 2);
+    
+    // ═══════ HAIR - Swept back ═══════
+    g.fillStyle(0x1a1a1a); g.fillCircle(48, 4, 16);
+    g.fillStyle(0x222222); g.fillCircle(48, 2, 14);
+    g.fillStyle(0x2a2a2a); g.fillCircle(48, 0, 12);
+    g.fillStyle(0x333333); g.fillCircle(46, -2, 8);
+    
+    // Hair motion effect
+    g.fillStyle(0x1a1a1a); g.fillRect(34, -2, 28, 10);
+    g.fillStyle(0x2a2a2a); g.fillRect(28, 0, 8, 6);
+    g.fillStyle(0x2a2a2a); g.fillRect(64, 0, 8, 6);
+    
+    // Hair texture
+    g.fillStyle(0x2a2a2a); g.fillRect(40, -2, 2, 6);
+    g.fillStyle(0x2a2a2a); g.fillRect(46, -3, 2, 7);
+    g.fillStyle(0x2a2a2a); g.fillRect(52, -2, 2, 6);
+    g.fillStyle(0x2a2a2a); g.fillRect(30, 0, 1, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(66, 0, 1, 4);
+    
+    // Sideburns
+    g.fillStyle(0x1a1a1a); g.fillRect(31, 8, 4, 10);
+    g.fillStyle(0x222222); g.fillRect(31, 8, 2, 10);
+    g.fillStyle(0x1a1a1a); g.fillRect(61, 8, 4, 10);
+    g.fillStyle(0x222222); g.fillRect(63, 8, 2, 10);
+    
+    // ═══════ SUNGLASSES - Angled ═══════
+    g.fillStyle(0x0a0a0a); g.fillRect(34, 8, 28, 3);
+    g.fillStyle(0x151515); g.fillRect(34, 8, 28, 1);
+    
+    g.fillStyle(0x0a0a0a); g.fillRect(34, 10, 12, 10);
+    g.fillStyle(0x0a0a0a); g.fillCircle(40, 14, 7);
+    g.fillStyle(0x0a0a0a); g.fillCircle(40, 14, 6);
+    g.fillStyle(0x050505); g.fillRect(36, 11, 8, 8);
+    g.fillStyle(0x080808); g.fillRect(36, 11, 8, 2);
+    g.fillStyle(0x1a1a1a, 0.4); g.fillRect(37, 12, 3, 1);
+    
+    g.fillStyle(0x0a0a0a); g.fillRect(50, 10, 12, 10);
+    g.fillStyle(0x0a0a0a); g.fillCircle(56, 14, 7);
+    g.fillStyle(0x0a0a0a); g.fillCircle(56, 14, 6);
+    g.fillStyle(0x050505); g.fillRect(52, 11, 8, 8);
+    g.fillStyle(0x080808); g.fillRect(52, 11, 8, 2);
+    g.fillStyle(0x1a1a1a, 0.4); g.fillRect(53, 12, 3, 1);
+    
+    g.fillStyle(0x0a0a0a); g.fillRect(46, 12, 4, 4);
+    g.fillStyle(0x151515); g.fillRect(46, 12, 2, 3);
+    
+    g.fillStyle(0x0a0a0a); g.fillRect(32, 10, 3, 3);
+    g.fillStyle(0x0a0a0a); g.fillRect(61, 10, 3, 3);
+    
+    // ═══════ NOSE ═══════
+    g.fillStyle(0x5d4837); g.fillEllipse(48, 22, 5, 6);
+    g.fillStyle(0x4d3827); g.fillEllipse(48, 23, 3, 3);
+    g.fillStyle(0x5d4837); g.fillRect(46, 18, 4, 6);
+    
+    // ═══════ MOUTH - Gritting teeth ═══════
+    g.fillStyle(0x4d3827); g.fillRect(40, 28, 16, 3);
+    g.fillStyle(0x3a2817); g.fillRect(42, 30, 12, 1);
+    
+    // ═══════ STUBBLE ═══════
+    g.fillStyle(0x2a1a0a, 0.4); g.fillRect(34, 20, 28, 12);
+    g.fillStyle(0x2a1a0a, 0.3); g.fillCircle(38, 24, 3);
+    g.fillStyle(0x2a1a0a, 0.3); g.fillCircle(54, 24, 3);
+    
+    // Neck shadow
+    g.fillStyle(0x3d2817, 0.3); g.fillRect(40, 30, 16, 4);
+    
+    // Motion blur effect
+    g.fillStyle(0x1a1a1a, 0.1); g.fillCircle(48, 48, 50);
+    g.fillStyle(0x0a0a0a, 0.05); g.fillCircle(48, 48, 60);
+    
+    g.generateTexture('killer_strike', 140, 125);
     g.clear();
 
     g.destroy();
 }
 
 function createSurvivorTextures(g, name, shirtColor, hairColor) {
-    // Shadow
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(22, 80, 28, 10);
-    // Legs - two separate legs with jeans color
-    g.fillStyle(0x2c3e70); g.fillRect(12, 48, 9, 34);
-    g.fillStyle(0x1a2a50); g.fillRect(12, 48, 3, 34);
-    g.fillStyle(0x2c3e70); g.fillRect(25, 48, 9, 34);
-    g.fillStyle(0x1a2a50); g.fillRect(25, 48, 3, 34);
-    // Boots
-    g.fillStyle(0x4a3a2a); g.fillRect(10, 76, 12, 8);
-    g.fillStyle(0x3a2a1a); g.fillRect(10, 76, 4, 8);
-    g.fillStyle(0x4a3a2a); g.fillRect(24, 76, 12, 8);
-    g.fillStyle(0x3a2a1a); g.fillRect(24, 76, 4, 8);
-    // Body
-    g.fillStyle(shirtColor); g.fillRect(8, 26, 28, 24);
-    g.fillStyle(shirtColor + 0x111111); g.fillRect(8, 26, 6, 24);
-    g.fillStyle(shirtColor + 0x222222); g.fillRect(30, 26, 4, 24);
+    // ═══════ DETAILED 3D-STYLE SURVIVOR ═══════
+    // Shadow under feet
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(32, 112, 38, 12);
+    
+    // ═══════ SNEAKERS - Detailed athletic shoes ═══════
+    // Left shoe
+    g.fillStyle(0x4a4a4a); g.fillRect(18, 98, 14, 10);
+    g.fillStyle(0x5a5a5a); g.fillRect(18, 98, 14, 3);
+    g.fillStyle(0x3a3a3a); g.fillRect(18, 98, 4, 10);
+    // Shoe toe
+    g.fillStyle(0x4a4a4a); g.fillCircle(25, 102, 5);
+    g.fillStyle(0x5a5a5a); g.fillCircle(25, 101, 4);
+    // Shoe sole
+    g.fillStyle(0x2a2a2a); g.fillRect(16, 106, 18, 4);
+    g.fillStyle(0x3a3a3a); g.fillRect(16, 106, 5, 4);
+    // Shoe laces
+    g.fillStyle(0xffffff); g.fillRect(20, 100, 1, 6);
+    g.fillStyle(0xffffff); g.fillRect(24, 100, 1, 6);
+    
+    // Right shoe
+    g.fillStyle(0x4a4a4a); g.fillRect(40, 98, 14, 10);
+    g.fillStyle(0x5a5a5a); g.fillRect(40, 98, 14, 3);
+    g.fillStyle(0x3a3a3a); g.fillRect(40, 98, 4, 10);
+    g.fillStyle(0x4a4a4a); g.fillCircle(47, 102, 5);
+    g.fillStyle(0x5a5a5a); g.fillCircle(47, 101, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(38, 106, 18, 4);
+    g.fillStyle(0x3a3a3a); g.fillRect(38, 106, 5, 4);
+    g.fillStyle(0xffffff); g.fillRect(42, 100, 1, 6);
+    g.fillStyle(0xffffff); g.fillRect(46, 100, 1, 6);
+    
+    // ═══════ JEANS - Detailed pants ═══════
+    // Left leg
+    g.fillStyle(0x2c3e70); g.fillRect(18, 66, 12, 36);
+    g.fillStyle(0x3c4e80); g.fillRect(18, 66, 3, 36);
+    g.fillStyle(0x1c2e60); g.fillRect(18, 66, 12, 2);
+    // Jean pocket
+    g.fillStyle(0x2c3e70); g.fillRect(19, 70, 8, 6);
+    g.fillStyle(0x1c2e60); g.fillRect(19, 70, 8, 1);
+    // Jean stitch
+    g.fillStyle(0x4c5e90); g.fillRect(20, 74, 6, 1);
+    // Knee
+    g.fillStyle(0x3c4e80); g.fillCircle(24, 84, 4);
+    
+    // Right leg
+    g.fillStyle(0x2c3e70); g.fillRect(42, 66, 12, 36);
+    g.fillStyle(0x3c4e80); g.fillRect(42, 66, 3, 36);
+    g.fillStyle(0x1c2e60); g.fillRect(42, 66, 12, 2);
+    g.fillStyle(0x2c3e70); g.fillRect(43, 70, 8, 6);
+    g.fillStyle(0x1c2e60); g.fillRect(43, 70, 8, 1);
+    g.fillStyle(0x4c5e90); g.fillRect(44, 74, 6, 1);
+    g.fillStyle(0x3c4e80); g.fillCircle(48, 84, 4);
+    
+    // Belt
+    g.fillStyle(0x5a4a3a); g.fillRect(16, 62, 40, 5);
+    g.fillStyle(0x6a5a4a); g.fillRect(16, 62, 40, 2);
+    // Belt buckle
+    g.fillStyle(0x8a7a6a); g.fillRect(30, 61, 6, 7);
+    g.fillStyle(0x9a8a7a); g.fillRect(31, 62, 4, 5);
+    
+    // ═══════ SHIRT - Detailed clothing ═══════
+    // Main body
+    g.fillStyle(shirtColor); g.fillRect(14, 30, 44, 36);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(14, 30, 6, 36);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(52, 30, 6, 36);
+    g.fillStyle(shirtColor + 0x222222); g.fillRect(14, 30, 44, 2);
+    
+    // Shirt shading
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(16, 32, 40, 32);
+    
     // Collar
-    g.fillStyle(shirtColor - 0x222222); g.fillRect(18, 26, 8, 4);
-    // Arms - two separate arms
-    g.fillStyle(0xffccaa); g.fillRect(0, 28, 9, 18);
-    g.fillStyle(0xeeaa88); g.fillRect(0, 28, 3, 18);
-    g.fillStyle(0xffccaa); g.fillRect(35, 28, 9, 18);
-    g.fillStyle(0xeeaa88); g.fillRect(35, 28, 3, 18);
-    // Hands
-    g.fillStyle(0xffccaa); g.fillCircle(4, 48, 5);
-    g.fillStyle(0xffccaa); g.fillCircle(40, 48, 5);
-    // Shirt sleeves
-    g.fillStyle(shirtColor); g.fillRect(0, 26, 10, 8);
-    g.fillStyle(shirtColor); g.fillRect(34, 26, 10, 8);
-    g.fillStyle(shirtColor - 0x111111); g.fillRect(0, 26, 4, 8);
-    g.fillStyle(shirtColor - 0x111111); g.fillRect(34, 26, 4, 8);
-    // Head
-    g.fillStyle(0xffccaa); g.fillCircle(22, 14, 12);
-    g.fillStyle(0xeebb99); g.fillCircle(22, 16, 10);
-    // Hair
-    g.fillStyle(hairColor); g.fillCircle(22, 10, 11);
-    g.fillStyle(hairColor - 0x222222); g.fillCircle(22, 7, 8);
-    g.fillStyle(hairColor); g.fillRect(10, 6, 24, 8);
-    // Eyes
-    g.fillStyle(0x222222); g.fillCircle(17, 13, 3);
-    g.fillStyle(0x222222); g.fillCircle(27, 13, 3);
-    g.fillStyle(0xffffff); g.fillCircle(16, 12, 1.5);
-    g.fillStyle(0xffffff); g.fillCircle(26, 12, 1.5);
+    g.fillStyle(shirtColor - 0x222222); g.fillRect(28, 28, 16, 6);
+    g.fillStyle(shirtColor - 0x333333); g.fillRect(28, 28, 16, 2);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(30, 30, 6, 4);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(36, 30, 6, 4);
+    
+    // Button placket
+    g.fillStyle(shirtColor - 0x222222); g.fillRect(34, 32, 4, 32);
+    g.fillStyle(shirtColor - 0x333333); g.fillRect(35, 32, 2, 32);
+    // Buttons
+    g.fillStyle(0xcccccc); g.fillCircle(36, 38, 2);
+    g.fillStyle(0xcccccc); g.fillCircle(36, 48, 2);
+    g.fillStyle(0xcccccc); g.fillCircle(36, 58, 2);
+    
+    // ═══════ ARMS ═══════
+    // Left arm upper
+    g.fillStyle(shirtColor); g.fillRect(4, 32, 12, 20);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(4, 32, 3, 20);
+    
+    // Left forearm
+    g.fillStyle(0xffccaa); g.fillRect(2, 48, 14, 14);
+    g.fillStyle(0xeebb99); g.fillRect(2, 48, 3, 14);
+    // Forearm muscle
+    g.fillStyle(0xeebb99); g.fillCircle(6, 54, 4);
+    g.fillStyle(0xeebb99); g.fillCircle(12, 54, 4);
+    
+    // Left hand
+    g.fillStyle(0xffccaa); g.fillRect(-2, 58, 12, 10);
+    g.fillStyle(0xeebb99); g.fillRect(-2, 58, 3, 10);
+    g.fillStyle(0xffccaa); g.fillCircle(5, 66, 6);
+    g.fillStyle(0xeebb99); g.fillCircle(5, 65, 5);
+    g.fillStyle(0xeebb99); g.fillCircle(5, 65, 4);
+    // Fingers
+    g.fillStyle(0xffccaa); g.fillRect(-4, 64, 3, 8);
+    g.fillStyle(0xffccaa); g.fillRect(0, 66, 3, 9);
+    g.fillStyle(0xffccaa); g.fillRect(4, 64, 3, 8);
+    g.fillStyle(0xffccaa); g.fillRect(8, 62, 3, 7);
+    
+    // Right arm upper
+    g.fillStyle(shirtColor); g.fillRect(56, 32, 12, 20);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(57, 32, 3, 20);
+    
+    // Right forearm
+    g.fillStyle(0xffccaa); g.fillRect(56, 48, 14, 14);
+    g.fillStyle(0xeebb99); g.fillRect(68, 48, 3, 14);
+    g.fillStyle(0xeebb99); g.fillCircle(60, 54, 4);
+    g.fillStyle(0xeebb99); g.fillCircle(66, 54, 4);
+    
+    // Right hand
+    g.fillStyle(0xffccaa); g.fillRect(60, 58, 12, 10);
+    g.fillStyle(0xeebb99); g.fillRect(69, 58, 3, 10);
+    g.fillStyle(0xffccaa); g.fillCircle(67, 66, 6);
+    g.fillStyle(0xeebb99); g.fillCircle(67, 65, 5);
+    g.fillStyle(0xeebb99); g.fillCircle(67, 65, 4);
+    g.fillStyle(0xffccaa); g.fillRect(58, 64, 3, 8);
+    g.fillStyle(0xffccaa); g.fillRect(62, 66, 3, 9);
+    g.fillStyle(0xffccaa); g.fillRect(66, 64, 3, 8);
+    g.fillStyle(0xffccaa); g.fillRect(70, 62, 3, 7);
+    
+    // ═══════ NECK ═══════
+    g.fillStyle(0xffccaa); g.fillRect(30, 24, 12, 8);
+    g.fillStyle(0xeebb99); g.fillRect(30, 24, 3, 8);
+    // Neck shadow
+    g.fillStyle(0xddbb99); g.fillRect(32, 26, 2, 5);
+    g.fillStyle(0xddbb99); g.fillRect(38, 26, 2, 5);
+    
+    // ═══════ HEAD - 3D realistic ═══════
+    // Skull base
+    g.fillStyle(0xffccaa); g.fillCircle(36, 14, 16);
+    g.fillStyle(0xeebb99); g.fillCircle(36, 12, 14);
+    g.fillStyle(0xddbbaa); g.fillCircle(36, 10, 12);
+    
+    // Cheekbones
+    g.fillStyle(0xeebb99); g.fillCircle(26, 14, 5);
+    g.fillStyle(0xeebb99); g.fillCircle(46, 14, 5);
+    
+    // Jaw
+    g.fillStyle(0xffccaa); g.fillRect(26, 20, 20, 6);
+    g.fillStyle(0xeebb99); g.fillRect(28, 24, 16, 4);
+    
+    // ═══════ EARS ═══════
+    g.fillStyle(0xffccaa); g.fillCircle(20, 14, 4);
+    g.fillStyle(0xeebb99); g.fillCircle(20, 13, 3);
+    g.fillStyle(0xddbbaa); g.fillCircle(20, 12, 2);
+    g.fillStyle(0xccaa99); g.fillCircle(20, 14, 1);
+    
+    g.fillStyle(0xffccaa); g.fillCircle(52, 14, 4);
+    g.fillStyle(0xeebb99); g.fillCircle(52, 13, 3);
+    g.fillStyle(0xddbbaa); g.fillCircle(52, 12, 2);
+    g.fillStyle(0xccaa99); g.fillCircle(52, 14, 1);
+    
+    // ═══════ HAIR - Detailed style ═══════
+    g.fillStyle(hairColor); g.fillCircle(36, 4, 14);
+    g.fillStyle(hairColor - 0x111111); g.fillCircle(36, 2, 12);
+    g.fillStyle(hairColor - 0x222222); g.fillCircle(36, 0, 10);
+    g.fillStyle(hairColor - 0x222222); g.fillCircle(34, -2, 7);
+    g.fillStyle(hairColor - 0x333333); g.fillCircle(32, -3, 5);
+    
+    // Hair volume and style
+    g.fillStyle(hairColor); g.fillRect(22, -2, 28, 10);
+    g.fillStyle(hairColor - 0x111111); g.fillRect(24, 0, 24, 6);
+    // Hair texture
+    g.fillStyle(hairColor - 0x222222); g.fillRect(28, -2, 2, 6);
+    g.fillStyle(hairColor - 0x222222); g.fillRect(34, -3, 2, 7);
+    g.fillStyle(hairColor - 0x222222); g.fillRect(40, -2, 2, 6);
+    
+    // Side hair
+    g.fillStyle(hairColor); g.fillRect(21, 4, 5, 8);
+    g.fillStyle(hairColor - 0x111111); g.fillRect(21, 4, 2, 8);
+    g.fillStyle(hairColor); g.fillRect(46, 4, 5, 8);
+    g.fillStyle(hairColor - 0x111111); g.fillRect(49, 4, 2, 8);
+    
+    // ═══════ FACE - Detailed features ═══════
     // Eyebrows
-    g.fillStyle(hairColor - 0x333333); g.fillRect(14, 9, 7, 2);
-    g.fillStyle(hairColor - 0x333333); g.fillRect(24, 9, 7, 2);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(24, 8, 8, 2);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(44, 8, 8, 2);
+    g.fillStyle(hairColor - 0x444444); g.fillRect(24, 8, 8, 1);
+    g.fillStyle(hairColor - 0x444444); g.fillRect(44, 8, 8, 1);
+    
+    // Eyes - detailed
+    g.fillStyle(0xffffff); g.fillCircle(28, 13, 5);
+    g.fillStyle(0x222222); g.fillCircle(28, 13, 3);
+    g.fillStyle(0x111111); g.fillCircle(28, 13, 2);
+    g.fillStyle(0xffffff); g.fillCircle(27, 12, 1);
+    // Eye shadow
+    g.fillStyle(0xddbbaa); g.fillRect(23, 10, 10, 2);
+    
+    g.fillStyle(0xffffff); g.fillCircle(44, 13, 5);
+    g.fillStyle(0x222222); g.fillCircle(44, 13, 3);
+    g.fillStyle(0x111111); g.fillCircle(44, 13, 2);
+    g.fillStyle(0xffffff); g.fillCircle(43, 12, 1);
+    g.fillStyle(0xddbbaa); g.fillRect(39, 10, 10, 2);
+    
+    // Eyelashes
+    g.fillStyle(0x222222); g.fillRect(24, 10, 1, 2);
+    g.fillStyle(0x222222); g.fillRect(26, 9, 1, 2);
+    g.fillStyle(0x222222); g.fillRect(30, 9, 1, 2);
+    g.fillStyle(0x222222); g.fillRect(32, 10, 1, 2);
+    g.fillStyle(0x222222); g.fillRect(40, 10, 1, 2);
+    g.fillStyle(0x222222); g.fillRect(42, 9, 1, 2);
+    g.fillStyle(0x222222); g.fillRect(46, 9, 1, 2);
+    g.fillStyle(0x222222); g.fillRect(48, 10, 1, 2);
+    
     // Nose
-    g.fillStyle(0xddaa88); g.fillRect(20, 15, 4, 3);
+    g.fillStyle(0xeebb99); g.fillEllipse(36, 18, 4, 5);
+    g.fillStyle(0xddbbaa); g.fillEllipse(36, 19, 2, 2);
+    // Nose bridge
+    g.fillStyle(0xeebb99); g.fillRect(34, 14, 4, 5);
+    
     // Mouth
-    g.fillStyle(0xcc8877); g.fillRect(18, 20, 8, 3);
-    g.fillStyle(0xaa6655); g.fillRect(18, 20, 8, 1);
-    // Ears
-    g.fillStyle(0xffccaa); g.fillRect(9, 12, 4, 6);
-    g.fillStyle(0xffccaa); g.fillRect(33, 12, 4, 6);
-    g.generateTexture(name, 44, 88);
+    g.fillStyle(0xcc8877); g.fillRect(30, 24, 12, 4);
+    g.fillStyle(0xdd9988); g.fillRect(30, 24, 12, 2);
+    // Lips
+    g.fillStyle(0xcc8877); g.fillRect(32, 26, 8, 2);
+    g.fillStyle(0xbb7766); g.fillRect(33, 27, 6, 1);
+    
+    // ═══════ 3D LIGHTING ═══════
+    // Rim light
+    g.fillStyle(0xffffff, 0.1); g.fillRect(14, 30, 2, 36);
+    // Ambient shadow
+    g.fillStyle(0x000000, 0.05); g.fillRect(16, 64, 40, 2);
+    
+    g.generateTexture(name, 72, 120);
     g.clear();
 }
 
 // Create repairing (crouching) textures for survivors
 function createRepairingTextures(g, name, shirtColor, hairColor) {
+    // ═══════ REPAIRING (CROUCHING) SURVIVOR ═══════
     // Shadow (larger, more spread out for crouching)
-    g.fillStyle(0x000000, 0.4); g.fillEllipse(22, 72, 36, 12);
-    // Crouched legs (bent at knees)
-    g.fillStyle(0x2c3e70); g.fillRect(6, 50, 10, 18);
-    g.fillStyle(0x1a2a50); g.fillRect(6, 50, 3, 18);
-    g.fillStyle(0x2c3e70); g.fillRect(28, 50, 10, 18);
-    g.fillStyle(0x1a2a50); g.fillRect(28, 50, 3, 18);
-    // Knees bent
-    g.fillStyle(0x2c3e70); g.fillRect(8, 62, 10, 8);
-    g.fillStyle(0x2c3e70); g.fillRect(26, 62, 10, 8);
-    // Boots
-    g.fillStyle(0x4a3a2a); g.fillRect(4, 68, 12, 8);
-    g.fillStyle(0x3a2a1a); g.fillRect(4, 68, 4, 8);
-    g.fillStyle(0x4a3a2a); g.fillRect(26, 68, 12, 8);
-    g.fillStyle(0x3a2a1a); g.fillRect(26, 68, 4, 8);
-    // Crouched body (leaning forward)
-    g.fillStyle(shirtColor); g.fillRect(8, 32, 28, 22);
-    g.fillStyle(shirtColor + 0x111111); g.fillRect(8, 32, 6, 22);
-    g.fillStyle(shirtColor + 0x222222); g.fillRect(30, 32, 4, 22);
-    // Back bent
-    g.fillStyle(shirtColor - 0x111111); g.fillRect(14, 32, 16, 4);
-    // Arms reaching forward (for repair animation - frame 1)
-    g.fillStyle(0xffccaa); g.fillRect(-4, 36, 14, 7);
-    g.fillStyle(0xeeaa88); g.fillRect(-4, 36, 4, 7);
-    g.fillStyle(0xffccaa); g.fillRect(34, 36, 14, 7);
-    g.fillStyle(0xeeaa88); g.fillRect(42, 36, 4, 7);
-    // Hands reaching to generator
-    g.fillStyle(0xffccaa); g.fillCircle(-8, 40, 5);
-    g.fillStyle(0xffccaa); g.fillCircle(48, 40, 5);
+    g.fillStyle(0x000000, 0.4); g.fillEllipse(36, 90, 56, 14);
+    
+    // Crouched legs (bent at knees) with detail
+    g.fillStyle(0x2c3e70); g.fillRect(12, 68, 14, 20);
+    g.fillStyle(0x3c4e80); g.fillRect(12, 68, 4, 20);
+    g.fillStyle(0x1c2e60); g.fillRect(12, 68, 14, 2);
+    
+    g.fillStyle(0x2c3e70); g.fillRect(46, 68, 14, 20);
+    g.fillStyle(0x3c4e80); g.fillRect(46, 68, 4, 20);
+    g.fillStyle(0x1c2e60); g.fillRect(46, 68, 14, 2);
+    
+    // Knees bent - detailed
+    g.fillStyle(0x3c4e80); g.fillCircle(18, 82, 6);
+    g.fillStyle(0x2c3e70); g.fillCircle(18, 82, 5);
+    g.fillStyle(0x3c4e80); g.fillCircle(52, 82, 6);
+    g.fillStyle(0x2c3e70); g.fillCircle(52, 82, 5);
+    
+    // Boots - detailed sneakers
+    g.fillStyle(0x4a4a4a); g.fillRect(8, 86, 16, 10);
+    g.fillStyle(0x5a5a5a); g.fillRect(8, 86, 16, 3);
+    g.fillStyle(0x3a3a3a); g.fillRect(8, 86, 5, 10);
+    g.fillStyle(0x4a4a4a); g.fillCircle(16, 90, 5);
+    g.fillStyle(0x5a5a5a); g.fillCircle(16, 89, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(6, 94, 18, 4);
+    
+    g.fillStyle(0x4a4a4a); g.fillRect(48, 86, 16, 10);
+    g.fillStyle(0x5a5a5a); g.fillRect(48, 86, 16, 3);
+    g.fillStyle(0x3a3a3a); g.fillRect(48, 86, 5, 10);
+    g.fillStyle(0x4a4a4a); g.fillCircle(56, 90, 5);
+    g.fillStyle(0x5a5a5a); g.fillCircle(56, 89, 4);
+    g.fillStyle(0x2a2a2a); g.fillRect(46, 94, 18, 4);
+    
+    // Crouched body (leaning forward) with detail
+    g.fillStyle(shirtColor); g.fillRect(14, 40, 44, 32);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(14, 40, 8, 32);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(50, 40, 8, 32);
+    g.fillStyle(shirtColor + 0x222222); g.fillRect(14, 40, 44, 2);
+    
+    // Belt
+    g.fillStyle(0x5a4a3a); g.fillRect(16, 66, 40, 5);
+    g.fillStyle(0x6a5a4a); g.fillRect(16, 66, 40, 2);
+    
+    // Arms reaching forward with detail
+    g.fillStyle(shirtColor); g.fillRect(-8, 44, 24, 12);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(-8, 44, 6, 12);
+    
+    g.fillStyle(shirtColor); g.fillRect(56, 44, 24, 12);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(72, 44, 6, 12);
+    
+    // Forearms reaching
+    g.fillStyle(0xffccaa); g.fillRect(-12, 52, 18, 10);
+    g.fillStyle(0xeebb99); g.fillRect(-12, 52, 4, 10);
+    
+    g.fillStyle(0xffccaa); g.fillRect(66, 52, 18, 10);
+    g.fillStyle(0xeebb99); g.fillRect(76, 52, 4, 10);
+    
+    // Hands working on generator
+    g.fillStyle(0xffccaa); g.fillRect(-20, 58, 14, 12);
+    g.fillStyle(0xeebb99); g.fillRect(-20, 58, 4, 12);
+    g.fillStyle(0xffccaa); g.fillCircle(-14, 68, 7);
+    g.fillStyle(0xeebb99); g.fillCircle(-14, 67, 6);
+    g.fillStyle(0xeebb99); g.fillCircle(-14, 66, 5);
+    // Fingers working
+    g.fillStyle(0xffccaa); g.fillRect(-26, 66, 4, 10);
+    g.fillStyle(0xffccaa); g.fillRect(-20, 68, 4, 11);
+    g.fillStyle(0xffccaa); g.fillRect(-14, 66, 4, 10);
+    g.fillStyle(0xffccaa); g.fillRect(-8, 64, 4, 9);
+    
+    g.fillStyle(0xffccaa); g.fillRect(78, 58, 14, 12);
+    g.fillStyle(0xeebb99); g.fillRect(88, 58, 4, 12);
+    g.fillStyle(0xffccaa); g.fillCircle(84, 68, 7);
+    g.fillStyle(0xeebb99); g.fillCircle(84, 67, 6);
+    g.fillStyle(0xeebb99); g.fillCircle(84, 66, 5);
+    g.fillStyle(0xffccaa); g.fillRect(94, 66, 4, 10);
+    g.fillStyle(0xffccaa); g.fillRect(88, 68, 4, 11);
+    g.fillStyle(0xffccaa); g.fillRect(82, 66, 4, 10);
+    g.fillStyle(0xffccaa); g.fillRect(76, 64, 4, 9);
+    
     // Sleeves
-    g.fillStyle(shirtColor); g.fillRect(-2, 34, 10, 6);
-    g.fillStyle(shirtColor); g.fillRect(36, 34, 10, 6);
-    // Head (slightly tilted)
-    g.fillStyle(0xffccaa); g.fillCircle(24, 18, 11);
-    g.fillStyle(0xeebb99); g.fillCircle(24, 19, 9);
-    // Hair
-    g.fillStyle(hairColor); g.fillCircle(24, 14, 10);
-    g.fillStyle(hairColor - 0x222222); g.fillCircle(24, 11, 7);
-    g.fillStyle(hairColor); g.fillRect(12, 10, 24, 7);
-    // Eyes (focused on work)
-    g.fillStyle(0x222222); g.fillCircle(19, 17, 2.5);
-    g.fillStyle(0x222222); g.fillCircle(29, 17, 2.5);
-    g.fillStyle(0xffffff); g.fillCircle(18, 16, 1);
-    g.fillStyle(0xffffff); g.fillCircle(28, 16, 1);
-    // Eyebrows (concentrated)
-    g.fillStyle(hairColor - 0x333333); g.fillRect(16, 13, 7, 2);
-    g.fillStyle(hairColor - 0x333333); g.fillRect(26, 13, 7, 2);
+    g.fillStyle(shirtColor); g.fillRect(-6, 42, 14, 8);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(-6, 42, 4, 8);
+    g.fillStyle(shirtColor); g.fillRect(64, 42, 14, 8);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(66, 42, 4, 8);
+    
+    // Head (slightly tilted forward, concentrated)
+    g.fillStyle(0xffccaa); g.fillCircle(36, 24, 16);
+    g.fillStyle(0xeebb99); g.fillCircle(36, 26, 14);
+    g.fillStyle(0xddbbaa); g.fillCircle(36, 28, 12);
+    
+    // Cheekbones
+    g.fillStyle(0xeebb99); g.fillCircle(24, 26, 5);
+    g.fillStyle(0xeebb99); g.fillCircle(48, 26, 5);
+    
+    // Hair - styled for work
+    g.fillStyle(hairColor); g.fillCircle(36, 10, 14);
+    g.fillStyle(hairColor - 0x111111); g.fillCircle(36, 12, 12);
+    g.fillStyle(hairColor - 0x222222); g.fillCircle(36, 14, 10);
+    g.fillStyle(hairColor - 0x333333); g.fillCircle(34, 16, 7);
+    
+    // Hair style
+    g.fillStyle(hairColor); g.fillRect(22, 8, 28, 10);
+    g.fillStyle(hairColor - 0x111111); g.fillRect(24, 10, 24, 6);
+    
+    // Eyes (focused on work, determined)
+    g.fillStyle(0xffffff); g.fillCircle(28, 24, 5);
+    g.fillStyle(0x222222); g.fillCircle(28, 24, 3);
+    g.fillStyle(0x111111); g.fillCircle(28, 24, 2);
+    g.fillStyle(0xffffff); g.fillCircle(27, 23, 1);
+    
+    g.fillStyle(0xffffff); g.fillCircle(44, 24, 5);
+    g.fillStyle(0x222222); g.fillCircle(44, 24, 3);
+    g.fillStyle(0x111111); g.fillCircle(44, 24, 2);
+    g.fillStyle(0xffffff); g.fillCircle(43, 23, 1);
+    
+    // Eye shadows (working hard)
+    g.fillStyle(0xddbbaa); g.fillRect(23, 18, 10, 3);
+    g.fillStyle(0xddbbaa); g.fillRect(39, 18, 10, 3);
+    
+    // Eyebrows (concentrated, furrowed)
+    g.fillStyle(hairColor - 0x333333); g.fillRect(22, 18, 10, 2);
+    g.fillStyle(hairColor - 0x444444); g.fillRect(22, 18, 10, 1);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(40, 18, 10, 2);
+    g.fillStyle(hairColor - 0x444444); g.fillRect(40, 18, 10, 1);
+    
     // Nose
-    g.fillStyle(0xddaa88); g.fillRect(22, 19, 4, 3);
+    g.fillStyle(0xeebb99); g.fillEllipse(36, 30, 4, 5);
+    g.fillStyle(0xddbbaa); g.fillEllipse(36, 31, 2, 2);
+    
     // Mouth (slightly open, concentrated)
-    g.fillStyle(0xcc8877); g.fillRect(20, 24, 8, 2);
+    g.fillStyle(0xcc8877); g.fillRect(30, 36, 12, 4);
+    g.fillStyle(0xdd9988); g.fillRect(30, 36, 12, 2);
+    g.fillStyle(0xbb7766); g.fillRect(32, 38, 8, 1);
+    
     // Ears
-    g.fillStyle(0xffccaa); g.fillRect(11, 16, 4, 5);
-    g.fillStyle(0xffccaa); g.fillRect(35, 16, 4, 5);
-    g.generateTexture(name + '_repair', 56, 80);
+    g.fillStyle(0xffccaa); g.fillCircle(20, 24, 4);
+    g.fillStyle(0xeebb99); g.fillCircle(20, 23, 3);
+    g.fillStyle(0xffccaa); g.fillCircle(52, 24, 4);
+    g.fillStyle(0xeebb99); g.fillCircle(52, 23, 3);
+    
+    // Sweat drop (working hard)
+    g.fillStyle(0x88ccff, 0.6); g.fillCircle(18, 20, 2);
+    g.fillStyle(0x88ccff, 0.6); g.fillCircle(54, 22, 2);
+    
+    g.generateTexture(name + '_repair', 100, 100);
     g.clear();
 }
 
 // Create dying (crawling on ground) textures for survivors
 function createDyingTextures(g, name, shirtColor, hairColor) {
+    // ═══════ DYING (CRAWLING) SURVIVOR ═══════
     // Shadow - much wider and flatter for lying on ground
-    g.fillStyle(0x000000, 0.5); g.fillEllipse(22, 72, 44, 8);
-    // Legs - lying flat on ground
-    g.fillStyle(0x2c3e70); g.fillRect(2, 56, 14, 10);
-    g.fillStyle(0x1a2a50); g.fillRect(2, 56, 3, 10);
-    g.fillStyle(0x2c3e70); g.fillRect(28, 56, 14, 10);
-    g.fillStyle(0x1a2a50); g.fillRect(28, 56, 3, 10);
+    g.fillStyle(0x000000, 0.5); g.fillEllipse(36, 88, 70, 14);
+    
+    // Legs - lying flat on ground with detail
+    g.fillStyle(0x2c3e70); g.fillRect(8, 68, 16, 12);
+    g.fillStyle(0x3c4e80); g.fillRect(8, 68, 4, 12);
+    g.fillStyle(0x1c2e60); g.fillRect(8, 68, 16, 2);
+    
+    g.fillStyle(0x2c3e70); g.fillRect(52, 68, 16, 12);
+    g.fillStyle(0x3c4e80); g.fillRect(52, 68, 4, 12);
+    g.fillStyle(0x1c2e60); g.fillRect(52, 68, 16, 2);
+    
     // Feet pointing outward (crawling pose)
-    g.fillStyle(0x4a3a2a); g.fillRect(-2, 54, 8, 6);
-    g.fillStyle(0x3a2a1a); g.fillRect(-2, 54, 3, 6);
-    g.fillStyle(0x4a3a2a); g.fillRect(38, 54, 8, 6);
-    g.fillStyle(0x3a2a1a); g.fillRect(38, 54, 3, 6);
+    g.fillStyle(0x4a4a4a); g.fillRect(0, 64, 12, 8);
+    g.fillStyle(0x5a5a5a); g.fillRect(0, 64, 4, 8);
+    g.fillStyle(0x2a2a2a); g.fillRect(-2, 70, 16, 4);
+    
+    g.fillStyle(0x4a4a4a); g.fillRect(64, 64, 12, 8);
+    g.fillStyle(0x5a5a5a); g.fillRect(64, 64, 4, 8);
+    g.fillStyle(0x2a2a2a); g.fillRect(62, 70, 16, 4);
+    
     // Body - lying flat/horizontal
-    g.fillStyle(shirtColor); g.fillRect(4, 44, 36, 16);
-    g.fillStyle(shirtColor + 0x111111); g.fillRect(4, 44, 6, 16);
-    g.fillStyle(shirtColor + 0x222222); g.fillRect(34, 44, 4, 16);
-    // Arms - one in front, one behind (crawling)
-    g.fillStyle(0xffccaa); g.fillRect(-6, 46, 14, 6);
-    g.fillStyle(0xeeaa88); g.fillRect(-6, 46, 4, 6);
-    g.fillStyle(0xffccaa); g.fillRect(36, 46, 14, 6);
-    g.fillStyle(0xeeaa88); g.fillRect(42, 46, 4, 6);
+    g.fillStyle(shirtColor); g.fillRect(12, 50, 52, 22);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(12, 50, 8, 22);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(56, 50, 8, 22);
+    g.fillStyle(shirtColor + 0x222222); g.fillRect(12, 50, 52, 2);
+    
+    // Arms - crawling pose
+    g.fillStyle(shirtColor); g.fillRect(-8, 52, 22, 10);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(-8, 52, 6, 10);
+    
+    g.fillStyle(shirtColor); g.fillRect(62, 52, 22, 10);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(76, 52, 6, 10);
+    
     // Hands - touching ground
-    g.fillStyle(0xffccaa); g.fillCircle(-10, 49, 4);
-    g.fillStyle(0xffccaa); g.fillCircle(50, 49, 4);
+    g.fillStyle(0xffccaa); g.fillRect(-16, 56, 14, 10);
+    g.fillStyle(0xeebb99); g.fillRect(-16, 56, 4, 10);
+    g.fillStyle(0xffccaa); g.fillCircle(-10, 64, 6);
+    g.fillStyle(0xeebb99); g.fillCircle(-10, 63, 5);
+    // Fingers
+    g.fillStyle(0xffccaa); g.fillRect(-20, 62, 4, 8);
+    g.fillStyle(0xffccaa); g.fillRect(-14, 64, 4, 9);
+    g.fillStyle(0xffccaa); g.fillRect(-8, 62, 4, 8);
+    
+    g.fillStyle(0xffccaa); g.fillRect(82, 56, 14, 10);
+    g.fillStyle(0xeebb99); g.fillRect(82, 56, 4, 10);
+    g.fillStyle(0xffccaa); g.fillCircle(88, 64, 6);
+    g.fillStyle(0xeebb99); g.fillCircle(88, 63, 5);
+    g.fillStyle(0xffccaa); g.fillRect(92, 62, 4, 8);
+    g.fillStyle(0xffccaa); g.fillRect(86, 64, 4, 9);
+    g.fillStyle(0xffccaa); g.fillRect(80, 62, 4, 8);
+    
     // Sleeves
-    g.fillStyle(shirtColor); g.fillRect(-4, 44, 10, 5);
-    g.fillStyle(shirtColor); g.fillRect(38, 44, 10, 5);
+    g.fillStyle(shirtColor); g.fillRect(-6, 50, 12, 6);
+    g.fillStyle(shirtColor); g.fillRect(70, 50, 12, 6);
+    
     // Head - very low to ground
-    g.fillStyle(0xffccaa); g.fillCircle(22, 38, 10);
-    g.fillStyle(0xeebb99); g.fillCircle(22, 39, 8);
-    // Hair - flattened
-    g.fillStyle(hairColor); g.fillCircle(22, 34, 9);
-    g.fillStyle(hairColor - 0x222222); g.fillCircle(22, 32, 6);
-    g.fillStyle(hairColor); g.fillRect(12, 32, 20, 5);
-    // Eyes - looking forward/distressed
-    g.fillStyle(0x222222); g.fillCircle(18, 37, 2);
-    g.fillStyle(0x222222); g.fillCircle(26, 37, 2);
-    g.fillStyle(0xffffff); g.fillCircle(17, 36, 0.8);
-    g.fillStyle(0xffffff); g.fillCircle(25, 36, 0.8);
+    g.fillStyle(0xffccaa); g.fillCircle(36, 38, 16);
+    g.fillStyle(0xeebb99); g.fillCircle(36, 40, 14);
+    g.fillStyle(0xddbbaa); g.fillCircle(36, 42, 12);
+    
+    // Cheekbones
+    g.fillStyle(0xeebb99); g.fillCircle(24, 40, 6);
+    g.fillStyle(0xeebb99); g.fillCircle(48, 40, 6);
+    
+    // Hair - flattened, disheveled
+    g.fillStyle(hairColor); g.fillCircle(36, 28, 14);
+    g.fillStyle(hairColor - 0x111111); g.fillCircle(36, 30, 12);
+    g.fillStyle(hairColor - 0x222222); g.fillCircle(36, 32, 10);
+    // Hair falling flat
+    g.fillStyle(hairColor); g.fillRect(22, 28, 28, 8);
+    g.fillStyle(hairColor - 0x111111); g.fillRect(24, 30, 24, 5);
+    
+    // Eyes - looking forward/distressed, wide open
+    g.fillStyle(0xffffff); g.fillCircle(28, 38, 6);
+    g.fillStyle(0xffffff); g.fillCircle(44, 38, 6);
+    g.fillStyle(0x333333); g.fillCircle(28, 38, 4);
+    g.fillStyle(0x333333); g.fillCircle(44, 38, 4);
+    g.fillStyle(0x111111); g.fillCircle(28, 38, 2);
+    g.fillStyle(0x111111); g.fillCircle(44, 38, 2);
+    g.fillStyle(0xffffff); g.fillCircle(27, 37, 1.5);
+    g.fillStyle(0xffffff); g.fillCircle(43, 37, 1.5);
+    // Eye shadow/bags - exhausted
+    g.fillStyle(0xddbbaa); g.fillRect(22, 32, 12, 3);
+    g.fillStyle(0xddbbaa); g.fillRect(40, 32, 12, 3);
+    
     // Eyebrows - worried
-    g.fillStyle(hairColor - 0x333333); g.fillRect(15, 34, 6, 1.5);
-    g.fillStyle(hairColor - 0x333333); g.fillRect(24, 34, 6, 1.5);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(22, 30, 10, 2);
+    g.fillStyle(hairColor - 0x444444); g.fillRect(22, 30, 10, 1);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(42, 30, 10, 2);
+    g.fillStyle(hairColor - 0x444444); g.fillRect(42, 30, 10, 1);
+    
     // Nose
-    g.fillStyle(0xddaa88); g.fillRect(20, 38, 3, 2);
+    g.fillStyle(0xeebb99); g.fillEllipse(36, 42, 4, 5);
+    g.fillStyle(0xddbbaa); g.fillEllipse(36, 43, 2, 2);
+    
     // Mouth - gasping/in pain
-    g.fillStyle(0xcc8877); g.fillRect(18, 41, 8, 2.5);
-    g.fillStyle(0xaa6655); g.fillRect(19, 41.5, 6, 1);
+    g.fillStyle(0xcc8877); g.fillRect(30, 48, 12, 4);
+    g.fillStyle(0xdd9988); g.fillRect(30, 48, 12, 2);
+    g.fillStyle(0xbb7766); g.fillRect(32, 50, 8, 1);
+    // Teeth showing
+    g.fillStyle(0xffffff); g.fillRect(31, 49, 2, 2);
+    g.fillStyle(0xffffff); g.fillRect(35, 49, 2, 2);
+    g.fillStyle(0xffffff); g.fillRect(39, 49, 2, 2);
+    
     // Ears
-    g.fillStyle(0xffccaa); g.fillRect(11, 36, 3, 4);
-    g.fillStyle(0xffccaa); g.fillRect(30, 36, 3, 4);
-    g.generateTexture(name + '_dying', 56, 66);
+    g.fillStyle(0xffccaa); g.fillCircle(20, 38, 4);
+    g.fillStyle(0xeebb99); g.fillCircle(20, 37, 3);
+    g.fillStyle(0xffccaa); g.fillCircle(52, 38, 4);
+    g.fillStyle(0xeebb99); g.fillCircle(52, 37, 3);
+    
+    // Sweat drops - distressed
+    g.fillStyle(0x88ccff, 0.6); g.fillCircle(22, 34, 2);
+    g.fillStyle(0x88ccff, 0.6); g.fillCircle(50, 36, 2);
+    
+    // Tear drops
+    g.fillStyle(0x88ccff, 0.5); g.fillCircle(24, 44, 2);
+    g.fillStyle(0x88ccff, 0.5); g.fillCircle(48, 44, 2);
+    
+    g.generateTexture(name + '_dying', 96, 90);
+    g.clear();
+}
+
+// CSS Pixel Art Survivor - 20x53 pixels scaled to ~40x106 (displayed at 1.8x)
+function createCSSPixelSurvivor(g, name) {
+    // CSS pixel scale: 1 CSS em = 2 game pixels (then displayed 1.8x = 72x120)
+    const scale = 2;
+    const offsetX = 6; // Center horizontally in 72px width
+    
+    // Color map for CSS hex colors
+    const colorMap = {
+        'black': 0x000000,
+        'white': 0xffffff,
+        '#8c6a3d': 0x8c6a3d,
+        '#8e693d': 0x8e693d,
+        '#cfaf89': 0xcfaf89,
+        '#6e5537': 0x6e5537,
+        '#af8a60': 0xaf8a60,
+        '#8b683e': 0x8b683e,
+        '#8c693f': 0x8c693f,
+        '#ad8a62': 0xad8a62,
+        '#8d6b3e': 0x8d6b3e,
+        '#8c6a3d': 0x8c6a3d,
+        '#ae895d': 0xae895d,
+        '#5b4327': 0x5b4327,
+        '#f0d6b5': 0xf0d6b5,
+        '#594427': 0x594427,
+        '#cea672': 0xcea672,
+        '#ffe5c4': 0xffe5c4,
+        '#e8c79a': 0xe8c79a,
+        '#fee4c3': 0xfee4c3,
+        '#fdeacc': 0xfdeacc,
+        '#ffe9cf': 0xffe9cf,
+        '#f1d4b2': 0xf1d4b2,
+        '#efd5b0': 0xefd5b0,
+        '#d9d9d9': 0xd9d9d9,
+        '#cda572': 0xcda572,
+        '#fee3c6': 0xfee3c6,
+        '#f0d6b3': 0xf0d6b3,
+        '#cca770': 0xcca770,
+        '#f2d5b3': 0xf2d5b3,
+        '#e9c69c': 0xe9c69c,
+        '#fce4c2': 0xfce4c2,
+        '#fbe3c1': 0xfbe3c1,
+        '#cea770': 0xcea770,
+        '#fcdcb5': 0xfcdcb5,
+        '#fcdcb3': 0xfcdcb3,
+        '#db6c50': 0xdb6c50,
+        '#cfa673': 0xcfa673,
+        '#efd5b2': 0xefd5b2,
+        '#cfa670': 0xcfa670,
+        '#cfa672': 0xcfa672,
+        '#ffeacf': 0xffeacf,
+        '#ffe7cb': 0xffe7cb,
+        '#bababc': 0xbababc,
+        '#bababa': 0xbababa,
+        '#3a444d': 0x3a444d,
+        '#c14e85': 0xc14e85,
+        '#ec8cbc': 0xec8cbc,
+        '#f4bed8': 0xf4bed8,
+        '#1e468b': 0x1e468b,
+        '#70498a': 0x70498a,
+        '#704a87': 0x704a87,
+        '#f5bdd8': 0xf5bdd8,
+        '#dc679e': 0xdc679e,
+        '#6f4b88': 0x6f4b88,
+        '#6e4a88': 0x6e4a88,
+        '#f6bed9': 0xf6bed9,
+        '#e98cb8': 0xe98cb8,
+        '#eb8bb9': 0xeb8bb9,
+        '#1d4688': 0x1d4688,
+        '#8983b1': 0x8983b1,
+        '#8882b2': 0x8882b2,
+        '#714987': 0x714987,
+        '#6e4a87': 0x6e4a87,
+        '#ec8db9': 0xec8db9,
+        '#714a8b': 0x714a8b,
+        '#6e4a8a': 0x6e4a8a,
+        '#e98cb9': 0xe98cb9,
+        '#dc679c': 0xdc679c,
+        '#f4bed6': 0xf4bed6,
+        '#ed8bba': 0xed8bba,
+        '#f5bdd6': 0xf5bdd6,
+        '#3c5a74': 0x3c5a74,
+        '#7a9dbd': 0x7a9dbd,
+        '#789cbc': 0x789cbc,
+        '#779ebd': 0x779ebd,
+        '#799dbd': 0x799dbd,
+        '#8cafcd': 0x8cafcd,
+        '#98b7d3': 0x98b7d3,
+        '#62809a': 0x62809a,
+        '#61819a': 0x61819a,
+        '#97b9d4': 0x97b9d4,
+        '#98b8d1': 0x98b8d1,
+        '#99b9d2': 0x99b9d2,
+        '#799dbf': 0x799dbf,
+        '#db669b': 0xdb669b,
+        '#dd669b': 0xdd669b
+    };
+
+    // Parse CSS pixel data - simplified version of the CSS box-shadow
+    // Each row is: [y, [x, color], [x, color], ...]
+    const pixelData = [
+        [0, [[7,'black'],[8,'black'],[9,'black'],[10,'black'],[11,'black'],[12,'black']]],
+        [1, [[5,'black'],[6,'black'],[7,'#8c6a3d'],[8,'#8e693d'],[9,'#8e693d'],[10,'#8e693d'],[11,'#cfaf89'],[12,'#6e5537'],[13,'black'],[14,'black']]],
+        [2, [[4,'black'],[5,'#8c6a3d'],[6,'#6e5537'],[7,'#ae895d'],[8,'#8b683e'],[9,'#8c693f'],[10,'#8e693d'],[11,'#8e693d'],[12,'#ad8a62'],[13,'#8d6b3e'],[14,'#8c6a3d'],[15,'black']]],
+        [3, [[3,'black'],[4,'#af8a60'],[5,'#8b683e'],[6,'#8c693f'],[7,'#6e5537'],[8,'#ad8a60'],[9,'#8c693f'],[10,'#8e693d'],[11,'#8e693d'],[12,'#8e693d'],[13,'#6e5537'],[14,'#6e5537'],[15,'#8c6a3d'],[16,'black']]],
+        [4, [[3,'black'],[4,'#8e693f'],[5,'#8e693d'],[6,'#6e5537'],[7,'#6e5537'],[8,'#5b4327'],[9,'#8e693d'],[10,'#8e693d'],[11,'#8e693d'],[12,'#8e693d'],[13,'#8e693d'],[14,'#6e5537'],[15,'#6e5537'],[16,'black']]],
+        [5, [[2,'black'],[3,'#ac895f'],[4,'#6e5537'],[5,'#6e5537'],[6,'#6e5537'],[7,'#5a4226'],[8,'#f0d6b5'],[9,'#594427'],[10,'#8e693d'],[11,'#8e693d'],[12,'#8e693d'],[13,'#8e693d'],[14,'#6e5537'],[15,'#6e5537'],[16,'#6c5536'],[17,'black']]],
+        [6, [[2,'black'],[3,'#8e693f'],[4,'#5b4327'],[5,'#6d5637'],[6,'#594427'],[7,'#f0d6b5'],[8,'#f0d6b1'],[9,'#efd7b3'],[10,'#5a4228'],[11,'#8c693f'],[12,'#8c6a3d'],[13,'#8c6a3d'],[14,'#8e693d'],[15,'#6e5537'],[16,'#6e5537'],[17,'black']]],
+        [7, [[2,'black'],[3,'#6d5436'],[4,'#5b4327'],[5,'#5b4327'],[6,'#cea672'],[7,'#cea672'],[8,'#cea672'],[9,'#ffe5c4'],[10,'#e8c79a'],[11,'#5b4327'],[12,'#5b4327'],[13,'#5b4327'],[14,'#6e5537'],[15,'#6d5436'],[16,'#6e5536'],[17,'black']]],
+        [8, [[2,'black'],[3,'#6e5537'],[4,'#594425'],[5,'#cda572'],[6,'#fee4c3'],[7,'#fee4c3'],[8,'#ffe5c4'],[9,'#fee3c6'],[10,'#fee3c5'],[11,'#fee3c5'],[12,'#e8c79c'],[13,'#e8c79c'],[14,'#5b4327'],[15,'#6d5539'],[16,'#6e5537'],[17,'black']]],
+        [9, [[2,'black'],[9,'#f1d4b2'],[10,'#efd5b0']]],
+        [10, [[2,'black'],[5,'#d9d9d9'],[6,'white'],[7,'white'],[8,'black'],[9,'black'],[10,'black'],[11,'black'],[12,'white'],[13,'white'],[14,'#d9d9d9']]],
+        [11, [[2,'black'],[3,'#6e5537'],[5,'#d9d9d9'],[6,'white'],[7,'white'],[8,'black'],[9,'#efd5b0'],[10,'#efd5b0'],[12,'white'],[13,'white'],[14,'#d9d9d9'],[16,'#6e5536']]],
+        [12, [[2,'black'],[3,'#6d5636'],[4,'#5b4327'],[8,'#f0d6b3'],[9,'#fdeacc'],[10,'#ffe9cf'],[11,'#f1d4b2'],[15,'#584326'],[16,'#6e5536']]],
+        [13, [[1,'black'],[2,'#ad8a60'],[3,'#6f5436'],[4,'#5b4329'],[5,'#e8c79c'],[6,'#fce4c2'],[7,'#f0d6b3'],[8,'#eed6b2'],[9,'#cea672'],[10,'#cca770'],[11,'#f2d5b3'],[12,'#f1d5b0'],[13,'#fbe3bf'],[14,'#e7c89c'],[15,'#594427'],[16,'#6e5536'],[17,'black']]],
+        [14, [[0,'black'],[1,'#ac895f'],[2,'#8e693d'],[3,'#6e5537'],[4,'#5a4226'],[5,'#e9c69c'],[6,'#fce4c2'],[7,'#fbe3c1'],[8,'#fce4c2'],[9,'#f0d6b3'],[10,'#f0d6b3'],[11,'#efd5b0'],[12,'#fbe3c1'],[13,'#fce4c2'],[14,'#e8c79c'],[15,'#5b4327'],[16,'#6e5536'],[17,'black']]],
+        [15, [[1,'black'],[2,'#8e693d'],[3,'#6e5537'],[4,'#5c4227'],[5,'#cca772'],[6,'#fcdcb5'],[7,'#cea770'],[8,'#d9d9d9'],[9,'white'],[10,'white'],[11,'#d9d9d9'],[12,'#cea770'],[13,'#fcdcb3'],[14,'#cea672'],[15,'#5c4227'],[16,'#6e5536'],[17,'black']]],
+        [16, [[2,'black'],[3,'#6d5637'],[4,'#6f5437'],[6,'#cfa773'],[7,'#efd5b2'],[8,'#f0d6b5'],[9,'#da6b4d'],[10,'#db6c50'],[11,'#efd5b0'],[12,'#f1d5b0'],[13,'#cea672'],[14,'#574426']]],
+        [17, [[7,'#cfa672'],[8,'#f0d6b1'],[9,'#f0d6b5'],[10,'#ffeacf'],[11,'#ffe7cb'],[12,'#cfa670']]],
+        [18, [[8,'black'],[9,'#cfa670'],[10,'#cea672'],[11,'black']]],
+        [19, [[6,'black'],[7,'white'],[8,'#bababc'],[9,'#f0d6b5'],[10,'#efd5b2'],[11,'#bababc'],[12,'white'],[13,'black']]],
+        [20, [[6,'black'],[7,'white'],[8,'#bababc'],[9,'#f0d6b5'],[10,'#efd5b2'],[11,'#bababc'],[12,'white'],[13,'black']]],
+        [21, [[5,'black'],[6,'#c14e85'],[7,'#bababa'],[8,'white'],[9,'#3a444d'],[10,'#3a444d'],[11,'white'],[12,'#bababa'],[13,'#c14e85'],[14,'black']]],
+        [22, [[4,'black'],[5,'#8882b2'],[6,'#ea8dba'],[7,'#f4bed6'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#f5bdd8'],[13,'#ed8bba'],[14,'#8981b0'],[15,'black']]],
+        [23, [[3,'black'],[4,'#ec8cbc'],[5,'#f4bed8'],[6,'#1e468b'],[7,'#70498a'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#70498a'],[13,'#1e468b'],[14,'#f4c0d7'],[15,'#ec8cbc'],[16,'black']]],
+        [24, [[3,'black'],[4,'#6f4b88'],[5,'#1e468b'],[6,'#f5bdd8'],[7,'#dc679e'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#dd669e'],[13,'#f5bdd8'],[14,'#1e468b'],[15,'#704a87'],[16,'black']]],
+        [25, [[3,'black'],[4,'#c15084'],[5,'#301a26'],[6,'#8983b1'],[7,'#714987'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a88'],[13,'#8882b2'],[14,'#301a26'],[15,'#c14e85'],[16,'black']]],
+        [26, [[3,'black'],[4,'#8a82b1'],[6,'#f6bed9'],[7,'#e98cb8'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#ec8cba'],[13,'#f6bed9'],[15,'#8981b0'],[16,'black']]],
+        [27, [[3,'black'],[4,'#eb8bb9'],[6,'#1d4688'],[7,'#6e4a87'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a88'],[13,'#1d4688'],[15,'#ec8db9'],[16,'black']]],
+        [28, [[3,'black'],[4,'#6f4b88'],[6,'#f5bdd8'],[7,'#dc679e'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#dd669e'],[13,'#f5bdd8'],[15,'#704a87'],[16,'black']]],
+        [29, [[3,'black'],[4,'#c15084'],[6,'#8983b1'],[7,'#714987'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a88'],[13,'#8882b2'],[15,'#c14e85'],[16,'black']]],
+        [30, [[3,'black'],[4,'#8a82b1'],[6,'#f6bed9'],[7,'#e98cb8'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#ec8cba'],[13,'#f6bed9'],[15,'#8981b0'],[16,'black']]],
+        [31, [[3,'black'],[4,'#eb8bb9'],[6,'#1d4688'],[7,'#6e4a87'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a88'],[13,'#1d4688'],[15,'#ec8db9'],[16,'black']]],
+        [32, [[3,'black'],[4,'#6f4b88'],[6,'#f5bdd8'],[7,'#dc679e'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#dd669e'],[13,'#f5bdd8'],[15,'#704a87'],[16,'black']]],
+        [33, [[3,'black'],[4,'#c15084'],[6,'#8983b1'],[7,'#714987'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a88'],[13,'#8882b2'],[15,'#c14e85'],[16,'black']]],
+        [34, [[3,'#cea672'],[4,'#f0d6b3'],[6,'#f4bed8'],[7,'#ec8db9'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#ec8cba'],[13,'#f6bed9'],[15,'#f0d6b3'],[16,'#cea770']]],
+        [35, [[3,'#cea770'],[4,'#f0d6b3'],[6,'#1d4688'],[7,'#714a8b'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a8a'],[13,'#1d4688'],[15,'#f0d6b3'],[16,'#cea672']],
+             [17,'black'],[18,'black'],[19,'black'],[20,'black'],[21,'black'],[22,'black'],[23,'black'],[24,'black'],[25,'black'],[26,'black'],[27,'black']],
+        [36, [[3,'black'],[4,'black'],[6,'#f4bed8'],[7,'#dc679c'],[8,'black'],[9,'#3c5a74'],[10,'#3c5a74'],[11,'black'],[12,'#e98cb9'],[13,'#f4bed6']]],
+        [37, [[5,'black'],[6,'black'],[7,'black'],[8,'black'],[9,'#7a9dbd'],[10,'#7a9dbd'],[11,'black'],[12,'black'],[13,'black'],[14,'black']]],
+        [38, [[5,'black'],[6,'#789cbc'],[7,'#799dbd'],[8,'#779ebd'],[9,'#799dbd'],[10,'#799dbd'],[11,'#799dbd'],[12,'#799dbd'],[13,'#799dbd'],[14,'black']]],
+        [39, [[5,'black'],[6,'#8cafcd'],[7,'#799dbd'],[8,'#7a9dbd'],[11,'#799dbd'],[12,'#799dbd'],[13,'#8cafcd'],[14,'black']]],
+        [40, [[5,'black'],[6,'#8cafcd'],[7,'#799dbd'],[13,'#8cafcd'],[14,'black']]],
+        [41, [[5,'black'],[6,'#8cafcd'],[7,'#799dbd'],[13,'#8cafcd'],[14,'black']]],
+        [42, [[5,'black'],[6,'#98b7d3'],[7,'#799dbd'],[13,'#98b7d3'],[14,'black']]],
+        [43, [[5,'black'],[6,'#98b7d3'],[7,'#799dbd'],[13,'#98b7d3'],[14,'black']]],
+        [44, [[5,'black'],[6,'#62809a'],[7,'#789cbc'],[13,'#62809a'],[14,'black']]],
+        [45, [[5,'black'],[6,'#799dbd'],[7,'#799dbd'],[13,'#799dbd'],[14,'black']]],
+        [46, [[5,'black'],[6,'#799dbd'],[7,'#799dbd'],[13,'#799dbd'],[14,'black']]],
+        [47, [[5,'black'],[6,'#799dbd'],[7,'#799dbd'],[13,'#799dbd'],[14,'black']]],
+        [48, [[5,'black'],[6,'#62809a'],[7,'#62809a'],[13,'#62809a'],[14,'black']]],
+        [49, [[4,'black'],[5,'#97b9d4'],[6,'#98b8d1'],[7,'#799dbd'],[14,'#61819a'],[15,'#62809a'],[16,'black']]],
+        [50, [[4,'black'],[5,'#799dbf'],[6,'#799dbd'],[7,'#799dbd'],[13,'#98b8d1'],[14,'#99b9d2'],[15,'#99b9d2'],[16,'black']]],
+        [51, [[3,'black'],[4,'black'],[5,'#db669b'],[6,'#db669b'],[7,'#db669b'],[12,'#db669b'],[13,'#db669b'],[14,'#db669b'],[15,'black'],[16,'black']]],
+        [52, [[2,'black'],[3,'white'],[4,'white'],[5,'white'],[6,'white'],[7,'white'],[12,'white'],[13,'white'],[14,'white'],[15,'white'],[16,'white'],[17,'black']]]
+    ];
+
+    // Draw shadow at bottom
+    g.fillStyle(0x000000, 0.2);
+    g.fillEllipse(36, 106, 32, 5);
+
+    // Draw all pixels
+    for (let row = 0; row < pixelData.length; row++) {
+        const [y, pixels] = pixelData[row];
+        for (let p = 0; p < pixels.length; p++) {
+            const [x, colorKey] = pixels[p];
+            if (colorMap[colorKey] !== undefined) {
+                g.fillStyle(colorMap[colorKey]);
+                g.fillRect(offsetX + x * scale, y * scale, scale, scale);
+            }
+        }
+    }
+
+    // Generate texture (width 72, height 108 - displayed at 1.8x = 72x120)
+    g.generateTexture(name + '_pixel', 72, 108);
     g.clear();
 }
 
 // Create carried (on killer's shoulder) textures for survivors
 function createCarriedTextures(g, name, shirtColor, hairColor) {
+    // ═══════ CARRIED SURVIVOR (on killer's shoulder) ═══════
     // Shadow - smaller since elevated
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(22, 80, 20, 6);
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(32, 85, 28, 8);
+    
     // Body - vertical, on killer's shoulder
-    g.fillStyle(shirtColor); g.fillRect(16, 20, 28, 36);
-    g.fillStyle(shirtColor + 0x111111); g.fillRect(16, 20, 6, 36);
-    g.fillStyle(shirtColor + 0x222222); g.fillRect(38, 20, 4, 36);
-    // Head - tilted, showing distress
-    g.fillStyle(0xffccaa); g.fillCircle(28, 14, 10);
-    g.fillStyle(0xeebb99); g.fillCircle(28, 15, 8);
-    // Hair - disheveled
-    g.fillStyle(hairColor); g.fillCircle(28, 10, 9);
-    g.fillStyle(hairColor - 0x222222); g.fillCircle(28, 7, 6);
-    g.fillStyle(hairColor); g.fillRect(18, 6, 20, 7);
-    // Eyes - wide/open with fear
-    g.fillStyle(0x222222); g.fillCircle(24, 13, 2.5);
-    g.fillStyle(0x222222); g.fillCircle(32, 13, 2.5);
-    g.fillStyle(0xffffff); g.fillCircle(23, 12, 1.2);
-    g.fillStyle(0xffffff); g.fillCircle(31, 12, 1.2);
-    // Eyebrows - raised in fear
-    g.fillStyle(hairColor - 0x333333); g.fillRect(21, 9, 6, 2);
-    g.fillStyle(hairColor - 0x333333); g.fillRect(29, 9, 6, 2);
-    // Nose
-    g.fillStyle(0xddaa88); g.fillRect(26, 15, 4, 3);
-    // Mouth - open in scream or protest
-    g.fillStyle(0xcc8877); g.fillRect(24, 19, 8, 3);
-    g.fillStyle(0xaa6655); g.fillRect(25, 19.5, 6, 1);
-    // Arms - one hanging, one resisting (animated)
-    g.fillStyle(0xffccaa); g.fillRect(0, 24, 16, 6); // Left arm hanging
-    g.fillStyle(0xeeaa88); g.fillRect(0, 24, 4, 6);
-    g.fillStyle(0xffccaa); g.fillRect(44, 18, 16, 8); // Right arm resisting (raised)
-    g.fillStyle(0xeeaa88); g.fillRect(50, 18, 4, 8);
+    g.fillStyle(shirtColor); g.fillRect(20, 22, 36, 44);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(20, 22, 8, 44);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(48, 22, 8, 44);
+    g.fillStyle(shirtColor + 0x222222); g.fillRect(20, 22, 36, 2);
+    
+    // Belt
+    g.fillStyle(0x5a4a3a); g.fillRect(18, 58, 40, 5);
+    g.fillStyle(0x6a5a4a); g.fillRect(18, 58, 40, 2);
+    
+    // Arms - dangling
+    g.fillStyle(shirtColor); g.fillRect(6, 26, 14, 10);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(6, 26, 4, 10);
+    
+    g.fillStyle(shirtColor); g.fillRect(56, 26, 14, 10);
+    g.fillStyle(shirtColor - 0x111111); g.fillRect(58, 26, 4, 10);
+    
     // Hands
-    g.fillStyle(0xffccaa); g.fillCircle(4, 27, 4);
-    g.fillStyle(0xffccaa); g.fillCircle(56, 16, 4);
-    // Legs - dangling
-    g.fillStyle(0x2c3e70); g.fillRect(18, 56, 10, 20);
-    g.fillStyle(0x1a2a50); g.fillRect(18, 56, 3, 20);
-    g.fillStyle(0x2c3e70); g.fillRect(32, 56, 10, 20);
-    g.fillStyle(0x1a2a50); g.fillRect(32, 56, 3, 20);
-    // Boots
-    g.fillStyle(0x4a3a2a); g.fillRect(16, 74, 12, 8);
-    g.fillStyle(0x3a2a1a); g.fillRect(16, 74, 4, 8);
-    g.fillStyle(0x4a3a2a); g.fillRect(30, 74, 12, 8);
-    g.fillStyle(0x3a2a1a); g.fillRect(30, 74, 4, 8);
-    g.generateTexture(name + '_carried', 60, 84);
+    g.fillStyle(0xffccaa); g.fillRect(0, 32, 12, 10);
+    g.fillStyle(0xeebb99); g.fillRect(0, 32, 3, 10);
+    g.fillStyle(0xffccaa); g.fillCircle(6, 40, 5);
+    g.fillStyle(0xeebb99); g.fillCircle(6, 39, 4);
+    
+    g.fillStyle(0xffccaa); g.fillRect(64, 32, 12, 10);
+    g.fillStyle(0xeebb99); g.fillRect(73, 32, 3, 10);
+    g.fillStyle(0xffccaa); g.fillCircle(70, 40, 5);
+    g.fillStyle(0xeebb99); g.fillCircle(70, 39, 4);
+    
+    // Head - tilted back, showing fear
+    g.fillStyle(0xffccaa); g.fillCircle(38, 16, 14);
+    g.fillStyle(0xeebb99); g.fillCircle(38, 18, 12);
+    g.fillStyle(0xddbbaa); g.fillCircle(38, 20, 10);
+    
+    // Cheekbones - stressed
+    g.fillStyle(0xeebb99); g.fillCircle(28, 18, 5);
+    g.fillStyle(0xeebb99); g.fillCircle(48, 18, 5);
+    
+    // Hair - disheveled from being carried
+    g.fillStyle(hairColor); g.fillCircle(38, 6, 12);
+    g.fillStyle(hairColor - 0x111111); g.fillCircle(38, 8, 10);
+    g.fillStyle(hairColor - 0x222222); g.fillCircle(38, 10, 8);
+    // Hair sticking up
+    g.fillStyle(hairColor); g.fillRect(28, 2, 6, 8);
+    g.fillStyle(hairColor); g.fillRect(42, 2, 6, 8);
+    g.fillStyle(hairColor - 0x111111); g.fillRect(32, 0, 4, 6);
+    
+    // Eyes - wide/open with fear, tears
+    g.fillStyle(0xffffff); g.fillCircle(32, 14, 5);
+    g.fillStyle(0xffffff); g.fillCircle(44, 14, 5);
+    g.fillStyle(0x333333); g.fillCircle(32, 14, 3);
+    g.fillStyle(0x333333); g.fillCircle(44, 14, 3);
+    g.fillStyle(0x111111); g.fillCircle(32, 14, 1.5);
+    g.fillStyle(0x111111); g.fillCircle(44, 14, 1.5);
+    g.fillStyle(0xffffff); g.fillCircle(31, 13, 1);
+    g.fillStyle(0xffffff); g.fillCircle(43, 13, 1);
+    
+    // Tear streams
+    g.fillStyle(0x88ccff, 0.4); g.fillRect(30, 18, 2, 8);
+    g.fillStyle(0x88ccff, 0.4); g.fillRect(42, 18, 2, 8);
+    
+    // Eyebrows - raised in fear
+    g.fillStyle(hairColor - 0x333333); g.fillRect(27, 8, 9, 2);
+    g.fillStyle(hairColor - 0x444444); g.fillRect(27, 8, 9, 1);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(40, 8, 9, 2);
+    g.fillStyle(hairColor - 0x444444); g.fillRect(40, 8, 9, 1);
+    
+    // Nose
+    g.fillStyle(0xeebb99); g.fillEllipse(38, 20, 4, 5);
+    g.fillStyle(0xddbbaa); g.fillEllipse(38, 21, 2, 2);
+    
+    // Mouth - open in fear
+    g.fillStyle(0xcc8877); g.fillRect(32, 26, 12, 6);
+    g.fillStyle(0xdd9988); g.fillRect(32, 26, 12, 3);
+    // Teeth
+    g.fillStyle(0xffffff); g.fillRect(33, 27, 2, 3);
+    g.fillStyle(0xffffff); g.fillRect(37, 27, 2, 3);
+    g.fillStyle(0xffffff); g.fillRect(41, 27, 2, 3);
+    
+    // Ears
+    g.fillStyle(0xffccaa); g.fillCircle(24, 16, 4);
+    g.fillStyle(0xeebb99); g.fillCircle(24, 15, 3);
+    g.fillStyle(0xffccaa); g.fillCircle(52, 16, 4);
+    g.fillStyle(0xeebb99); g.fillCircle(52, 15, 3);
+    
+    g.generateTexture(name + '_carried', 76, 90);
     g.clear();
 }
 
@@ -1465,17 +2401,54 @@ function getMapObstacles() {
         obs.push({ t: p[2], x: p[0], y: p[1], sw: st.sw, sh: st.sh, solid: true });
     });
 
-    // Trees
-    [[150, 150], [600, 100], [1100, 150], [1600, 100], [2200, 200],
-    [100, 600], [400, 400], [900, 500], [1400, 300], [2000, 400],
-    [150, 1100], [500, 900], [1000, 1300], [1500, 1100], [2100, 800],
-    [300, 1700], [700, 1700], [1200, 1700], [1700, 1700], [2200, 1600]
-    ].forEach(p => obs.push({ t: 'tree', x: p[0], y: p[1], sw: 40, sh: 68, solid: false }));
+    // Large detailed trees
+    [[120, 120], [580, 80], [1100, 130], [1580, 90], [2180, 180],
+    [80, 580], [380, 380], [880, 480], [1380, 280], [1980, 380],
+    [130, 1080], [480, 880], [980, 1280], [1480, 1080], [2080, 780],
+    [280, 1680], [680, 1680], [1180, 1680], [1680, 1680], [2180, 1580],
+    [250, 350], [720, 550], [1250, 450], [1750, 350], [2150, 550],
+    [450, 1150], [950, 950], [1450, 1250], [1950, 950], [2350, 1150]
+    ].forEach(p => obs.push({ t: 'tree', x: p[0], y: p[1], sw: 70, sh: 100, solid: false }));
 
-    // Bushes
-    [[250, 500], [700, 300], [1050, 400], [1800, 700], [2100, 300],
-    [350, 1200], [800, 1000], [1300, 1400], [1600, 800], [2200, 1200]
-    ].forEach(p => obs.push({ t: 'bush', x: p[0], y: p[1], sw: 36, sh: 30, solid: false }));
+    // Pine trees
+    [[350, 150], [850, 250], [1350, 150], [1850, 250], [2350, 150],
+    [150, 750], [650, 650], [1150, 750], [1650, 650], [2150, 750],
+    [250, 1350], [750, 1250], [1250, 1350], [1750, 1250], [2250, 1350]
+    ].forEach(p => obs.push({ t: 'pine_tree', x: p[0], y: p[1], sw: 50, sh: 95, solid: false }));
+
+    // Small trees
+    [[200, 250], [700, 150], [1200, 250], [1700, 150], [2200, 250],
+    [320, 650], [820, 550], [1320, 650], [1820, 550], [2320, 650],
+    [180, 1250], [680, 1150], [1180, 1250], [1680, 1150], [2180, 1250]
+    ].forEach(p => obs.push({ t: 'tree_small', x: p[0], y: p[1], sw: 40, sh: 80, solid: false }));
+
+    // Detailed bushes
+    [[220, 480], [680, 280], [1020, 380], [1780, 680], [2080, 280],
+    [330, 1180], [780, 980], [1280, 1380], [1580, 780], [2180, 1180],
+    [420, 320], [920, 420], [1420, 320], [1920, 420], [2420, 320],
+    [280, 820], [780, 720], [1280, 820], [1780, 720], [2280, 820],
+    [520, 1420], [1020, 1320], [1520, 1420], [2020, 1320], [520, 220],
+    [1020, 120], [1520, 220], [2020, 120]
+    ].forEach(p => obs.push({ t: 'bush', x: p[0], y: p[1], sw: 60, sh: 45, solid: false }));
+
+    // Tall grass patches
+    [[180, 320], [580, 180], [980, 280], [1380, 180], [1880, 320], [2280, 180],
+    [280, 720], [680, 620], [1080, 720], [1480, 620], [1980, 720],
+    [180, 1120], [580, 1020], [1080, 1120], [1580, 1020], [2080, 1120],
+    [380, 1520], [880, 1420], [1380, 1520], [1880, 1420]
+    ].forEach(p => obs.push({ t: 'tall_grass', x: p[0], y: p[1], sw: 50, sh: 40, solid: false }));
+
+    // Flower patches
+    [[280, 420], [780, 320], [1280, 420], [1780, 320], [2280, 420],
+    [380, 820], [880, 720], [1380, 820], [1880, 720], [2380, 820],
+    [280, 1220], [680, 1120], [1180, 1220], [1680, 1120], [2180, 1220]
+    ].forEach(p => obs.push({ t: 'flower_patch', x: p[0], y: p[1], sw: 52, sh: 35, solid: false }));
+
+    // Detailed rocks
+    [[350, 450], [850, 350], [1350, 450], [1850, 350], [2350, 450],
+    [450, 850], [950, 750], [1450, 850], [1950, 750], [2450, 850],
+    [350, 1250], [750, 1150], [1250, 1250], [1750, 1150], [2250, 1250]
+    ].forEach(p => obs.push({ t: 'rock_detailed', x: p[0], y: p[1], sw: 56, sh: 45, solid: false }));
 
     return obs;
 }
@@ -1490,7 +2463,7 @@ function spawnPlayers() {
 
         // AI survivors - only in singleplayer mode
         if (!isMultiplayer) {
-            const sTex = ['s1', 's2', 's3'];
+            const sTex = ['s1', 's2', 's4']; // s4 is the CSS pixel art survivor
             sTex.forEach((t, i) => {
                 const ai = makePlayer(this, sSpawns[i].x, sSpawns[i].y, t, false);
                 ai.aiDir = { x: 0, y: 0 }; ai.aiTimer = 0;
@@ -1528,6 +2501,11 @@ function makePlayer(scene, x, y, tex, isMe) {
     sp.body.setCollideWorldBounds(true);
     const hitboxSize = (tex === 'killer') ? { w: 30, h: 35 } : { w: 24, h: 28 };
     sp.body.setSize(hitboxSize.w, hitboxSize.h, true);
+    
+    // CSS pixel character (s4) is 72x108, scale up to match 72x120
+    if (tex === 's4') {
+        sp.setScale(1.11, 1.11);
+    }
 
     const glow = scene.add.graphics();
     const glowColor = (tex === 'killer') ? 0x333333 : 0x44aaff;
@@ -1560,6 +2538,15 @@ function makePlayer(scene, x, y, tex, isMe) {
 
     sp._pRef = p;
     return p;
+}
+
+function getTexWithFallback(baseTex, suffix) {
+    const fullTex = baseTex + suffix;
+    if (scene && scene.textures.exists(fullTex)) {
+        return fullTex;
+    }
+    // Fallback to s3 textures
+    return 's3' + suffix;
 }
 
 // ═══════ MAIN UPDATE ═══════
@@ -1615,7 +2602,7 @@ function update(time, dt) {
 
             // Show repair texture (crouching) - this already has arms built in
             if (!sp.texture.key.includes('_repair')) {
-                sp.setTexture(p.tex + '_repair');
+                sp.setTexture(getTexWithFallback(p.tex, '_repair'));
             }
 
             // Spark particles effect
@@ -1657,7 +2644,7 @@ function update(time, dt) {
         if (p.state === 'dying') {
             // Show dying texture (crawling on ground)
             if (!sp.texture.key.includes('_dying')) {
-                sp.setTexture(p.tex + '_dying');
+                sp.setTexture(getTexWithFallback(p.tex, '_dying'));
             }
             // Crawling animation - slight scale oscillation when moving
             const v = p.sprite.body ? { x: p.sprite.body.velocity.x, y: p.sprite.body.velocity.y } : { x: 0, y: 0 };
@@ -1679,7 +2666,7 @@ function update(time, dt) {
             
             // Show carried texture (on killer's shoulder)
             if (!carriedSprite.texture.key.includes('_carried')) {
-                carriedSprite.setTexture(carried.tex + '_carried');
+                carriedSprite.setTexture(getTexWithFallback(carried.tex, '_carried'));
             }
             
             // Resistance animation for carried survivor
@@ -1957,24 +2944,18 @@ function killerAction(dt) {
         const t = target._pRef;
         if (!t) return;
 
-        // Survivor can only be caught if they are vulnerable (repairing a generator)
-        // Check local vulnerability or synced animation for multiplayer
-        const isVulnerable = t.isVulnerable || (isMultiplayer && remotePlayers[t.playerId]?.animation === 'repair');
-        if (!isVulnerable && t.state !== 'dying') {
-            // Survivor is not vulnerable - it's a miss
-            UI.showToast('❌ Выживший убежал!', 500);
-            killerAttackCooldown = 0.4;
-            return;
-        }
-
+        // Hit survivor based on their state
         if (t.state === 'alive') {
+            // First hit - survivor becomes injured
             t.state = 'injured';
             t.isVulnerable = false;
             t.sprite.setTint(0xff8888);
-            killerSlowdown = 0.8;
-            killerAttackCooldown = 0.6;
+            // Killer slows down for 2 seconds
+            killerSlowdown = 2.0;
+            killerAttackCooldown = 1.5;
+            // Survivor speeds up for 1 second
             if (t.isMe) {
-                boostTimer = CONFIG.BOOST_TIME;
+                boostTimer = 1.0;
                 survivorSpeedBoost = 1.0;
             }
             UI.showToast('💥 Выживший ранен!', 2000);
@@ -1985,12 +2966,22 @@ function killerAction(dt) {
                 clearPlayerAnimation(roomCode, t.playerId);
             }
         } else if (t.state === 'injured') {
+            // Second hit - survivor falls to ground (dying state)
             t.state = 'dying';
             t.isVulnerable = false;
             t.sprite.setTint(0xff4444);
-            killerSlowdown = 0.8;
-            killerAttackCooldown = 0.6;
-            UI.showToast('⬇️ Выживший упал!', 2000);
+            t.progressAction = null;
+            t.isRepairing = false;
+            if (t.repairSparks) t.repairSparks.setVisible(false);
+            t.sprite.setScale(1, 1);
+            t.sprite.setAlpha(1);
+            if (t.sprite.texture.key.includes('_repair')) {
+                t.sprite.setTexture(t.tex);
+            }
+            // Killer slows down for 1 second after downing
+            killerSlowdown = 1.0;
+            killerAttackCooldown = 1.0;
+            UI.showToast('⬇️ Выживший упал на землю!', 2000);
 
             if (isMultiplayer && roomCode && playerId) {
                 setKillerStrikeAnimation(roomCode, playerId, true, t.playerId);
@@ -1998,6 +2989,7 @@ function killerAction(dt) {
                 clearPlayerAnimation(roomCode, t.playerId);
             }
         } else if (t.state === 'dying') {
+            // Pick up dying survivor
             p.carryTarget = t;
             t.state = 'carried';
             t.isVulnerable = false;
@@ -2036,15 +3028,8 @@ function killerAction(dt) {
     });
 
     // Close hatch
-    if (hatch && hatchOpen && !hatchClosed && dist(sp, hatch) < CONFIG.INTERACT_DISTANCE) {
-        hatchClosed = true;
-        hatchOpen = false;
-        hatch.setTint(0x220000);
-        UI.showToast('🔒 Маньяк закрыл люк!', 2000);
-
-        if (isMultiplayer && roomCode) {
-            closeHatch(roomCode);
-        }
+    if (hatch && !hatchClosed && dist(sp, hatch) < CONFIG.INTERACT_DISTANCE + 10) {
+        closeHatchByKiller();
     }
 }
 
@@ -2055,7 +3040,11 @@ function survivorAction(dt) {
     if (p.state === 'dying' || p.state === 'hooked') return;
 
     // Hatch escape logic
-    const nearHatch = hatch && hatchOpen && (p.state === 'alive' || p.state === 'injured') && dist(sp, hatch) < 60;
+    const done = generators.filter(g => g.repaired).length;
+    const allGensRepaired = done >= CONFIG.GENERATOR_COUNT;
+    const onlyOneSurvivor = getAliveSurvivorCount() === 1;
+    const canUseHatch = allGensRepaired || onlyOneSurvivor;
+    const nearHatch = hatch && !hatchClosed && canUseHatch && (p.state === 'alive' || p.state === 'injured') && dist(sp, hatch) < 60;
     
     // Check if killer is near (in single player, check aiPlayers; in multiplayer check remotePlayers)
     let nearKiller = false;
@@ -2171,7 +3160,7 @@ function survivorAction(dt) {
                 // Start repair animation
                 p.isRepairing = true;
                 if (!sp.texture.key.includes('_repair')) {
-                    sp.setTexture(p.tex + '_repair');
+                    sp.setTexture(getTexWithFallback(p.tex, '_repair'));
                 }
 
                 gen.progress = Math.min(100, gen.progress + CONFIG.GENERATOR_REPAIR_RATE * (dt / 1000));
@@ -2436,9 +3425,29 @@ function checkAllGens() {
         }
     }
 
-    // Hatch spawns when ALL 5 generators are done
-    if (done >= CONFIG.GENERATOR_COUNT && !hatch) {
+    // Check if hatch should spawn (ALL 5 generators done OR only 1 survivor left)
+    const allGensRepaired = done >= CONFIG.GENERATOR_COUNT;
+    const onlyOneSurvivorLeft = getAliveSurvivorCount() === 1;
+    
+    if ((allGensRepaired || onlyOneSurvivorLeft) && !hatch) {
         spawnHatch();
+    }
+}
+
+function getAliveSurvivorCount() {
+    if (isKiller) {
+        if (isMultiplayer) {
+            return Object.values(remotePlayers).filter(rp => rp.role === 'survivor' && rp.state !== 'dead' && rp.state !== 'escaped').length;
+        } else {
+            return (player.aiPlayers || []).filter(a => a.state !== 'dead' && a.state !== 'escaped').length;
+        }
+    } else {
+        if (isMultiplayer) {
+            return (player.state !== 'dead' && player.state !== 'escaped' ? 1 : 0) + 
+                   Object.values(remotePlayers).filter(rp => rp.role === 'survivor' && rp.state !== 'dead' && rp.state !== 'escaped').length;
+        } else {
+            return survivorsAlive;
+        }
     }
 }
 
@@ -2456,12 +3465,37 @@ function spawnHatch() {
     hatch = scene.add.sprite(hx, hy, 'hatch').setDepth(hy + 1).setScale(1.5);
     hatch.setTint(0xffaa00);
     hatchOpen = true;
+    hatchClosed = false;
     hatch.glowGfx = glow;
 
-    UI.showToast('🪤 Люк появился на карте!', 3000);
+    const allGensRepaired = generators.filter(g => g.repaired).length >= CONFIG.GENERATOR_COUNT;
+    if (allGensRepaired) {
+        UI.showToast('🪤 Люк появился на карте!', 3000);
+    } else {
+        UI.showToast('🪤 Последний шанс - ищи люк!', 3000);
+    }
 
     if (isMultiplayer && roomCode) {
         setHatchSpawned(roomCode, hx, hy);
+    }
+}
+
+function closeHatchByKiller() {
+    if (!hatch || hatchClosed) return;
+    
+    hatchClosed = true;
+    hatchOpen = false;
+    hatch.setTint(0xff4444);
+    if (hatch.glowGfx) {
+        hatch.glowGfx.clear();
+        hatch.glowGfx.fillStyle(0xff0000, 0.3);
+        hatch.glowGfx.fillCircle(hatch.x, hatch.y, 60);
+    }
+    
+    UI.showToast('🔒 Ты закрыл люк!', 2000);
+    
+    if (isMultiplayer && roomCode) {
+        closeHatch(roomCode);
     }
 }
 
@@ -2560,60 +3594,67 @@ function updateAI(dt) {
                     
                     const p2 = player;
                     
-                    // Survivor can only be caught if they are vulnerable (repairing a generator)
-                    if (!p2.isVulnerable && p2.state !== 'dying') {
-                        // Survivor is not vulnerable - AI misses
-                        UI.showToast('❌ Ты убежал!', 500);
-                        ai.aiAttackCooldown = 0.4;
-                    } else {
-                        // If the AI killer was carrying someone, drop the carried survivor when hitting a player
-                        if (ai.carryTarget) {
-                            const droppedSurvivor = ai.carryTarget;
-                            ai.carryTarget = null;
-                            
-                            droppedSurvivor.sprite.setScale(1, 1);
-                            droppedSurvivor.sprite.setRotation(0);
-                            droppedSurvivor._carryAnimTimer = 0;
-                            droppedSurvivor._carryAnimPhase = 'idle';
-                            droppedSurvivor._carryAnimDuration = 0;
-                            droppedSurvivor._carryIdlePhase = 0;
-                            if (droppedSurvivor.sprite.texture.key.includes('_carried')) {
-                                droppedSurvivor.sprite.setTexture(droppedSurvivor.tex);
-                            }
+                    // If the AI killer was carrying someone, drop the carried survivor when hitting a player
+                    if (ai.carryTarget) {
+                        const droppedSurvivor = ai.carryTarget;
+                        ai.carryTarget = null;
+                        
+                        droppedSurvivor.sprite.setScale(1, 1);
+                        droppedSurvivor.sprite.setRotation(0);
+                        droppedSurvivor._carryAnimTimer = 0;
+                        droppedSurvivor._carryAnimPhase = 'idle';
+                        droppedSurvivor._carryAnimDuration = 0;
+                        droppedSurvivor._carryIdlePhase = 0;
+                        if (droppedSurvivor.sprite.texture.key.includes('_carried')) {
+                            droppedSurvivor.sprite.setTexture(droppedSurvivor.tex);
+                        }
+                    }
+                    
+                    if (p2.state === 'alive') {
+                        // First hit - survivor becomes injured
+                        p2.state = 'injured';
+                        p2.isVulnerable = false;
+                        p2.sprite.setTint(0xff8888);
+                        // Survivor speeds up for 1 second
+                        boostTimer = 1.0;
+                        survivorSpeedBoost = 1.0;
+                        // AI killer slows down for 2 seconds
+                        ai.slowdownTimer = 2.0;
+                        ai.aiAttackCooldown = 1.5;
+                        ai.aiAttackInterval = 1.5 + Math.random() * 0.5;
+                        UI.showToast('💥 Ты ранен!', 2000);
+                    } else if (p2.state === 'injured') {
+                        // Second hit - survivor falls to ground (dying state)
+                        p2.state = 'dying';
+                        p2.isVulnerable = false;
+                        p2.sprite.setTint(0xff4444);
+                        p2.progressAction = null;
+                        p2.isRepairing = false;
+                        if (p2.repairSparks) p2.repairSparks.setVisible(false);
+                        p2.sprite.setScale(1, 1);
+                        p2.sprite.setAlpha(1);
+                        if (p2.sprite.texture.key.includes('_repair')) {
+                            p2.sprite.setTexture(p2.tex);
+                        }
+                        // AI killer slows down for 1 second
+                        ai.slowdownTimer = 1.0;
+                        ai.aiAttackCooldown = 1.0;
+                        ai.aiAttackInterval = 1.0 + Math.random() * 0.3;
+                        UI.showToast('⬇️ Ты упал на землю!', 2000);
+                    } else if (p2.state === 'dying') {
+                        // Pick up dying survivor
+                        ai.carryTarget = p2;
+                        p2.state = 'carried';
+                        p2.isVulnerable = false;
+                        p2.sprite.setPosition(sp.x, sp.y - 28);
+                        
+                        if (!p2.sprite.texture.key.includes('_carried')) {
+                            p2.sprite.setTexture(p2.tex + '_carried');
                         }
                         
-                        if (p2.state === 'alive') {
-                            p2.state = 'injured';
-                            p2.isVulnerable = false;
-                            p2.sprite.setTint(0xff8888);
-                            boostTimer = CONFIG.BOOST_TIME;
-                            survivorSpeedBoost = 1.0;
-                            ai.slowdownTimer = 0.8;
-                            ai.aiAttackCooldown = 0.6;
-                            ai.aiAttackInterval = 0.8 + Math.random() * 0.4;
-                            UI.showToast('💥 Ты ранен!', 2000);
-                        } else if (p2.state === 'injured') {
-                            p2.state = 'dying';
-                            p2.isVulnerable = false;
-                            p2.sprite.setTint(0xff4444);
-                            ai.slowdownTimer = 0.8;
-                            ai.aiAttackCooldown = 0.6;
-                            ai.aiAttackInterval = 0.8 + Math.random() * 0.4;
-                            UI.showToast('⬇️ Ты упал!', 2000);
-                        } else if (p2.state === 'dying') {
-                            ai.carryTarget = p2;
-                            p2.state = 'carried';
-                            p2.isVulnerable = false;
-                            p2.sprite.setPosition(sp.x, sp.y - 28);
-                            
-                            if (!p2.sprite.texture.key.includes('_carried')) {
-                                p2.sprite.setTexture(p2.tex + '_carried');
-                            }
-                            
-                            ai.aiAttackCooldown = 0.8;
-                            ai.aiAttackInterval = 0.8 + Math.random() * 0.4;
-                            UI.showToast('💪 Тебя подняли!', 2000);
-                        }
+                        ai.aiAttackCooldown = 0.8;
+                        ai.aiAttackInterval = 0.8 + Math.random() * 0.4;
+                        UI.showToast('💪 Тебя подняли!', 2000);
                     }
                 }
             } else {
@@ -2707,6 +3748,19 @@ function updateAI(dt) {
                         }
                     }
                 }
+                
+                // AI killer tries to close hatch if nearby
+                if (hatch && !hatchClosed && dist(sp, hatch) < CONFIG.INTERACT_DISTANCE + 20) {
+                    if (!ai._hatchCloseDelay) ai._hatchCloseDelay = 0;
+                    ai._hatchCloseDelay += dt / 1000;
+                    
+                    if (ai._hatchCloseDelay >= 0.5) {
+                        closeHatchByKiller();
+                        ai._hatchCloseDelay = 0;
+                    }
+                } else {
+                    ai._hatchCloseDelay = 0;
+                }
             }
         } else {
             ai.aiTimer = (ai.aiTimer || 0) - dt / 1000;
@@ -2742,7 +3796,7 @@ function updateAI(dt) {
             // Update dying texture for AI survivors
             if (ai.state === 'dying') {
                 if (!sp.texture.key.includes('_dying')) {
-                    sp.setTexture(ai.tex + '_dying');
+                    sp.setTexture(getTexWithFallback(ai.tex, '_dying'));
                 }
                 // Crawling animation for AI
                 const speed = Math.sqrt(ai.aiDir.x * ai.aiDir.x + ai.aiDir.y * ai.aiDir.y) * as;
@@ -2904,7 +3958,14 @@ function initMultiplayerSync() {
             } else if (hatchData.closedByKiller && !hatchClosed) {
                 hatchClosed = true;
                 hatchOpen = false;
-                if (hatch) hatch.setTint(0x220000);
+                if (hatch) {
+                    hatch.setTint(0xff4444);
+                    if (hatch.glowGfx) {
+                        hatch.glowGfx.clear();
+                        hatch.glowGfx.fillStyle(0xff0000, 0.3);
+                        hatch.glowGfx.fillCircle(hatch.x, hatch.y, 60);
+                    }
+                }
             }
         },
         onStatusUpdate: (status) => {
@@ -2966,12 +4027,12 @@ function updateRemotePlayers(players) {
             } else if (pdata.state === 'dying') {
                 // Show dying texture for remote players
                 if (!rp.sprite.texture.key.includes('_dying') && rp.tex) {
-                    rp.sprite.setTexture(rp.tex + '_dying');
+                    rp.sprite.setTexture(getTexWithFallback(rp.tex, '_dying'));
                 }
                 rp.sprite.setTint(0xff4444);
                 // Reset any repair animation
                 if (rp.sprite.texture.key.includes('_repair') && rp.tex) {
-                    rp.sprite.setTexture(rp.tex + '_dying');
+                    rp.sprite.setTexture(getTexWithFallback(rp.tex, '_dying'));
                 }
             } else if (pdata.state === 'injured') {
                 rp.sprite.clearTint();
@@ -3005,7 +4066,7 @@ function updateRemotePlayers(players) {
                     if (carriedPlayer) {
                         carriedPlayer.sprite.setPosition(pdata.x, pdata.y - 28);
                         if (!carriedPlayer.sprite.texture.key.includes('_carried')) {
-                            carriedPlayer.sprite.setTexture(carriedPlayer.tex + '_carried');
+                            carriedPlayer.sprite.setTexture(getTexWithFallback(carriedPlayer.tex, '_carried'));
                         }
                         carriedPlayer.sprite.setVelocity(0, 0);
                     }
@@ -3013,7 +4074,7 @@ function updateRemotePlayers(players) {
             } else if (pdata.state === 'carried') {
                 // Show carried texture for remote players who are being carried
                 if (!rp.sprite.texture.key.includes('_carried') && rp.tex) {
-                    rp.sprite.setTexture(rp.tex + '_carried');
+                    rp.sprite.setTexture(getTexWithFallback(rp.tex, '_carried'));
                 }
                 rp.sprite.setVelocity(0, 0);
                 
@@ -3080,7 +4141,7 @@ function updateRemotePlayers(players) {
                     const gen = generators.find(g => g.genId == pdata.animationTarget);
                     if (gen) {
                         if (!rp.sprite.texture.key.includes('_repair') && rp.tex) {
-                            rp.sprite.setTexture(rp.tex + '_repair');
+                            rp.sprite.setTexture(getTexWithFallback(rp.tex, '_repair'));
                         }
                         rp.sprite.setVelocity(0, 0);
                     }
