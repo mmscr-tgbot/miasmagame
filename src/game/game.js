@@ -103,6 +103,10 @@ let isNearHatch = false;
 let isEscapingHatch = false;
 let hatchEscapeProgress = 0;
 const HATCH_ESCAPE_TIME = 1.5;
+let isNearGate = false;
+let isEscapingGate = false;
+let gateEscapeProgress = 0;
+const GATE_ESCAPE_TIME = 1.5;
 
 let floatBars = [];
 let floatBarGfx = null;
@@ -141,6 +145,9 @@ function startGame(killerMode, multiplayer = false, code = null, pid = null) {
     isNearHatch = false;
     isEscapingHatch = false;
     hatchEscapeProgress = 0;
+    isNearGate = false;
+    isEscapingGate = false;
+    gateEscapeProgress = 0;
     floatBars = [];
     gameEnded = false;
     remotePlayers = {};
@@ -2275,6 +2282,73 @@ function survivorAction(dt) {
         });
     }
 
+    // Escape through opened gate
+    const nearOpenedGate = exitOpen && gates.some(gate => gate.opened && dist(sp, gate) < 80);
+    
+    if (nearOpenedGate && !acted) {
+        isNearGate = true;
+        
+        if (isEscapingGate) {
+            gateEscapeProgress += dt / 1000;
+            const pct = Math.min(100, (gateEscapeProgress / GATE_ESCAPE_TIME) * 100);
+            
+            // Animate: scale down, fade out
+            const scale = 1 - (pct / 100) * 0.8;
+            const alpha = 1 - (pct / 100) * 0.9;
+            
+            sp.setScale(scale);
+            sp.setAlpha(alpha);
+            
+            // Show progress bar
+            drawBar(floatBarGfx || scene.add.graphics(), sp.x, sp.y - 50, pct, 0x66ffaa);
+            
+            if (gateEscapeProgress >= GATE_ESCAPE_TIME) {
+                p.state = 'escaped';
+                UI.showToast('🏆 Ты сбежал через ворота!', 2000);
+                
+                if (isMultiplayer && roomCode && playerId) {
+                    setPlayerEscaped(roomCode, playerId);
+                }
+                
+                doEndGame(true, 'Ты сбежал через ворота!');
+            }
+            return;
+        }
+        
+        // Show action button for gate escape
+        updateActionButtonForGate(true);
+        
+        if (actionPressed && !isEscapingGate) {
+            isEscapingGate = true;
+            gateEscapeProgress = 0;
+            sp.body.setVelocity(0, 0);
+            UI.showToast('🚪 Пытаешься сбежать...', 1000);
+            
+            if (isMultiplayer && roomCode && playerId) {
+                setPlayerAnimation(roomCode, playerId, 'escape_gate', 0);
+            }
+        }
+        
+        if (!actionPressed && !isEscapingGate) {
+            updateActionButtonForGate(false);
+        }
+        
+        return;
+    } else {
+        isNearGate = false;
+        updateActionButtonForGate(false);
+        
+        if (isEscapingGate) {
+            isEscapingGate = false;
+            gateEscapeProgress = 0;
+            sp.setScale(1);
+            sp.setAlpha(1);
+            if (isMultiplayer && roomCode && playerId) {
+                clearPlayerAnimation(roomCode, playerId);
+            }
+        }
+    }
+
     // Open gate
     if (!acted) {
         const repairedCount = generators.filter(g => g.repaired).length;
@@ -2301,6 +2375,8 @@ function survivorAction(dt) {
                         gate.setTint(0x22ff66);
                         gate.setScale(2.3);
                         gate.setAlpha(0);
+                        // Hide progress bar when gate opens
+                        if (gate.barGfx) gate.barGfx.clear();
                         p.progressAction = null;
                         UI.showToast('🚪 Ворота открыты! Беги!', 2000);
 
@@ -2697,15 +2773,16 @@ function updateHUD() {
     let aliveCount;
     if (isKiller) {
         if (isMultiplayer) {
-            // Count real survivors from remotePlayers
-            aliveCount = Object.values(remotePlayers).filter(rp => rp.role === 'survivor' && rp.state !== 'dead').length;
+            // Count real survivors from remotePlayers (not dead, not escaped)
+            aliveCount = Object.values(remotePlayers).filter(rp => rp.role === 'survivor' && rp.state !== 'dead' && rp.state !== 'escaped').length;
         } else {
-            aliveCount = (player.aiPlayers || []).filter(a => a.state !== 'dead').length;
+            aliveCount = (player.aiPlayers || []).filter(a => a.state !== 'dead' && a.state !== 'escaped').length;
         }
     } else {
         if (isMultiplayer) {
-            // Count real survivors (self + remote players)
-            aliveCount = 1 + Object.values(remotePlayers).filter(rp => rp.role === 'survivor' && rp.state !== 'dead').length;
+            // Count real survivors (self + remote players, not dead, not escaped)
+            aliveCount = (player.state !== 'dead' && player.state !== 'escaped' ? 1 : 0) + 
+                         Object.values(remotePlayers).filter(rp => rp.role === 'survivor' && rp.state !== 'dead' && rp.state !== 'escaped').length;
         } else {
             aliveCount = survivorsAlive;
         }
@@ -2725,15 +2802,15 @@ function checkWinLose() {
     if (gameEnded) return;
 
     if (isKiller) {
-        let allDead = false;
+        let allEliminated = false;
         if (isMultiplayer) {
-            // All real survivors must be dead for killer to win
+            // All real survivors must be dead or escaped for killer to win
             const survivors = Object.values(remotePlayers).filter(rp => rp.role === 'survivor');
-            allDead = survivors.length > 0 && survivors.every(rp => rp.state === 'dead');
+            allEliminated = survivors.length > 0 && survivors.every(rp => rp.state === 'dead' || rp.state === 'escaped');
         } else {
-            allDead = (player.aiPlayers || []).filter(a => a.state !== 'dead').length === 0;
+            allEliminated = (player.aiPlayers || []).filter(a => a.state !== 'dead' && a.state !== 'escaped').length === 0;
         }
-        if (allDead) {
+        if (allEliminated) {
             doEndGame(true, 'Ты поймал всех выживших!');
         }
     } else {
@@ -3502,6 +3579,17 @@ function updateActionButtonForHatch(forHatch = false) {
         ab.textContent = '🚪';
         ab.style.background = 'linear-gradient(135deg, #ffaa00, #cc8800)';
         ab.style.boxShadow = '0 0 16px rgba(255,170,0,0.7)';
+    }
+}
+
+function updateActionButtonForGate(forGate = false) {
+    const ab = document.getElementById('action-btn');
+    if (!ab) return;
+    
+    if (forGate) {
+        ab.textContent = '🚪';
+        ab.style.background = 'linear-gradient(135deg, #44cc66, #22aa44)';
+        ab.style.boxShadow = '0 0 16px rgba(68,204,102,0.7)';
     }
 }
 
