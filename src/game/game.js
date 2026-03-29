@@ -459,6 +459,12 @@ function preload() {
     createRepairingTextures(g, 's3', 0x27ae60, 0x1a1a1a);
     createRepairingTextures(g, 's4', 0xf1c40f, 0x8B4513);
 
+    // Dying (crawling) textures for survivors
+    createDyingTextures(g, 's1', 0xc0392b, 0x3d2314);
+    createDyingTextures(g, 's2', 0x8e44ad, 0x4a3020);
+    createDyingTextures(g, 's3', 0x27ae60, 0x1a1a1a);
+    createDyingTextures(g, 's4', 0xf1c40f, 0x8B4513);
+
     // Killer - detailed DBD-style killer
     // Shadow
     g.fillStyle(0x000000, 0.3); g.fillEllipse(24, 76, 32, 10);
@@ -629,6 +635,62 @@ function createRepairingTextures(g, name, shirtColor, hairColor) {
     g.fillStyle(0xffccaa); g.fillRect(11, 16, 4, 5);
     g.fillStyle(0xffccaa); g.fillRect(35, 16, 4, 5);
     g.generateTexture(name + '_repair', 56, 80);
+    g.clear();
+}
+
+// Create dying (crawling on ground) textures for survivors
+function createDyingTextures(g, name, shirtColor, hairColor) {
+    // Shadow - much wider and flatter for lying on ground
+    g.fillStyle(0x000000, 0.5); g.fillEllipse(22, 72, 44, 8);
+    // Legs - lying flat on ground
+    g.fillStyle(0x2c3e70); g.fillRect(2, 56, 14, 10);
+    g.fillStyle(0x1a2a50); g.fillRect(2, 56, 3, 10);
+    g.fillStyle(0x2c3e70); g.fillRect(28, 56, 14, 10);
+    g.fillStyle(0x1a2a50); g.fillRect(28, 56, 3, 10);
+    // Feet pointing outward (crawling pose)
+    g.fillStyle(0x4a3a2a); g.fillRect(-2, 54, 8, 6);
+    g.fillStyle(0x3a2a1a); g.fillRect(-2, 54, 3, 6);
+    g.fillStyle(0x4a3a2a); g.fillRect(38, 54, 8, 6);
+    g.fillStyle(0x3a2a1a); g.fillRect(38, 54, 3, 6);
+    // Body - lying flat/horizontal
+    g.fillStyle(shirtColor); g.fillRect(4, 44, 36, 16);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(4, 44, 6, 16);
+    g.fillStyle(shirtColor + 0x222222); g.fillRect(34, 44, 4, 16);
+    // Arms - one in front, one behind (crawling)
+    g.fillStyle(0xffccaa); g.fillRect(-6, 46, 14, 6);
+    g.fillStyle(0xeeaa88); g.fillRect(-6, 46, 4, 6);
+    g.fillStyle(0xffccaa); g.fillRect(36, 46, 14, 6);
+    g.fillStyle(0xeeaa88); g.fillRect(42, 46, 4, 6);
+    // Hands - touching ground
+    g.fillStyle(0xffccaa); g.fillCircle(-10, 49, 4);
+    g.fillStyle(0xffccaa); g.fillCircle(50, 49, 4);
+    // Sleeves
+    g.fillStyle(shirtColor); g.fillRect(-4, 44, 10, 5);
+    g.fillStyle(shirtColor); g.fillRect(38, 44, 10, 5);
+    // Head - very low to ground
+    g.fillStyle(0xffccaa); g.fillCircle(22, 38, 10);
+    g.fillStyle(0xeebb99); g.fillCircle(22, 39, 8);
+    // Hair - flattened
+    g.fillStyle(hairColor); g.fillCircle(22, 34, 9);
+    g.fillStyle(hairColor - 0x222222); g.fillCircle(22, 32, 6);
+    g.fillStyle(hairColor); g.fillRect(12, 32, 20, 5);
+    // Eyes - looking forward/distressed
+    g.fillStyle(0x222222); g.fillCircle(18, 37, 2);
+    g.fillStyle(0x222222); g.fillCircle(26, 37, 2);
+    g.fillStyle(0xffffff); g.fillCircle(17, 36, 0.8);
+    g.fillStyle(0xffffff); g.fillCircle(25, 36, 0.8);
+    // Eyebrows - worried
+    g.fillStyle(hairColor - 0x333333); g.fillRect(15, 34, 6, 1.5);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(24, 34, 6, 1.5);
+    // Nose
+    g.fillStyle(0xddaa88); g.fillRect(20, 38, 3, 2);
+    // Mouth - gasping/in pain
+    g.fillStyle(0xcc8877); g.fillRect(18, 41, 8, 2.5);
+    g.fillStyle(0xaa6655); g.fillRect(19, 41.5, 6, 1);
+    // Ears
+    g.fillStyle(0xffccaa); g.fillRect(11, 36, 3, 4);
+    g.fillStyle(0xffccaa); g.fillRect(30, 36, 3, 4);
+    g.generateTexture(name + '_dying', 56, 66);
     g.clear();
 }
 
@@ -991,6 +1053,33 @@ function update(time, dt) {
             // Clear repair animation state
             p._repairBobOffset = undefined;
         }
+
+        // Update dying (crawling) texture
+        const sp = p.sprite;
+        if (p.state === 'dying') {
+            // Show dying texture (crawling on ground)
+            if (!sp.texture.key.includes('_dying')) {
+                sp.setTexture(p.tex + '_dying');
+            }
+            // Crawling animation - slight scale oscillation when moving
+            const v = p.sprite.body ? { x: p.sprite.body.velocity.x, y: p.sprite.body.velocity.y } : { x: 0, y: 0 };
+            const speed = Math.sqrt(v.x * v.x + v.y * v.y);
+            if (speed > 5) {
+                // Add crawling wobble effect
+                p._crawlPhase = (p._crawlPhase || 0) + dt * 0.015;
+                const wobble = Math.sin(p._crawlPhase * 3) * 0.08;
+                sp.setScale(1 + wobble, 1 - wobble * 0.5);
+            } else {
+                // Reset scale when not moving
+                sp.setScale(1, 1);
+                p._crawlPhase = 0;
+            }
+        } else if (!p.isRepairing && !p.progressAction) {
+            // Reset to normal texture when not repairing and not dying
+            if (sp.texture.key.includes('_dying') || sp.texture.key.includes('_repair')) {
+                sp.setTexture(p.tex);
+            }
+        }
     });
 
     updatePlayer(dt);
@@ -1041,6 +1130,19 @@ function updatePlayer(dt) {
         }
         const v = normalize(inputVec);
         sp.body.setVelocity(v.x * spd, v.y * spd);
+
+        // Rotate sprite based on movement direction
+        if (v.x !== 0 || v.y !== 0) {
+            const targetAngle = Math.atan2(v.y, v.x) * (180 / Math.PI);
+            // Smooth rotation
+            let currentAngle = sp.rotation * (180 / Math.PI);
+            let diff = targetAngle - currentAngle;
+            // Normalize angle difference
+            while (diff > 180) diff -= 360;
+            while (diff < -180) diff += 360;
+            sp.rotation += (diff * 0.15) * (Math.PI / 180);
+        }
+
         if (actionPressed) survivorAction(dt);
         else cancelProgress(p);
     }
@@ -1209,7 +1311,8 @@ function survivorAction(dt) {
 
                 if (p.progressAction.pct >= 100) {
                     hs.state = 'injured';
-                    hs.sprite.setTint(0xff8888);
+                    hs.sprite.clearTint();
+                    hs.sprite.setTexture(hs.tex);
                     hs.sprite.setPosition(hook.x + 30, hook.y);
                     hs.sprite.setVisible(true);
                     hook.occupied = false;
@@ -1243,6 +1346,7 @@ function survivorAction(dt) {
                 if (p.progressAction.pct >= 100) {
                     ai.state = 'alive';
                     ai.sprite.clearTint();
+                    ai.sprite.setTexture(ai.tex);
                     p.progressAction = null;
                     UI.showToast('💊 Вылечен!', 2000);
                 }
@@ -1450,6 +1554,36 @@ function updateAI(dt) {
             const as = ai.state === 'dying' ? CONFIG.DYING_SPEED :
                 ai.state === 'injured' ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED;
             sp.body.setVelocity(ai.aiDir.x * as, ai.aiDir.y * as);
+
+            // Rotate sprite based on movement direction
+            if (ai.aiDir.x !== 0 || ai.aiDir.y !== 0) {
+                const targetAngle = Math.atan2(ai.aiDir.y, ai.aiDir.x) * (180 / Math.PI);
+                let currentAngle = sp.rotation * (180 / Math.PI);
+                let diff = targetAngle - currentAngle;
+                while (diff > 180) diff -= 360;
+                while (diff < -180) diff += 360;
+                sp.rotation += (diff * 0.15) * (Math.PI / 180);
+            }
+
+            // Update dying texture for AI survivors
+            if (ai.state === 'dying') {
+                if (!sp.texture.key.includes('_dying')) {
+                    sp.setTexture(ai.tex + '_dying');
+                }
+                // Crawling animation for AI
+                const speed = Math.sqrt(ai.aiDir.x * ai.aiDir.x + ai.aiDir.y * ai.aiDir.y) * as;
+                if (speed > 5) {
+                    ai._crawlPhase = (ai._crawlPhase || 0) + dt * 0.015;
+                    const wobble = Math.sin(ai._crawlPhase * 3) * 0.08;
+                    sp.setScale(1 + wobble, 1 - wobble * 0.5);
+                } else {
+                    sp.setScale(1, 1);
+                    ai._crawlPhase = 0;
+                }
+            } else if (sp.texture.key.includes('_dying')) {
+                sp.setTexture(ai.tex);
+                sp.setScale(1, 1);
+            }
         }
     });
 }
@@ -1634,6 +1768,16 @@ function updateRemotePlayers(players) {
 
             if (pdata.state === 'dead') {
                 rp.sprite.setAlpha(0.3);
+            } else if (pdata.state === 'dying') {
+                // Show dying texture for remote players
+                if (!rp.sprite.texture.key.includes('_dying') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex + '_dying');
+                }
+            } else if (pdata.state === 'alive' || pdata.state === 'injured') {
+                // Reset to normal texture when healed or recovered
+                if (rp.sprite.texture.key.includes('_dying') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex);
+                }
             } else if (pdata.state === 'hooked') {
                 // Find hook and position - no interpolation for hooked players
                 const hook = hooks.find(h => h.hookId === pdata.hookId);
@@ -1660,6 +1804,7 @@ function updateRemotePlayers(players) {
             remotePlayers[pid] = {
                 sprite: sp,
                 glowFx: glow,
+                tex: tex,
                 role: pdata.role,
                 state: pdata.state || 'alive',
                 playerId: pid,
@@ -1734,11 +1879,31 @@ function interpolateRemotePlayers(dt) {
         } else {
             rp.sprite.x += dx * lerpFactor;
             rp.sprite.y += dy * lerpFactor;
+
+            // Rotate sprite based on movement direction
+            const targetAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+            let currentAngle = rp.sprite.rotation * (180 / Math.PI);
+            let diff = targetAngle - currentAngle;
+            while (diff > 180) diff -= 360;
+            while (diff < -180) diff += 360;
+            rp.sprite.rotation += (diff * 0.2) * (Math.PI / 180);
         }
 
         // Update glow position
         if (rp.glowFx) {
             rp.glowFx.setPosition(rp.sprite.x, rp.sprite.y);
+        }
+
+        // Crawling animation for dying state
+        if (rp.state === 'dying' && dist > 5) {
+            rp._crawlPhase = (rp._crawlPhase || 0) + dt * 0.015;
+            const wobble = Math.sin(rp._crawlPhase * 3) * 0.08;
+            rp.sprite.setScale(1 + wobble, 1 - wobble * 0.5);
+        } else if (rp.state === 'dying') {
+            rp.sprite.setScale(1, 1);
+            rp._crawlPhase = 0;
+        } else {
+            rp.sprite.setScale(1, 1);
         }
 
         // Update sprite depth
@@ -1815,6 +1980,7 @@ function hangSurvivor(p, hook) {
     p.hookTimer = 0;
     p.state = 'hooked';
     p.sprite.setTint(0xaaaaaa);
+    p.sprite.setTexture(p.tex);
     p.sprite.setPosition(hook.x, hook.y - 12);
 
     if (!p.isMe) {
