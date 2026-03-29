@@ -228,65 +228,96 @@ function initGame() {
 function preload() {
     const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-    // Ground - detailed dark forest floor
-    g.fillStyle(0x0d1208);
-    g.fillRect(0, 0, 64, 64);
+    // Ground - detailed dark forest floor (multiple variations for variety)
+    // Create 6 different ground tiles for variety
     
-    // Base dirt variations
-    g.fillStyle(0x1a2210);
-    g.fillRect(0, 0, 32, 32);
-    g.fillStyle(0x151d0c);
-    g.fillRect(32, 32, 32, 32);
+    function createGroundTile(variation) {
+        g.clear();
+        
+        // Base colors based on variation
+        const baseColors = [
+            [0x0d1208, 0x1a2210, 0x151d0c],  // Dark green
+            [0x0f1410, 0x1c2418, 0x162016],  // More gray
+            [0x0a0e06, 0x182010, 0x122008],  // Darker green
+            [0x121810, 0x1e2618, 0x182018],  // Purple tint
+            [0x0e1212, 0x1a2222, 0x141c1c], // Blue tint
+            [0x10140c, 0x1c2014, 0x161810]   // Brown tint
+        ];
+        
+        const [base, mid, light] = baseColors[variation % baseColors.length];
+        
+        // Base fill
+        g.fillStyle(base);
+        g.fillRect(0, 0, 64, 64);
+        
+        // Large dirt patches
+        g.fillStyle(mid);
+        g.fillCircle(16, 16, 20);
+        g.fillCircle(48, 48, 18);
+        
+        // Smaller variations
+        g.fillStyle(light);
+        g.fillCircle(48, 12, 12);
+        g.fillCircle(12, 48, 14);
+        
+        // Mud puddles (some variations)
+        if (variation % 2 === 0) {
+            g.fillStyle(0x0a0a08, 0.5);
+            g.fillEllipse(32, 32, 16, 8);
+        }
+        
+        // Grass tufts
+        const grassColors = [0x2a4015, 0x3a5020, 0x1a3010];
+        g.fillStyle(grassColors[variation % grassColors.length]);
+        g.fillRect(8 + (variation * 7) % 48, 10 + (variation * 5) % 44, 2, 5 + variation % 3);
+        g.fillRect(20 + (variation * 11) % 36, 15 + (variation * 7) % 36, 2, 4 + variation % 4);
+        g.fillRect(40 + (variation * 13) % 18, 8 + (variation * 9) % 44, 2, 5 + variation % 3);
+        
+        // Dead leaves
+        const leafColors = [0x3a3020, 0x4a4030, 0x2a2515];
+        g.fillStyle(leafColors[variation % leafColors.length], 0.6);
+        g.fillRect(5 + variation * 3, 20 + variation * 5, 3, 2);
+        g.fillRect(45 + variation * 2, 35 + variation * 3, 4, 2);
+        g.fillRect(25 + variation * 7, 50 + variation * 2, 3, 2);
+        
+        // Small stones
+        const stoneColors = [0x3a3a35, 0x4a4a42, 0x353530];
+        g.fillStyle(stoneColors[variation % stoneColors.length]);
+        g.fillCircle(15 + variation * 5, 40 + variation * 3, 2);
+        g.fillCircle(50 + variation * 3, 25 + variation * 7, 2);
+        g.fillCircle(35 + variation * 7, 55 + variation * 2, 2);
+        
+        // Dark shadows/spots
+        g.fillStyle(0x050505, 0.3);
+        g.fillCircle(25 + variation * 3, 30 + variation * 4, 8);
+        g.fillStyle(0x080808, 0.2);
+        g.fillCircle(50 + variation * 2, 45 + variation * 5, 6);
+        
+        // Root tendrils (some variations)
+        if (variation % 3 === 0) {
+            g.fillStyle(0x2a1a10, 0.4);
+            g.fillRect(10, 30, 15, 2);
+            g.fillRect(20, 30, 2, 10);
+            g.fillRect(40, 15, 12, 2);
+        }
+        
+        // Moss patches
+        if (variation % 2 === 1) {
+            g.fillStyle(0x1a3a15, 0.4);
+            g.fillCircle(45, 20, 6);
+            g.fillStyle(0x2a4a20, 0.3);
+            g.fillCircle(15, 50, 5);
+        }
+    }
     
-    // Dirt patches
-    g.fillStyle(0x2a2a1a);
-    g.fillCircle(15, 20, 12);
-    g.fillStyle(0x252515);
-    g.fillCircle(50, 45, 10);
-    g.fillStyle(0x1f1f12);
-    g.fillCircle(30, 55, 8);
+    // Create 6 different ground tiles
+    for (let v = 0; v < 6; v++) {
+        createGroundTile(v);
+        g.generateTexture('ground' + v, 64, 64);
+    }
     
-    // Mud puddles
-    g.fillStyle(0x15150d, 0.6);
-    g.fillEllipse(45, 15, 12, 6);
-    g.fillStyle(0x12120a, 0.5);
-    g.fillEllipse(10, 50, 8, 4);
-    
-    // Grass tufts
-    g.fillStyle(0x2a4015);
-    g.fillRect(8, 10, 2, 6);
-    g.fillRect(12, 12, 2, 5);
-    g.fillRect(10, 8, 2, 7);
-    g.fillRect(50, 30, 2, 6);
-    g.fillRect(54, 32, 2, 5);
-    g.fillRect(25, 45, 2, 6);
-    g.fillRect(28, 48, 2, 4);
-    
-    // Dead leaves and debris
-    g.fillStyle(0x3a3020, 0.4);
-    g.fillRect(20, 25, 4, 2);
-    g.fillRect(40, 40, 5, 2);
-    g.fillRect(55, 55, 3, 2);
-    g.fillStyle(0x2a2515, 0.5);
-    g.fillRect(5, 35, 3, 2);
-    g.fillRect(35, 15, 4, 2);
-    
-    // Small stones
-    g.fillStyle(0x3a3a35);
-    g.fillCircle(22, 42, 3);
-    g.fillStyle(0x454540);
-    g.fillCircle(21, 41, 2);
-    g.fillStyle(0x3a3a35);
-    g.fillCircle(48, 8, 2);
-    g.fillStyle(0x353530);
-    g.fillCircle(38, 52, 2);
-    
-    // Dark spots / shadows
-    g.fillStyle(0x080a05, 0.4);
-    g.fillCircle(30, 30, 15);
-    g.fillStyle(0x0a0c08, 0.3);
-    g.fillCircle(55, 25, 8);
-    
+    // Base ground tile
+    createGroundTile(0);
     g.generateTexture('ground', 64, 64);
     g.clear();
 
@@ -475,61 +506,58 @@ function preload() {
     g.generateTexture('stone5', 28, 28);
     g.clear();
 
-    // ═══════ DETAILED 3D-STYLE TREE ═══════
-    // Shadow under tree - detailed with multiple layers
-    g.fillStyle(0x000000, 0.35); g.fillEllipse(37, 96, 55, 20);
-    g.fillStyle(0x000000, 0.2); g.fillEllipse(32, 94, 40, 14);
-    g.fillStyle(0x000000, 0.15); g.fillEllipse(40, 95, 35, 12);
+    // ═══════ LARGE TREES (3 variations) ═══════
+    function createTree(variation) {
+        g.clear();
+        
+        // Color variations
+        const treeColors = [
+            { trunk: 0x3d2817, trunkLight: 0x4d3827, trunkDark: 0x2d1807, foliage: [0x1a4a0d, 0x2a5a15, 0x3a6a1f, 0x4a7a2a], highlight: 0x5a8a35 },
+            { trunk: 0x2d2010, trunkLight: 0x3d3020, trunkDark: 0x1d1000, foliage: [0x15400a, 0x255015, 0x3a6020, 0x4a7025], highlight: 0x5a8030 },
+            { trunk: 0x4a3020, trunkLight: 0x5a4030, trunkDark: 0x3a2010, foliage: [0x1a5a0d, 0x2a6a15, 0x3a7a1f, 0x4a8a2a], highlight: 0x5a9a35 }
+        ];
+        
+        const colors = treeColors[variation % treeColors.length];
+        
+        // Shadow
+        g.fillStyle(0x000000, 0.35); g.fillEllipse(37, 96, 55, 20);
+        g.fillStyle(0x000000, 0.2); g.fillEllipse(32, 94, 40, 14);
+        
+        // Trunk
+        const trunkOffset = variation * 3;
+        g.fillStyle(colors.trunk); g.fillRect(28 + trunkOffset, 45, 14, 52);
+        g.fillStyle(colors.trunkLight); g.fillRect(28 + trunkOffset, 45, 5, 52);
+        g.fillStyle(colors.trunkDark); g.fillRect(38 + trunkOffset, 45, 4, 52);
+        
+        // Roots
+        g.fillStyle(colors.trunk); g.fillRect(20 + trunkOffset, 88, 8, 8);
+        g.fillStyle(colors.trunkLight); g.fillRect(20 + trunkOffset, 88, 3, 8);
+        g.fillStyle(colors.trunk); g.fillRect(42 + trunkOffset, 88, 8, 8);
+        
+        // Foliage
+        const foliageOffset = variation * 4;
+        g.fillStyle(colors.foliage[0]); g.fillCircle(35 + foliageOffset, 38, 32);
+        g.fillStyle(colors.foliage[1]); g.fillCircle(35 + foliageOffset, 35, 28);
+        g.fillStyle(colors.foliage[2]); g.fillCircle(35 + foliageOffset, 32, 24);
+        g.fillStyle(colors.foliage[3]); g.fillCircle(35 + foliageOffset, 30, 20);
+        
+        // Highlights
+        g.fillStyle(colors.highlight); g.fillCircle(30 + foliageOffset, 24, 14);
+        g.fillStyle(colors.highlight + 0x101010); g.fillCircle(28 + foliageOffset, 22, 10);
+        
+        // Leaf clusters
+        g.fillStyle(colors.foliage[2]); g.fillCircle(18 + foliageOffset, 35, 10);
+        g.fillStyle(colors.foliage[3]); g.fillCircle(52 + foliageOffset, 35, 10);
+        g.fillStyle(colors.foliage[2]); g.fillCircle(35 + foliageOffset, 12, 12);
+    }
     
-    // Tree trunk - detailed bark texture
-    g.fillStyle(0x3d2817); g.fillRect(28, 45, 14, 52);
-    g.fillStyle(0x4d3827); g.fillRect(28, 45, 5, 52); // Trunk highlight
-    g.fillStyle(0x2d1807); g.fillRect(38, 45, 4, 52); // Trunk shadow
-    // Bark texture lines
-    g.fillStyle(0x5d4837); g.fillRect(30, 50, 1, 20);
-    g.fillStyle(0x5d4837); g.fillRect(35, 60, 1, 25);
-    g.fillStyle(0x5d4837); g.fillRect(39, 55, 1, 18);
-    g.fillStyle(0x3d2817); g.fillRect(32, 48, 2, 5); // Bark knot
-    g.fillStyle(0x3d2817); g.fillRect(36, 70, 2, 4);
-    
-    // Tree roots - visible at base
-    g.fillStyle(0x3d2817); g.fillRect(20, 88, 8, 8);
-    g.fillStyle(0x2d1807); g.fillRect(20, 88, 3, 8);
-    g.fillStyle(0x3d2817); g.fillRect(42, 88, 8, 8);
-    g.fillStyle(0x4d3827); g.fillRect(42, 88, 3, 8);
-    g.fillStyle(0x3d2817); g.fillRect(30, 90, 5, 6);
-    g.fillStyle(0x3d2817); g.fillRect(38, 91, 4, 5);
-    
-    // Main foliage - large rounded canopy with depth
-    g.fillStyle(0x1a4a0d); g.fillCircle(35, 38, 32);
-    g.fillStyle(0x2a5a15); g.fillCircle(35, 35, 28);
-    g.fillStyle(0x3a6a1f); g.fillCircle(35, 32, 24);
-    g.fillStyle(0x4a7a2a); g.fillCircle(35, 30, 20);
-    
-    // Foliage highlights - sunlit areas
-    g.fillStyle(0x5a8a35); g.fillCircle(30, 24, 14);
-    g.fillStyle(0x6a9a45); g.fillCircle(28, 22, 10);
-    g.fillStyle(0x7aaa55); g.fillCircle(26, 20, 6);
-    
-    // Foliage shadows
-    g.fillStyle(0x1a3a0d); g.fillCircle(45, 45, 12);
-    g.fillStyle(0x1a3a0d); g.fillCircle(22, 42, 10);
-    g.fillStyle(0x1a3a0d); g.fillCircle(35, 52, 8);
-    
-    // Individual leaf clusters for depth
-    g.fillStyle(0x3a6a1f); g.fillCircle(18, 35, 10);
-    g.fillStyle(0x4a7a2a); g.fillCircle(15, 32, 8);
-    g.fillStyle(0x3a6a1f); g.fillCircle(52, 35, 10);
-    g.fillStyle(0x4a7a2a); g.fillCircle(55, 32, 8);
-    g.fillStyle(0x3a6a1f); g.fillCircle(35, 12, 12);
-    g.fillStyle(0x4a7a2a); g.fillCircle(35, 8, 9);
-    
-    // Branch tips visible
-    g.fillStyle(0x2a5a15); g.fillCircle(12, 38, 5);
-    g.fillStyle(0x2a5a15); g.fillCircle(58, 38, 5);
-    g.fillStyle(0x2a5a15); g.fillCircle(25, 15, 4);
-    g.fillStyle(0x2a5a15); g.fillCircle(45, 15, 4);
-    
+    // Create 3 tree variations
+    for (let v = 0; v < 3; v++) {
+        createTree(v);
+        g.generateTexture('tree' + v, 70, 100);
+    }
+    // Default tree
+    createTree(0);
     g.generateTexture('tree', 70, 100);
     g.clear();
 
@@ -2321,10 +2349,13 @@ function create() {
 
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
 
-    // Ground
+    // Ground - multiple tiles for variety
     for (let x = 0; x < MAP_W; x += 64) {
         for (let y = 0; y < MAP_H; y += 64) {
-            this.add.image(x + 32, y + 32, 'ground').setAlpha(0.6 + Math.random() * 0.35);
+            const groundVariant = Math.floor(Math.random() * 6);
+            const tile = this.add.image(x + 32, y + 32, 'ground' + groundVariant);
+            tile.setAlpha(0.7 + Math.random() * 0.3);
+            tile.setTint(0x111111 + Math.floor(Math.random() * 0x111111));
         }
     }
 
@@ -2651,7 +2682,7 @@ function getMapObstacles() {
         }
     });
 
-    // Large detailed trees (only if not overlapping)
+    // Large detailed trees (only if not overlapping) - randomly select variation
     [[120, 120], [580, 80], [1100, 130], [1580, 90], [2180, 180],
     [80, 580], [380, 380], [880, 480], [1380, 280], [1980, 380],
     [130, 1080], [480, 880], [980, 1280], [1480, 1080], [2080, 780],
@@ -2660,7 +2691,8 @@ function getMapObstacles() {
     [450, 1150], [950, 950], [1450, 1250], [1950, 950], [2350, 1150]
     ].forEach(p => {
         if (!overlapsAny(p[0], p[1], 70, 100, 50)) {
-            obs.push({ t: 'tree', x: p[0], y: p[1], sw: 70, sh: 100, solid: false });
+            const treeVar = 'tree' + Math.floor(Math.random() * 3);
+            obs.push({ t: treeVar, x: p[0], y: p[1], sw: 70, sh: 100, solid: false });
         }
     });
 
