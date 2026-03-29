@@ -212,6 +212,60 @@ function setPlayerIdle(roomCode, playerId) {
     }).catch(() => {});
 }
 
+// Синхронизация анимации игрока (ремонт, лечение и т.д.)
+function setPlayerAnimation(roomCode, playerId, animation, targetId) {
+    if (!firebaseReady || !db) return;
+
+    const updates = {
+        animation: animation,
+        lastUpdate: Date.now()
+    };
+    if (targetId !== undefined) {
+        updates.animationTarget = targetId;
+    }
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update(updates)
+        .catch(() => {});
+}
+
+// Синхронизация позиции несомого игрока
+function setCarriedPosition(roomCode, survivorId, killerX, killerY) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(survivorId).update({
+        x: killerX,
+        y: killerY - 28,
+        lastUpdate: Date.now()
+    }).catch(() => {});
+}
+
+// Сбросить анимацию игрока
+function clearPlayerAnimation(roomCode, playerId) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        animation: null,
+        animationTarget: null,
+        lastUpdate: Date.now()
+    }).catch(() => {});
+}
+
+// Синхронизация анимации удара маньяка
+function setKillerStrikeAnimation(roomCode, playerId, isStriking, targetId) {
+    if (!firebaseReady || !db) return;
+
+    const updates = {
+        isStriking: isStriking,
+        lastUpdate: Date.now()
+    };
+    if (targetId !== undefined) {
+        updates.strikeTarget = targetId;
+    }
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update(updates)
+        .catch(() => {});
+}
+
 // Установить результат игры
 function setGameResult(roomCode, winner, message) {
     if (!firebaseReady || !db) return;
@@ -361,6 +415,10 @@ window.setPlayerInjured = setPlayerInjured;
 window.setPlayerDying = setPlayerDying;
 window.setPlayerCarrying = setPlayerCarrying;
 window.setPlayerIdle = setPlayerIdle;
+window.setPlayerAnimation = setPlayerAnimation;
+window.setCarriedPosition = setCarriedPosition;
+window.clearPlayerAnimation = clearPlayerAnimation;
+window.setKillerStrikeAnimation = setKillerStrikeAnimation;
 window.setGameResult = setGameResult;
 window.subscribeToGameSession = subscribeToGameSession;
 window.unsubscribeFromGameSession = unsubscribeFromGameSession;

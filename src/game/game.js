@@ -92,8 +92,12 @@ let survivorsAlive = 0;
 
 let killerStun = 0;
 let boostTimer = 0;
+let killerSlowdown = 0;
+let survivorSpeedBoost = 0;
+let killerStrikeTimer = 0;
 let actionPressed = false;
 let inputVec = { x: 0, y: 0 };
+let isCarryingNearHook = false;
 
 let floatBars = [];
 let floatBarGfx = null;
@@ -123,8 +127,12 @@ function startGame(killerMode, multiplayer = false, code = null, pid = null) {
     survivorsAlive = isKiller ? 3 : 0;
     killerStun = 0;
     boostTimer = 0;
+    killerSlowdown = 0;
+    survivorSpeedBoost = 0;
+    killerStrikeTimer = 0;
     actionPressed = false;
     inputVec = { x: 0, y: 0 };
+    isCarryingNearHook = false;
     floatBars = [];
     gameEnded = false;
     remotePlayers = {};
@@ -142,6 +150,7 @@ function stopGame() {
         game = null;
     }
     scene = null;
+    isCarryingNearHook = false;
 
     // Reset any carried state when game stops
     if (player && player.carryTarget) {
@@ -356,62 +365,258 @@ function preload() {
     g.generateTexture('shack_wall', 48, 20);
     g.clear();
 
-    // Generator - detailed DBD-style with poles and flickering lights
-    // Main generator body
-    g.fillStyle(0x2a2a30); g.fillRect(4, 20, 56, 52);
-    g.fillStyle(0x3a3a42); g.fillRect(6, 22, 52, 48);
-    // Metal panel texture
-    g.fillStyle(0x4a4a52); g.fillRect(8, 24, 48, 44);
-    g.fillStyle(0x3a3a42); g.fillRect(8, 24, 48, 2);
-    // Bolts/rivets
-    g.fillStyle(0x5a5a62); g.fillCircle(12, 28, 3); g.fillCircle(52, 28, 3);
-    g.fillStyle(0x5a5a62); g.fillCircle(12, 64, 3); g.fillCircle(52, 64, 3);
-    // Engine vents
-    g.fillStyle(0x222228); g.fillRect(12, 30, 40, 6);
-    g.fillStyle(0x222228); g.fillRect(12, 40, 40, 6);
-    g.fillStyle(0x222228); g.fillRect(12, 50, 40, 6);
+    // ═══════ HIGHLY DETAILED GENERATOR ═══════
+    // Shadow under generator
+    g.fillStyle(0x000000, 0.4); g.fillEllipse(32, 80, 58, 14);
+    
+    // Main generator body - industrial metal box
+    g.fillStyle(0x252530); g.fillRect(4, 18, 56, 58);
+    g.fillStyle(0x2d2d38); g.fillRect(6, 20, 52, 54); // Main panel
+    
+    // Panel texture - scratched metal
+    g.fillStyle(0x353542); g.fillRect(8, 22, 48, 50);
+    
+    // Panel seams and edges
+    g.fillStyle(0x1a1a22); g.fillRect(8, 22, 48, 2); // Top edge
+    g.fillStyle(0x1a1a22); g.fillRect(8, 22, 2, 50); // Left edge
+    g.fillStyle(0x404050); g.fillRect(54, 22, 2, 50); // Right edge
+    g.fillStyle(0x404050); g.fillRect(8, 68, 48, 2); // Bottom edge
+    
+    // Vertical rib details
+    g.fillStyle(0x2a2a35); g.fillRect(12, 24, 3, 46);
+    g.fillStyle(0x2a2a35); g.fillRect(49, 24, 3, 46);
+    
+    // Horizontal rib details
+    g.fillStyle(0x2a2a35); g.fillRect(14, 32, 36, 2);
+    g.fillStyle(0x2a2a35); g.fillRect(14, 48, 36, 2);
+    g.fillStyle(0x2a2a35); g.fillRect(14, 62, 36, 2);
+    
+    // Engine vents - detailed louvered design
+    g.fillStyle(0x1a1a20); g.fillRect(14, 26, 36, 8);
+    g.fillStyle(0x252530); g.fillRect(15, 27, 34, 6);
     // Vent slats
-    g.fillStyle(0x1a1a20); g.fillRect(12, 31, 40, 1);
-    g.fillStyle(0x1a1a20); g.fillRect(12, 41, 40, 1);
-    g.fillStyle(0x1a1a20); g.fillRect(12, 51, 40, 1);
-    // Control panel box
-    g.fillStyle(0x3a3a40); g.fillRect(14, 58, 24, 14);
-    g.fillStyle(0x2a2a30); g.fillRect(16, 60, 20, 10);
-    // Indicator lights on panel (will flicker)
-    g.fillStyle(0x00ff44); g.fillCircle(22, 65, 3);
-    g.fillStyle(0xff2222); g.fillCircle(30, 65, 3);
-    // Wires/cables
-    g.fillStyle(0x1a1a20); g.fillRect(38, 58, 4, 14);
-    g.fillStyle(0x8B0000); g.fillRect(42, 58, 3, 8);
-    g.fillStyle(0x00aa00); g.fillRect(45, 58, 3, 10);
-    // Rust and wear
-    g.fillStyle(0x4a3a2a, 0.3); g.fillCircle(50, 62, 4);
-    g.fillStyle(0x3a2a1a, 0.25); g.fillCircle(20, 68, 3);
-    g.generateTexture('gen', 64, 76);
+    for (let i = 0; i < 6; i++) {
+        g.fillStyle(0x353540); g.fillRect(16 + i * 5, 27, 3, 6);
+        g.fillStyle(0x151518); g.fillRect(16 + i * 5, 28, 3, 2);
+    }
+    
+    g.fillStyle(0x1a1a20); g.fillRect(14, 36, 36, 8);
+    g.fillStyle(0x252530); g.fillRect(15, 37, 34, 6);
+    for (let i = 0; i < 6; i++) {
+        g.fillStyle(0x353540); g.fillRect(16 + i * 5, 37, 3, 6);
+        g.fillStyle(0x151518); g.fillRect(16 + i * 5, 38, 3, 2);
+    }
+    
+    g.fillStyle(0x1a1a20); g.fillRect(14, 46, 36, 8);
+    g.fillStyle(0x252530); g.fillRect(15, 47, 34, 6);
+    for (let i = 0; i < 6; i++) {
+        g.fillStyle(0x353540); g.fillRect(16 + i * 5, 47, 3, 6);
+        g.fillStyle(0x151518); g.fillRect(16 + i * 5, 48, 3, 2);
+    }
+    
+    // Main control panel - detailed electronics box
+    g.fillStyle(0x303038); g.fillRect(12, 56, 28, 18);
+    g.fillStyle(0x383840); g.fillRect(13, 57, 26, 16);
+    g.fillStyle(0x404048); g.fillRect(14, 58, 24, 14);
+    
+    // Panel screws
+    g.fillStyle(0x5a5a62); g.fillCircle(15, 59, 2);
+    g.fillStyle(0x6a6a72); g.fillCircle(15, 59, 1);
+    g.fillStyle(0x5a5a62); g.fillCircle(37, 59, 2);
+    g.fillStyle(0x6a6a72); g.fillCircle(37, 59, 1);
+    g.fillStyle(0x5a5a62); g.fillCircle(15, 71, 2);
+    g.fillStyle(0x6a6a72); g.fillCircle(15, 71, 1);
+    g.fillStyle(0x5a5a62); g.fillCircle(37, 71, 2);
+    g.fillStyle(0x6a6a72); g.fillCircle(37, 71, 1);
+    
+    // Indicator lights with glow effect
+    g.fillStyle(0x00ff44); g.fillCircle(20, 63, 4);
+    g.fillStyle(0x00dd33); g.fillCircle(20, 63, 3);
+    g.fillStyle(0xaaffaa); g.fillCircle(19, 62, 1);
+    g.fillStyle(0x00ff44, 0.3); g.fillCircle(20, 63, 6);
+    
+    g.fillStyle(0xff2222); g.fillCircle(30, 63, 4);
+    g.fillStyle(0xcc1111); g.fillCircle(30, 63, 3);
+    g.fillStyle(0xff8888); g.fillCircle(29, 62, 1);
+    g.fillStyle(0xff2222, 0.3); g.fillCircle(30, 63, 6);
+    
+    // Small status LEDs
+    g.fillStyle(0xffff00); g.fillCircle(20, 69, 2);
+    g.fillStyle(0xdddd00); g.fillCircle(20, 69, 1.5);
+    g.fillStyle(0x00ff00); g.fillCircle(26, 69, 2);
+    g.fillStyle(0x00dd00); g.fillCircle(26, 69, 1.5);
+    g.fillStyle(0xff8800); g.fillCircle(32, 69, 2);
+    g.fillStyle(0xdd6600); g.fillCircle(32, 69, 1.5);
+    
+    // Digital display segments (broken/blank)
+    g.fillStyle(0x1a1a1a); g.fillRect(22, 66, 6, 4);
+    g.fillStyle(0x252525); g.fillRect(23, 67, 4, 2);
+    
+    // Wire bundle - detailed cables
+    g.fillStyle(0x1a1a20); g.fillRect(42, 56, 5, 18);
+    g.fillStyle(0x8B0000); g.fillRect(43, 57, 3, 6); // Red wire
+    g.fillStyle(0x00aa00); g.fillRect(43, 64, 3, 4); // Green wire
+    g.fillStyle(0x0066aa); g.fillRect(43, 69, 3, 5); // Blue wire
+    g.fillStyle(0xaaaa00); g.fillRect(43, 58, 3, 3); // Yellow wire
+    // Wire highlights
+    g.fillStyle(0xaa0000); g.fillRect(43, 57, 1, 6);
+    g.fillStyle(0x00cc00); g.fillRect(43, 64, 1, 4);
+    g.fillStyle(0x0088cc); g.fillRect(43, 69, 1, 5);
+    
+    // Cable connectors
+    g.fillStyle(0x2a2a30); g.fillRect(41, 55, 8, 4);
+    g.fillStyle(0x333338); g.fillRect(41, 71, 8, 4);
+    
+    // Side panel details - fuel tank style
+    g.fillStyle(0x2a2a32); g.fillRect(48, 30, 10, 32);
+    g.fillStyle(0x323238); g.fillRect(49, 31, 8, 30);
+    // Fuel cap
+    g.fillStyle(0x4a4a52); g.fillCircle(53, 34, 4);
+    g.fillStyle(0x3a3a42); g.fillCircle(53, 34, 3);
+    g.fillStyle(0x2a2a32); g.fillCircle(53, 34, 2);
+    g.fillStyle(0x5a5a62); g.fillCircle(53, 34, 1);
+    // Fuel gauge
+    g.fillStyle(0x1a1a20); g.fillRect(50, 40, 6, 18);
+    g.fillStyle(0x00aa44); g.fillRect(51, 42, 4, 12); // Fuel level
+    g.fillStyle(0x006622); g.fillRect(51, 52, 4, 2);
+    
+    // Exhaust pipe with detail
+    g.fillStyle(0x3a3a40); g.fillRect(4, 40, 6, 20);
+    g.fillStyle(0x4a4a50); g.fillRect(4, 40, 6, 2);
+    g.fillStyle(0x2a2a30); g.fillRect(2, 38, 10, 4);
+    // Exhaust holes
+    g.fillStyle(0x1a1a20); g.fillCircle(6, 50, 2);
+    g.fillStyle(0x1a1a20); g.fillCircle(6, 56, 2);
+    
+    // Bolt/rivet details on corners
+    g.fillStyle(0x5a5a62); g.fillCircle(10, 24, 3);
+    g.fillStyle(0x6a6a72); g.fillCircle(10, 24, 2);
+    g.fillStyle(0x5a5a62); g.fillCircle(54, 24, 3);
+    g.fillStyle(0x6a6a72); g.fillCircle(54, 24, 2);
+    g.fillStyle(0x5a5a62); g.fillCircle(10, 68, 3);
+    g.fillStyle(0x6a6a72); g.fillCircle(10, 68, 2);
+    g.fillStyle(0x5a5a62); g.fillCircle(54, 68, 3);
+    g.fillStyle(0x6a6a72); g.fillCircle(54, 68, 2);
+    
+    // Rust stains and wear marks
+    g.fillStyle(0x4a3a2a, 0.4); g.fillCircle(52, 62, 5);
+    g.fillStyle(0x3a2a1a, 0.3); g.fillCircle(20, 70, 4);
+    g.fillStyle(0x5a4a3a, 0.25); g.fillCircle(40, 28, 3);
+    g.fillStyle(0x4a3a2a, 0.2); g.fillCircle(30, 72, 3);
+    
+    // Scratch marks
+    g.fillStyle(0x3a3a42, 0.5); g.fillRect(22, 24, 12, 1);
+    g.fillStyle(0x3a3a42, 0.4); g.fillRect(24, 26, 8, 1);
+    g.fillStyle(0x3a3a42, 0.3); g.fillRect(18, 52, 16, 1);
+    
+    // Warning label
+    g.fillStyle(0xffcc00); g.fillRect(16, 58, 14, 6);
+    g.fillStyle(0xaa9900); g.fillRect(16, 58, 14, 1);
+    g.fillStyle(0x886600); g.fillRect(17, 59, 12, 4);
+    // Warning stripes
+    g.fillStyle(0x1a1a1a); g.fillRect(18, 60, 2, 2);
+    g.fillStyle(0x1a1a1a); g.fillRect(22, 60, 2, 2);
+    g.fillStyle(0x1a1a1a); g.fillRect(26, 60, 2, 2);
+    
+    // Handle/grab bar
+    g.fillStyle(0x4a4a52); g.fillRect(44, 50, 8, 3);
+    g.fillStyle(0x5a5a62); g.fillRect(44, 50, 8, 1);
+    
+    g.generateTexture('gen', 64, 80);
     g.clear();
 
-    // Generator light pole
-    g.fillStyle(0x4a4a52); g.fillRect(28, 0, 8, 48);
-    g.fillStyle(0x5a5a62); g.fillRect(29, 0, 3, 48);
-    // Pole base
-    g.fillStyle(0x3a3a42); g.fillRect(24, 44, 16, 6);
-    g.fillStyle(0x2a2a32); g.fillRect(24, 48, 16, 4);
-    // Rust on pole
-    g.fillStyle(0x5a3a2a, 0.4); g.fillRect(29, 20, 2, 12);
-    g.fillStyle(0x5a3a2a, 0.3); g.fillRect(30, 36, 2, 6);
-    g.generateTexture('gen_pole', 64, 56);
+    // ═══════ DETAILED GENERATOR LIGHT POLE ═══════
+    // Shadow at base
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(32, 58, 24, 6);
+    
+    // Main pole - tapered metal
+    g.fillStyle(0x3a3a42); g.fillRect(28, 0, 8, 54);
+    g.fillStyle(0x4a4a52); g.fillRect(29, 0, 3, 54);
+    g.fillStyle(0x353540); g.fillRect(32, 0, 3, 54);
+    
+    // Pole seams
+    g.fillStyle(0x2a2a32); g.fillRect(28, 0, 1, 54);
+    g.fillStyle(0x2a2a32); g.fillRect(35, 0, 1, 54);
+    
+    // Pole base - concrete/metal junction
+    g.fillStyle(0x4a4a52); g.fillRect(22, 48, 20, 8);
+    g.fillStyle(0x5a5a62); g.fillRect(24, 48, 16, 6);
+    g.fillStyle(0x4a4a52); g.fillRect(24, 48, 16, 2);
+    g.fillStyle(0x3a3a42); g.fillRect(24, 52, 16, 2);
+    
+    // Base bolts
+    g.fillStyle(0x6a6a72); g.fillCircle(26, 50, 2);
+    g.fillStyle(0x7a7a82); g.fillCircle(26, 50, 1);
+    g.fillStyle(0x6a6a72); g.fillCircle(38, 50, 2);
+    g.fillStyle(0x7a7a82); g.fillCircle(38, 50, 1);
+    g.fillStyle(0x6a6a72); g.fillCircle(26, 54, 2);
+    g.fillStyle(0x7a7a82); g.fillCircle(26, 54, 1);
+    g.fillStyle(0x6a6a72); g.fillCircle(38, 54, 2);
+    g.fillStyle(0x7a7a82); g.fillCircle(38, 54, 1);
+    
+    // Rust streaks on pole
+    g.fillStyle(0x5a3a2a, 0.5); g.fillRect(29, 16, 2, 14);
+    g.fillStyle(0x5a3a2a, 0.4); g.fillRect(30, 32, 2, 10);
+    g.fillStyle(0x5a3a2a, 0.3); g.fillRect(29, 44, 2, 6);
+    
+    // Rust drip marks
+    g.fillStyle(0x4a2a1a, 0.4); g.fillCircle(29, 32, 2);
+    g.fillStyle(0x4a2a1a, 0.3); g.fillCircle(30, 38, 1.5);
+    g.fillStyle(0x4a2a1a, 0.4); g.fillCircle(32, 20, 1.5);
+    
+    // Top mounting bracket
+    g.fillStyle(0x4a4a52); g.fillRect(24, 0, 16, 6);
+    g.fillStyle(0x5a5a62); g.fillRect(26, 1, 12, 4);
+    g.fillStyle(0x3a3a42); g.fillRect(26, 4, 12, 2);
+    
+    // Mounting screws
+    g.fillStyle(0x6a6a72); g.fillCircle(28, 3, 2);
+    g.fillStyle(0x7a7a82); g.fillCircle(28, 3, 1);
+    g.fillStyle(0x6a6a72); g.fillCircle(36, 3, 2);
+    g.fillStyle(0x7a7a82); g.fillCircle(36, 3, 1);
+    
+    g.generateTexture('gen_pole', 64, 60);
     g.clear();
 
-    // Generator light fixture
-    g.fillStyle(0x3a3a40); g.fillRect(20, 0, 24, 14);
-    g.fillStyle(0x2a2a32); g.fillRect(20, 0, 24, 3);
-    g.fillStyle(0x1a1a22); g.fillRect(22, 2, 20, 10);
-    // Light bulb socket
-    g.fillStyle(0x5a5a62); g.fillRect(28, 10, 8, 6);
-    g.fillStyle(0x4a4a52); g.fillRect(29, 11, 6, 4);
-    // The actual light (will be tinted for flicker effect)
-    g.fillStyle(0xffee88); g.fillCircle(32, 8, 6);
-    g.generateTexture('gen_light', 64, 20);
+    // ═══════ DETAILED GENERATOR LIGHT FIXTURE ═══════
+    // Light housing - industrial style
+    g.fillStyle(0x3a3a40); g.fillRect(16, 0, 32, 18);
+    g.fillStyle(0x454550); g.fillRect(18, 2, 28, 14);
+    g.fillStyle(0x404048); g.fillRect(18, 2, 28, 4);
+    
+    // Housing details
+    g.fillStyle(0x353540); g.fillRect(16, 0, 2, 18);
+    g.fillStyle(0x353540); g.fillRect(46, 0, 2, 18);
+    
+    // Mounting arm
+    g.fillStyle(0x4a4a52); g.fillRect(28, 14, 8, 6);
+    g.fillStyle(0x5a5a62); g.fillRect(29, 15, 6, 4);
+    
+    // Reflector bowl (inside)
+    g.fillStyle(0x2a2a30); g.fillEllipse(32, 10, 24, 10);
+    g.fillStyle(0x353540); g.fillEllipse(32, 10, 22, 8);
+    g.fillStyle(0x4a4a52); g.fillEllipse(32, 10, 18, 6);
+    
+    // Light bulb - glowing
+    g.fillStyle(0xffee88); g.fillCircle(32, 10, 7);
+    g.fillStyle(0xffdd66); g.fillCircle(32, 10, 5);
+    g.fillStyle(0xffeeaa); g.fillCircle(31, 9, 3);
+    g.fillStyle(0xffffcc); g.fillCircle(30, 8, 1.5);
+    
+    // Bulb base/socket
+    g.fillStyle(0x5a5a62); g.fillRect(29, 15, 6, 4);
+    g.fillStyle(0x4a4a52); g.fillRect(30, 16, 4, 3);
+    g.fillStyle(0x3a3a42); g.fillRect(31, 17, 2, 2);
+    
+    // Heat vents on fixture
+    g.fillStyle(0x2a2a30); g.fillRect(18, 14, 10, 2);
+    g.fillStyle(0x2a2a30); g.fillRect(36, 14, 10, 2);
+    
+    // Outer glow (will be tinted for flicker)
+    g.fillStyle(0xffee88, 0.4); g.fillCircle(32, 10, 12);
+    g.fillStyle(0xffee88, 0.2); g.fillCircle(32, 10, 16);
+    
+    g.generateTexture('gen_light', 64, 24);
     g.clear();
 
     // Hook - detailed DBD-style meat hook
@@ -483,55 +688,353 @@ function preload() {
     createCarriedTextures(g, 's3', 0x27ae60, 0x1a1a1a);
     createCarriedTextures(g, 's4', 0xf1c40f, 0x8B4513);
 
-    // Killer - detailed DBD-style killer
-    // Shadow
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(24, 76, 32, 10);
-    // Legs
-    g.fillStyle(0x1a1a1a); g.fillRect(12, 50, 10, 28);
-    g.fillStyle(0x2a2a2a); g.fillRect(13, 50, 3, 28);
-    g.fillStyle(0x1a1a1a); g.fillRect(28, 50, 10, 28);
-    g.fillStyle(0x2a2a2a); g.fillRect(29, 50, 3, 28);
-    // Boots
-    g.fillStyle(0x0a0a0a); g.fillRect(10, 70, 14, 8);
-    g.fillStyle(0x1a1a1a); g.fillRect(26, 70, 14, 8);
-    // Body - dark robe
-    g.fillStyle(0x1a1a1a); g.fillRect(8, 24, 34, 30);
-    g.fillStyle(0x2a2a2a); g.fillRect(8, 24, 8, 30);
-    g.fillStyle(0x8B0000); g.fillRect(14, 28, 22, 22); // Red chest
-    g.fillStyle(0x6a0000); g.fillRect(14, 28, 6, 22);
-    // Robe details
-    g.fillStyle(0x2a2a2a); g.fillRect(8, 40, 34, 4);
-    g.fillStyle(0x0f0f0f); g.fillRect(36, 24, 4, 30);
-    // Arms
-    g.fillStyle(0x1a1a1a); g.fillRect(0, 26, 10, 20);
-    g.fillStyle(0x1a1a1a); g.fillRect(40, 26, 10, 20);
-    g.fillStyle(0x3a3a3a); g.fillRect(0, 26, 3, 20);
-    g.fillStyle(0x3a3a3a); g.fillRect(40, 26, 3, 20);
-    // Clawed hands
-    g.fillStyle(0x4a4a4a); g.fillCircle(4, 48, 5);
-    g.fillStyle(0x3a3a3a); g.fillCircle(4, 48, 4);
-    g.fillStyle(0x2a2a2a); g.fillRect(1, 52, 2, 6); g.fillRect(4, 52, 2, 7); g.fillRect(7, 52, 2, 6);
-    g.fillStyle(0x4a4a4a); g.fillCircle(44, 48, 5);
-    g.fillStyle(0x3a3a3a); g.fillCircle(44, 48, 4);
-    g.fillStyle(0x2a2a2a); g.fillRect(41, 52, 2, 6); g.fillRect(44, 52, 2, 7); g.fillRect(47, 52, 2, 6);
-    // Head - mask
-    g.fillStyle(0x2a2a2a); g.fillCircle(24, 14, 14);
-    g.fillStyle(0x1a1a1a); g.fillCircle(24, 14, 12);
-    // White mask
-    g.fillStyle(0xeeeeee); g.fillRect(12, 6, 26, 16);
-    g.fillStyle(0xdddddd); g.fillRect(12, 6, 26, 3);
-    // Eye holes
-    g.fillStyle(0x000000); g.fillRect(14, 10, 8, 6);
-    g.fillStyle(0x000000); g.fillRect(28, 10, 8, 6);
-    // Glowing red eyes
-    g.fillStyle(0xff0000); g.fillCircle(18, 13, 3);
-    g.fillStyle(0xff3333); g.fillCircle(18, 12, 2);
-    g.fillStyle(0xff0000); g.fillCircle(32, 13, 3);
-    g.fillStyle(0xff3333); g.fillCircle(32, 12, 2);
-    // Mouth slit
-    g.fillStyle(0x1a1a1a); g.fillRect(20, 18, 10, 3);
-    g.generateTexture('killer', 48, 80);
+    // Killer - highly detailed DBD-style killer (The Trapper inspired)
+    // Shadow under feet
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(30, 86, 40, 12);
+    
+    // Left leg - slightly bent at knee
+    g.fillStyle(0x151515); g.fillRect(16, 54, 11, 24);
+    g.fillStyle(0x1f1f1f); g.fillRect(16, 54, 4, 24);
+    g.fillStyle(0x0a0a0a); g.fillRect(14, 70, 14, 10); // Boot
+    g.fillStyle(0x1a1a1a); g.fillRect(14, 70, 5, 10); // Boot highlight
+    
+    // Right leg - slightly bent at knee
+    g.fillStyle(0x151515); g.fillRect(33, 54, 11, 24);
+    g.fillStyle(0x1f1f1f); g.fillRect(33, 54, 4, 24);
+    g.fillStyle(0x0a0a0a); g.fillRect(32, 70, 14, 10); // Boot
+    g.fillStyle(0x1a1a1a); g.fillRect(32, 70, 5, 10); // Boot highlight
+    
+    // Torn robe bottom - jagged edges
+    g.fillStyle(0x0f0f0f); g.fillRect(8, 52, 44, 6);
+    g.fillStyle(0x0f0f0f); g.fillRect(4, 56, 6, 12);
+    g.fillStyle(0x0f0f0f); g.fillRect(14, 56, 5, 10);
+    g.fillStyle(0x0f0f0f); g.fillRect(26, 56, 4, 14);
+    g.fillStyle(0x0f0f0f); g.fillRect(36, 56, 6, 11);
+    g.fillStyle(0x0f0f0f); g.fillRect(48, 56, 8, 8);
+    
+    // Main robe body - more organic shape
+    g.fillStyle(0x1a1a1a); g.fillRect(10, 26, 40, 30);
+    g.fillStyle(0x252525); g.fillRect(10, 26, 8, 30); // Left fold
+    g.fillStyle(0x202020); g.fillRect(42, 26, 8, 30); // Right fold
+    
+    // Robe stitching details
+    g.fillStyle(0x333333); g.fillRect(10, 32, 40, 2);
+    g.fillStyle(0x333333); g.fillRect(10, 42, 40, 2);
+    g.fillStyle(0x333333); g.fillRect(10, 50, 40, 2);
+    
+    // Dark crimson chest emblem
+    g.fillStyle(0x8B0000); g.fillRect(18, 30, 24, 18);
+    g.fillStyle(0x6a0000); g.fillRect(18, 30, 6, 18); // Shadow side
+    g.fillStyle(0xaa1111); g.fillRect(36, 30, 6, 18); // Highlight side
+    g.fillStyle(0x7a0000); g.fillCircle(30, 39, 8); // Central emblem
+    
+    // Shoulder pads
+    g.fillStyle(0x1a1a1a); g.fillCircle(10, 28, 8);
+    g.fillStyle(0x252525); g.fillCircle(10, 28, 6);
+    g.fillStyle(0x1a1a1a); g.fillCircle(50, 28, 8);
+    g.fillStyle(0x252525); g.fillCircle(50, 28, 6);
+    
+    // Left arm - detailed sleeve
+    g.fillStyle(0x1a1a1a); g.fillRect(-2, 26, 12, 22);
+    g.fillStyle(0x252525); g.fillRect(-2, 26, 4, 22);
+    g.fillStyle(0x1a1a1a); g.fillRect(-4, 40, 14, 10); // Forearm
+    g.fillStyle(0x151515); g.fillRect(-4, 40, 5, 10); // Forearm shadow
+    
+    // Right arm - detailed sleeve
+    g.fillStyle(0x1a1a1a); g.fillRect(50, 26, 12, 22);
+    g.fillStyle(0x252525); g.fillRect(54, 26, 6, 22);
+    g.fillStyle(0x1a1a1a); g.fillRect(50, 40, 14, 10); // Forearm
+    g.fillStyle(0x151515); g.fillRect(59, 40, 5, 10); // Forearm shadow
+    
+    // Clawed left hand
+    g.fillStyle(0x3a3a3a); g.fillCircle(2, 52, 7);
+    g.fillStyle(0x4a4a4a); g.fillCircle(2, 51, 5);
+    g.fillStyle(0x3a3a3a); g.fillCircle(2, 51, 4);
+    // Claws
+    g.fillStyle(0x555555); g.fillRect(-2, 56, 3, 10); g.fillRect(1, 58, 3, 11); g.fillRect(4, 57, 3, 10); g.fillRect(7, 55, 3, 9);
+    g.fillStyle(0x666666); g.fillRect(-2, 56, 1, 10); g.fillRect(1, 58, 1, 11); g.fillRect(4, 57, 1, 10); g.fillRect(7, 55, 1, 9);
+    
+    // Clawed right hand
+    g.fillStyle(0x3a3a3a); g.fillCircle(58, 52, 7);
+    g.fillStyle(0x4a4a4a); g.fillCircle(58, 51, 5);
+    g.fillStyle(0x3a3a3a); g.fillCircle(58, 51, 4);
+    // Claws
+    g.fillStyle(0x555555); g.fillRect(50, 55, 3, 9); g.fillRect(53, 57, 3, 10); g.fillRect(56, 58, 3, 11); g.fillRect(59, 56, 3, 10);
+    g.fillStyle(0x666666); g.fillRect(59, 56, 1, 10); g.fillRect(56, 58, 1, 11); g.fillRect(53, 57, 1, 10); g.fillRect(50, 55, 1, 9);
+    
+    // Neck
+    g.fillStyle(0x2a2a2a); g.fillRect(22, 20, 16, 8);
+    g.fillStyle(0x333333); g.fillRect(22, 20, 5, 8);
+    
+    // Head base - skull shape
+    g.fillStyle(0x2a2a2a); g.fillCircle(30, 12, 16);
+    g.fillStyle(0x1f1f1f); g.fillCircle(30, 12, 14);
+    g.fillStyle(0x252525); g.fillCircle(30, 10, 12);
+    
+    // Skull cracks and details
+    g.fillStyle(0x151515); g.fillRect(28, 2, 2, 6);
+    g.fillStyle(0x151515); g.fillRect(24, 4, 3, 2);
+    g.fillStyle(0x151515); g.fillRect(34, 3, 2, 4);
+    
+    // Face mask - smooth white porcelain style
+    g.fillStyle(0xf0f0f0); g.fillEllipse(30, 14, 20, 16);
+    g.fillStyle(0xe8e8e8); g.fillEllipse(30, 13, 18, 14);
+    g.fillStyle(0xdddddd); g.fillEllipse(30, 12, 16, 12);
+    
+    // Mask cracks and age marks
+    g.fillStyle(0xcccccc, 0.5); g.fillRect(22, 8, 2, 4);
+    g.fillStyle(0xbbbbbb, 0.5); g.fillRect(36, 16, 3, 2);
+    g.fillStyle(0xcccccc, 0.4); g.fillCircle(40, 10, 2);
+    
+    // Eye sockets - deep dark holes
+    g.fillStyle(0x0a0a0a); g.fillEllipse(22, 11, 10, 8);
+    g.fillStyle(0x000000); g.fillEllipse(22, 11, 8, 6);
+    g.fillStyle(0x0a0a0a); g.fillEllipse(38, 11, 10, 8);
+    g.fillStyle(0x000000); g.fillEllipse(38, 11, 8, 6);
+    
+    // Eye socket shadows
+    g.fillStyle(0x050505); g.fillEllipse(22, 12, 6, 4);
+    g.fillStyle(0x050505); g.fillEllipse(38, 12, 6, 4);
+    
+    // Glowing red eyes - intense
+    g.fillStyle(0xff0000); g.fillCircle(22, 11, 4);
+    g.fillStyle(0xff2222); g.fillCircle(22, 10, 3);
+    g.fillStyle(0xff4444); g.fillCircle(21, 9, 1.5);
+    g.fillStyle(0xff0000); g.fillCircle(38, 11, 4);
+    g.fillStyle(0xff2222); g.fillCircle(38, 10, 3);
+    g.fillStyle(0xff4444); g.fillCircle(39, 9, 1.5);
+    
+    // Eye glow effect
+    g.fillStyle(0xff0000, 0.3); g.fillCircle(22, 11, 6);
+    g.fillStyle(0xff0000, 0.2); g.fillCircle(38, 11, 6);
+    
+    // Nose hole
+    g.fillStyle(0x1a1a1a); g.fillEllipse(30, 16, 3, 4);
+    g.fillStyle(0x0a0a0a); g.fillEllipse(30, 17, 2, 2);
+    
+    // Mouth - stitched shut
+    g.fillStyle(0x1a1a1a); g.fillRect(22, 20, 16, 4);
+    g.fillStyle(0x151515); g.fillRect(22, 21, 16, 2);
+    // Stitches
+    g.fillStyle(0x888888); g.fillRect(24, 19, 2, 6);
+    g.fillStyle(0x888888); g.fillRect(28, 19, 2, 6);
+    g.fillStyle(0x888888); g.fillRect(32, 19, 2, 6);
+    g.fillStyle(0x888888); g.fillRect(36, 19, 2, 6);
+    // Stitch thread
+    g.fillStyle(0x666666); g.fillRect(25, 21, 2, 1);
+    g.fillStyle(0x666666); g.fillRect(29, 21, 2, 1);
+    g.fillStyle(0x666666); g.fillRect(33, 21, 2, 1);
+    g.fillStyle(0x666666); g.fillRect(37, 21, 2, 1);
+    
+    // Hair wisps from under mask
+    g.fillStyle(0x1a1a1a); g.fillRect(14, 4, 4, 8);
+    g.fillStyle(0x1a1a1a); g.fillRect(42, 3, 5, 10);
+    g.fillStyle(0x222222); g.fillRect(16, 2, 3, 6);
+    
+    // Blood drips from mask edge
+    g.fillStyle(0x8B0000); g.fillCircle(12, 22, 2);
+    g.fillStyle(0x6a0000); g.fillCircle(12, 26, 1.5);
+    g.fillStyle(0x8B0000); g.fillCircle(48, 24, 2);
+    g.fillStyle(0x6a0000); g.fillCircle(48, 28, 1.5);
+    
+    // Rust stains on robe
+    g.fillStyle(0x3a2a1a, 0.4); g.fillCircle(20, 44, 4);
+    g.fillStyle(0x3a2a1a, 0.3); g.fillCircle(42, 48, 3);
+    
+    // Chain accessory around neck
+    g.fillStyle(0x4a4a4a); g.fillCircle(20, 24, 3);
+    g.fillStyle(0x5a5a5a); g.fillCircle(20, 24, 2);
+    g.fillStyle(0x4a4a4a); g.fillCircle(40, 24, 3);
+    g.fillStyle(0x5a5a5a); g.fillCircle(40, 24, 2);
+    g.fillStyle(0x555555); g.fillRect(23, 23, 14, 3);
+    g.fillStyle(0x666666); g.fillRect(23, 23, 14, 1);
+    
+    g.generateTexture('killer', 60, 90);
     g.clear();
+
+    // ═══════ KILLER STRIKE ANIMATION ═══════
+    // Shadow under feet - wider for impact
+    g.fillStyle(0x000000, 0.4); g.fillEllipse(30, 86, 44, 14);
+    
+    // Left leg - planted
+    g.fillStyle(0x151515); g.fillRect(16, 54, 11, 24);
+    g.fillStyle(0x1f1f1f); g.fillRect(16, 54, 4, 24);
+    g.fillStyle(0x0a0a0a); g.fillRect(14, 70, 14, 10);
+    g.fillStyle(0x1a1a1a); g.fillRect(14, 70, 5, 10);
+    
+    // Right leg - lunging forward
+    g.fillStyle(0x151515); g.fillRect(33, 56, 11, 22);
+    g.fillStyle(0x1f1f1f); g.fillRect(33, 56, 4, 22);
+    g.fillStyle(0x0a0a0a); g.fillRect(32, 70, 16, 10);
+    g.fillStyle(0x1a1a1a); g.fillRect(32, 70, 6, 10);
+    
+    // Torn robe - more dynamic
+    g.fillStyle(0x0f0f0f); g.fillRect(8, 52, 44, 6);
+    g.fillStyle(0x0f0f0f); g.fillRect(4, 56, 6, 12);
+    g.fillStyle(0x0f0f0f); g.fillRect(14, 56, 5, 10);
+    g.fillStyle(0x0f0f0f); g.fillRect(26, 56, 4, 14);
+    g.fillStyle(0x0f0f0f); g.fillRect(36, 56, 6, 11);
+    g.fillStyle(0x0f0f0f); g.fillRect(48, 56, 8, 8);
+    
+    // Main robe body - leaning forward
+    g.fillStyle(0x1a1a1a); g.fillRect(10, 26, 40, 30);
+    g.fillStyle(0x252525); g.fillRect(10, 26, 8, 30);
+    g.fillStyle(0x202020); g.fillRect(42, 26, 8, 30);
+    
+    // Robe movement effect
+    g.fillStyle(0x151515); g.fillRect(4, 30, 8, 20);
+    g.fillStyle(0x0f0f0f); g.fillRect(2, 36, 6, 14);
+    
+    // Robe stitching
+    g.fillStyle(0x333333); g.fillRect(10, 32, 40, 2);
+    g.fillStyle(0x333333); g.fillRect(10, 42, 40, 2);
+    g.fillStyle(0x333333); g.fillRect(10, 50, 40, 2);
+    
+    // Dark crimson chest emblem - glowing brighter
+    g.fillStyle(0xaa0000); g.fillRect(18, 30, 24, 18);
+    g.fillStyle(0x8B0000); g.fillRect(18, 30, 6, 18);
+    g.fillStyle(0xcc2222); g.fillRect(36, 30, 6, 18);
+    g.fillStyle(0x990000); g.fillCircle(30, 39, 8);
+    // Emblem glow
+    g.fillStyle(0xff0000, 0.3); g.fillCircle(30, 39, 12);
+    
+    // Shoulder pads - more pronounced
+    g.fillStyle(0x1a1a1a); g.fillCircle(10, 28, 9);
+    g.fillStyle(0x252525); g.fillCircle(10, 28, 7);
+    g.fillStyle(0x1a1a1a); g.fillCircle(50, 28, 9);
+    g.fillStyle(0x252525); g.fillCircle(50, 28, 7);
+    
+    // Left arm - raised and ready to strike
+    g.fillStyle(0x1a1a1a); g.fillRect(-2, 18, 12, 20);
+    g.fillStyle(0x252525); g.fillRect(-2, 18, 4, 20);
+    g.fillStyle(0x1a1a1a); g.fillRect(-12, 10, 14, 10); // Raised forearm
+    g.fillStyle(0x151515); g.fillRect(-12, 10, 5, 10);
+    
+    // Right arm - extended forward with claw
+    g.fillStyle(0x1a1a1a); g.fillRect(50, 26, 12, 22);
+    g.fillStyle(0x252525); g.fillRect(54, 26, 6, 22);
+    g.fillStyle(0x1a1a1a); g.fillRect(58, 30, 22, 10); // Extended arm
+    g.fillStyle(0x151515); g.fillRect(58, 30, 6, 10);
+    
+    // Extended claw hand
+    g.fillStyle(0x3a3a3a); g.fillCircle(82, 36, 8);
+    g.fillStyle(0x4a4a4a); g.fillCircle(82, 36, 6);
+    g.fillStyle(0x3a3a3a); g.fillCircle(82, 36, 5);
+    
+    // Extended claws - longer and more menacing
+    g.fillStyle(0x555555); g.fillRect(76, 40, 4, 14); g.fillRect(80, 42, 4, 15); g.fillRect(84, 41, 4, 14); g.fillRect(88, 38, 4, 12);
+    g.fillStyle(0x777777); g.fillRect(76, 40, 1, 14); g.fillRect(80, 42, 1, 15); g.fillRect(84, 41, 1, 14); g.fillRect(88, 38, 1, 12);
+    
+    // Motion trail effect for extended arm
+    g.fillStyle(0x2a2a2a, 0.4); g.fillRect(60, 33, 20, 4);
+    g.fillStyle(0x3a3a3a, 0.3); g.fillRect(62, 33, 16, 3);
+    g.fillStyle(0x4a4a4a, 0.2); g.fillRect(64, 33, 12, 2);
+    
+    // Impact effect - blood splatter
+    g.fillStyle(0x8B0000); g.fillCircle(92, 38, 3);
+    g.fillStyle(0x6a0000); g.fillCircle(96, 42, 2);
+    g.fillStyle(0x8B0000); g.fillCircle(94, 34, 2);
+    
+    // Left claw - raised
+    g.fillStyle(0x3a3a3a); g.fillCircle(2, 42, 7);
+    g.fillStyle(0x4a4a4a); g.fillCircle(2, 42, 5);
+    g.fillStyle(0x3a3a3a); g.fillCircle(2, 42, 4);
+    g.fillStyle(0x555555); g.fillRect(-2, 46, 3, 12); g.fillRect(1, 48, 3, 13); g.fillRect(4, 47, 3, 12); g.fillRect(7, 45, 3, 11);
+    g.fillStyle(0x666666); g.fillRect(-2, 46, 1, 12); g.fillRect(1, 48, 1, 13); g.fillRect(4, 47, 1, 12); g.fillRect(7, 45, 1, 11);
+    
+    // Neck - tense
+    g.fillStyle(0x2a2a2a); g.fillRect(22, 20, 16, 8);
+    g.fillStyle(0x333333); g.fillRect(22, 20, 5, 8);
+    
+    // Head - tilted forward aggressively
+    g.fillStyle(0x2a2a2a); g.fillCircle(30, 12, 16);
+    g.fillStyle(0x1f1f1f); g.fillCircle(30, 12, 14);
+    g.fillStyle(0x252525); g.fillCircle(30, 10, 12);
+    
+    // Skull cracks
+    g.fillStyle(0x151515); g.fillRect(28, 2, 2, 6);
+    g.fillStyle(0x151515); g.fillRect(24, 4, 3, 2);
+    g.fillStyle(0x151515); g.fillRect(34, 3, 2, 4);
+    
+    // Face mask - strained expression
+    g.fillStyle(0xf0f0f0); g.fillEllipse(30, 14, 20, 16);
+    g.fillStyle(0xe8e8e8); g.fillEllipse(30, 13, 18, 14);
+    g.fillStyle(0xdddddd); g.fillEllipse(30, 12, 16, 12);
+    
+    // Mask cracks
+    g.fillStyle(0xcccccc, 0.5); g.fillRect(22, 8, 2, 4);
+    g.fillStyle(0xbbbbbb, 0.5); g.fillRect(36, 16, 3, 2);
+    g.fillStyle(0xcccccc, 0.4); g.fillCircle(40, 10, 2);
+    
+    // Eye sockets - darker, angrier
+    g.fillStyle(0x050505); g.fillEllipse(22, 11, 10, 8);
+    g.fillStyle(0x000000); g.fillEllipse(22, 11, 8, 6);
+    g.fillStyle(0x050505); g.fillEllipse(38, 11, 10, 8);
+    g.fillStyle(0x000000); g.fillEllipse(38, 11, 8, 6);
+    
+    // Eye socket shadows
+    g.fillStyle(0x020202); g.fillEllipse(22, 12, 6, 4);
+    g.fillStyle(0x020202); g.fillEllipse(38, 12, 6, 4);
+    
+    // Glowing red eyes - brighter, angrier
+    g.fillStyle(0xff0000); g.fillCircle(22, 11, 5);
+    g.fillStyle(0xff2222); g.fillCircle(22, 10, 4);
+    g.fillStyle(0xff5555); g.fillCircle(21, 9, 2);
+    g.fillStyle(0xff0000); g.fillCircle(38, 11, 5);
+    g.fillStyle(0xff2222); g.fillCircle(38, 10, 4);
+    g.fillStyle(0xff5555); g.fillCircle(39, 9, 2);
+    
+    // Eye glow - more intense
+    g.fillStyle(0xff0000, 0.4); g.fillCircle(22, 11, 8);
+    g.fillStyle(0xff0000, 0.3); g.fillCircle(38, 11, 8);
+    g.fillStyle(0xff0000, 0.2); g.fillCircle(22, 11, 12);
+    g.fillStyle(0xff0000, 0.15); g.fillCircle(38, 11, 12);
+    
+    // Nose
+    g.fillStyle(0x1a1a1a); g.fillEllipse(30, 16, 3, 4);
+    g.fillStyle(0x0a0a0a); g.fillEllipse(30, 17, 2, 2);
+    
+    // Mouth - slightly open, more menacing
+    g.fillStyle(0x0a0a0a); g.fillRect(22, 20, 16, 5);
+    g.fillStyle(0x050505); g.fillRect(22, 21, 16, 3);
+    // Stitches - strained
+    g.fillStyle(0x999999); g.fillRect(24, 19, 2, 7);
+    g.fillStyle(0x999999); g.fillRect(28, 19, 2, 7);
+    g.fillStyle(0x999999); g.fillRect(32, 19, 2, 7);
+    g.fillStyle(0x999999); g.fillRect(36, 19, 2, 7);
+    g.fillStyle(0x777777); g.fillRect(25, 22, 2, 1);
+    g.fillStyle(0x777777); g.fillRect(29, 22, 2, 1);
+    g.fillStyle(0x777777); g.fillRect(33, 22, 2, 1);
+    g.fillStyle(0x777777); g.fillRect(37, 22, 2, 1);
+    
+    // Hair wisps - flying back
+    g.fillStyle(0x1a1a1a); g.fillRect(14, 4, 4, 8);
+    g.fillStyle(0x1a1a1a); g.fillRect(42, 3, 5, 10);
+    g.fillStyle(0x222222); g.fillRect(16, 2, 3, 6);
+    
+    // Blood drips - more intense
+    g.fillStyle(0x8B0000); g.fillCircle(12, 22, 3);
+    g.fillStyle(0x6a0000); g.fillCircle(12, 28, 2);
+    g.fillStyle(0x8B0000); g.fillCircle(48, 24, 3);
+    g.fillStyle(0x6a0000); g.fillCircle(48, 30, 2);
+    
+    // Rust stains
+    g.fillStyle(0x3a2a1a, 0.5); g.fillCircle(20, 44, 5);
+    g.fillStyle(0x3a2a1a, 0.4); g.fillCircle(42, 48, 4);
+    
+    // Chain - taut
+    g.fillStyle(0x4a4a4a); g.fillCircle(20, 24, 3);
+    g.fillStyle(0x5a5a5a); g.fillCircle(20, 24, 2);
+    g.fillStyle(0x4a4a4a); g.fillCircle(40, 24, 3);
+    g.fillStyle(0x5a5a5a); g.fillCircle(40, 24, 2);
+    g.fillStyle(0x555555); g.fillRect(23, 23, 14, 3);
+    g.fillStyle(0x666666); g.fillRect(23, 23, 14, 1);
+    
+    // Power aura effect
+    g.fillStyle(0xff0000, 0.1); g.fillCircle(30, 45, 40);
+    g.fillStyle(0xff0000, 0.08); g.fillCircle(30, 45, 50);
+    
+    g.generateTexture('killer_strike', 100, 95);
     g.clear();
 
     g.destroy();
@@ -998,7 +1501,8 @@ function makePlayer(scene, x, y, tex, isMe) {
     sp.setDepth(1000 + y);
     scene.physics.add.existing(sp);
     sp.body.setCollideWorldBounds(true);
-    sp.body.setSize(24, 28, true);
+    const hitboxSize = (tex === 'killer') ? { w: 30, h: 35 } : { w: 24, h: 28 };
+    sp.body.setSize(hitboxSize.w, hitboxSize.h, true);
 
     const glow = scene.add.graphics();
     const glowColor = (tex === 'killer') ? 0xff2222 : 0x44aaff;
@@ -1206,6 +1710,8 @@ function updatePlayer(dt) {
             if (p.carryTarget) {
                 const droppedSurvivor = p.carryTarget;
                 p.carryTarget = null;
+                isCarryingNearHook = false;
+                updateActionButton(false);
                 
                 // Reset scale and texture when dropping survivor
                 droppedSurvivor.sprite.setScale(1, 1);
@@ -1218,9 +1724,28 @@ function updatePlayer(dt) {
             
             return;
         }
-        const spd = CONFIG.KILLER_SPEED;
+        let killerSpd = CONFIG.KILLER_SPEED;
+        if (killerSlowdown > 0) {
+            killerSlowdown -= dt / 1000;
+            killerSpd = CONFIG.KILLER_SPEED * 0.4;
+        }
+        
+        // Update strike animation timer
+        if (killerStrikeTimer > 0) {
+            killerStrikeTimer -= dt / 1000;
+            if (!sp.texture.key.includes('killer_strike')) {
+                sp.setTexture('killer_strike');
+            }
+            if (killerStrikeTimer <= 0) {
+                sp.setTexture('killer');
+                if (isMultiplayer && roomCode && playerId) {
+                    setKillerStrikeAnimation(roomCode, playerId, false);
+                }
+            }
+        }
+        
         const v = normalize(inputVec);
-        sp.body.setVelocity(v.x * spd, v.y * spd);
+        sp.body.setVelocity(v.x * killerSpd, v.y * killerSpd);
         if (actionPressed) killerAction(dt);
     } else {
         if (p.state === 'hooked' || p.state === 'dead') {
@@ -1233,6 +1758,10 @@ function updatePlayer(dt) {
         if (boostTimer > 0) {
             boostTimer -= dt / 1000;
             spd = Math.min(spd * 1.25, CONFIG.PLAYER_SPEED * 1.25);
+        }
+        if (survivorSpeedBoost > 0) {
+            survivorSpeedBoost -= dt / 1000;
+            spd = Math.min(spd * 1.5, CONFIG.PLAYER_SPEED * 1.5);
         }
         const v = normalize(inputVec);
         sp.body.setVelocity(v.x * spd, v.y * spd);
@@ -1262,6 +1791,11 @@ function killerAction(dt) {
         const ct = p.carryTarget;
         ct.sprite.setPosition(sp.x, sp.y - 28);
         
+        // Sync carried survivor position in multiplayer
+        if (isMultiplayer && roomCode && ct.playerId) {
+            setCarriedPosition(roomCode, ct.playerId, sp.x, sp.y);
+        }
+        
         // Reset carried texture if not already set
         if (!ct.sprite.texture.key.includes('_carried')) {
             ct.sprite.setTexture(ct.tex + '_carried');
@@ -1269,16 +1803,26 @@ function killerAction(dt) {
         
         const hook = nearestFreeHook(sp);
         if (hook && dist(sp, hook) < CONFIG.INTERACT_DISTANCE + 20) {
-            hangSurvivor(ct, hook);
-            p.carryTarget = null;
+            isCarryingNearHook = true;
+            updateActionButton(true);
             
-            // Reset scale when dropping survivor
-            ct.sprite.setScale(1, 1);
-            
-            UI.showToast('🪝 Выживший повешен!', 2000);
+            if (actionPressed) {
+                hangSurvivor(ct, hook);
+                p.carryTarget = null;
+                isCarryingNearHook = false;
+                updateActionButton(false);
+                
+                UI.showToast('🪝 Выживший повешен!', 2000);
 
-            if (isMultiplayer && roomCode && playerId) {
-                hookSurvivor(roomCode, ct.playerId, hook.id);
+                if (isMultiplayer && roomCode && playerId) {
+                    hookSurvivor(roomCode, ct.playerId, hook.id);
+                }
+            }
+        } else {
+            isCarryingNearHook = false;
+            updateActionButton(false);
+            if (hook) {
+                moveTo(sp, hook.x, hook.y, CONFIG.KILLER_SPEED * 0.85);
             }
         }
         return;
@@ -1293,23 +1837,33 @@ function killerAction(dt) {
             t.state = 'injured';
             t.sprite.setTint(0xff8888);
             killerStun = CONFIG.STUN_TIME;
-            if (t.isMe) boostTimer = CONFIG.BOOST_TIME;
+            killerSlowdown = 2.0;
+            killerStrikeTimer = 0.4;
+            if (t.isMe) {
+                boostTimer = CONFIG.BOOST_TIME;
+                survivorSpeedBoost = 1.0;
+            }
             UI.showToast('💥 Выживший ранен!', 2000);
 
-            if (isMultiplayer && roomCode && t.playerId) {
+            if (isMultiplayer && roomCode && playerId) {
+                setKillerStrikeAnimation(roomCode, playerId, true, t.playerId);
                 setPlayerInjured(roomCode, t.playerId);
             }
         } else if (t.state === 'injured') {
             t.state = 'dying';
             t.sprite.setTint(0xff4444);
             killerStun = CONFIG.STUN_TIME;
+            killerSlowdown = 2.0;
+            killerStrikeTimer = 0.4;
             UI.showToast('⬇️ Выживший упал!', 2000);
 
-            if (isMultiplayer && roomCode && t.playerId) {
+            if (isMultiplayer && roomCode && playerId) {
+                setKillerStrikeAnimation(roomCode, playerId, true, t.playerId);
                 setPlayerDying(roomCode, t.playerId);
             }
         } else if (t.state === 'dying') {
             p.carryTarget = t;
+            t.state = 'carried';
             UI.showToast('💪 Поднимаешь выжившего...', 2000);
 
             if (isMultiplayer && roomCode && playerId) {
@@ -1376,12 +1930,19 @@ function survivorAction(dt) {
             if (dist(sp, gen) < CONFIG.INTERACT_DISTANCE) {
                 acted = true;
                 sp.body.setVelocity(0, 0);
-                if (!p.progressAction || p.progressAction.target !== gen) {
+                const isNewAction = !p.progressAction || p.progressAction.target !== gen;
+                if (isNewAction) {
                     p.progressAction = { type: 'repair', target: gen };
+                    if (isMultiplayer && roomCode && playerId) {
+                        setPlayerAnimation(roomCode, playerId, 'repair', gen.genId);
+                    }
                 }
 
                 // Start repair animation
                 p.isRepairing = true;
+                if (!sp.texture.key.includes('_repair')) {
+                    sp.setTexture(p.tex + '_repair');
+                }
 
                 gen.progress = Math.min(100, gen.progress + CONFIG.GENERATOR_REPAIR_RATE * (dt / 1000));
                 drawBar(gen.barGfx, gen.bx, gen.by, gen.progress, 0xffee00);
@@ -1403,6 +1964,7 @@ function survivorAction(dt) {
 
                     if (isMultiplayer && roomCode) {
                         updateGeneratorProgress(roomCode, gen.genId, 100, true);
+                        clearPlayerAnimation(roomCode, playerId);
                     }
                 }
                 return true;
@@ -1419,8 +1981,12 @@ function survivorAction(dt) {
             if (dist(sp, hook) < CONFIG.INTERACT_DISTANCE) {
                 acted = true;
                 sp.body.setVelocity(0, 0);
-                if (!p.progressAction || p.progressAction.target !== hook) {
+                const isNewAction = !p.progressAction || p.progressAction.target !== hook;
+                if (isNewAction) {
                     p.progressAction = { type: 'unhook', target: hook, pct: 0 };
+                    if (isMultiplayer && roomCode && playerId) {
+                        setPlayerAnimation(roomCode, playerId, 'unhook', hook.hookId);
+                    }
                 }
                 p.progressAction.pct = Math.min(100, (p.progressAction.pct || 0) + CONFIG.UNHOOK_RATE * (dt / 1000));
                 floatBars.push({ wx: hook.bx, wy: hook.by - 30, pct: p.progressAction.pct, color: 0x88aaff });
@@ -1439,6 +2005,7 @@ function survivorAction(dt) {
 
                     if (isMultiplayer && roomCode && hs.playerId) {
                         unhookSurvivor(roomCode, hs.playerId);
+                        clearPlayerAnimation(roomCode, playerId);
                     }
                 }
                 return true;
@@ -1453,8 +2020,12 @@ function survivorAction(dt) {
             if (dist(sp, ai.sprite) < CONFIG.INTERACT_DISTANCE) {
                 acted = true;
                 sp.body.setVelocity(0, 0);
-                if (!p.progressAction || p.progressAction.target !== ai) {
+                const isNewAction = !p.progressAction || p.progressAction.target !== ai;
+                if (isNewAction) {
                     p.progressAction = { type: 'heal', target: ai, pct: 0 };
+                    if (isMultiplayer && roomCode && playerId) {
+                        setPlayerAnimation(roomCode, playerId, 'heal', ai.playerId);
+                    }
                 }
                 p.progressAction.pct = Math.min(100, (p.progressAction.pct || 0) + CONFIG.HEAL_RATE * (dt / 1000));
                 floatBars.push({ wx: ai.sprite.x, wy: ai.sprite.y - 42, pct: p.progressAction.pct, color: 0x44ff88 });
@@ -1465,6 +2036,10 @@ function survivorAction(dt) {
                     ai.sprite.setTexture(ai.tex);
                     p.progressAction = null;
                     UI.showToast('💊 Вылечен!', 2000);
+                    
+                    if (isMultiplayer && roomCode && playerId) {
+                        clearPlayerAnimation(roomCode, playerId);
+                    }
                 }
                 return true;
             }
@@ -1520,6 +2095,8 @@ function cancelProgress(p) {
         p.progressAction.target.setScale(1.8);
         p.progressAction.target.setAlpha(1);
     }
+    
+    const hadAction = p.progressAction !== null;
     p.progressAction = null;
     p.isRepairing = false;
     if (p.repairSparks) {
@@ -1527,6 +2104,11 @@ function cancelProgress(p) {
     }
     if (p.tex && p.sprite) {
         p.sprite.setTexture(p.tex);
+    }
+    
+    // Sync animation cancellation in multiplayer
+    if (hadAction && isMultiplayer && roomCode && playerId) {
+        clearPlayerAnimation(roomCode, playerId);
     }
 }
 
@@ -1635,6 +2217,13 @@ function updateAI(dt) {
                 sp.body.setVelocity(0, 0);
                 if (ai.aiHitCooldown <= 0) {
                     ai.aiHitCooldown = CONFIG.STUN_TIME + 0.3;
+                    ai.slowdownTimer = 2.0;
+                    ai.strikeTimer = 0.4;
+                    
+                    // Show strike animation
+                    if (!sp.texture.key.includes('killer_strike')) {
+                        sp.setTexture('killer_strike');
+                    }
                     
                     // If the AI killer was carrying someone, drop the carried survivor when hitting a player
                     if (ai.carryTarget) {
@@ -1653,6 +2242,7 @@ function updateAI(dt) {
                         p2.state = 'injured';
                         p2.sprite.setTint(0xff8888);
                         boostTimer = CONFIG.BOOST_TIME;
+                        survivorSpeedBoost = 1.0;
                         UI.showToast('💥 Ты ранен!', 2000);
                     } else if (p2.state === 'injured') {
                         p2.state = 'dying';
@@ -1661,6 +2251,7 @@ function updateAI(dt) {
                     } else if (p2.state === 'dying') {
                         // AI killer picks up dying survivor
                         ai.carryTarget = p2;
+                        p2.state = 'carried';
                         p2.sprite.setPosition(sp.x, sp.y - 28);
                         
                         // Set carried texture
@@ -1672,8 +2263,25 @@ function updateAI(dt) {
                     }
                 }
             } else {
-                // Move toward target
-                moveTo(sp, target.sprite.x, target.sprite.y, CONFIG.KILLER_SPEED);
+                // Update AI killer slowdown
+                if (ai.slowdownTimer > 0) {
+                    ai.slowdownTimer -= dt / 1000;
+                    moveTo(sp, target.sprite.x, target.sprite.y, CONFIG.KILLER_SPEED * 0.4);
+                } else {
+                    // Move toward target
+                    moveTo(sp, target.sprite.x, target.sprite.y, CONFIG.KILLER_SPEED);
+                }
+                
+                // Update AI killer strike animation
+                if (ai.strikeTimer > 0) {
+                    ai.strikeTimer -= dt / 1000;
+                    if (!sp.texture.key.includes('killer_strike')) {
+                        sp.setTexture('killer_strike');
+                    }
+                    if (ai.strikeTimer <= 0) {
+                        sp.setTexture('killer');
+                    }
+                }
                 
                 // If AI killer is carrying someone, update position
                 if (ai.carryTarget) {
@@ -1700,13 +2308,24 @@ function updateAI(dt) {
                     // Check if reached a hook to hang the survivor
                     const hook = nearestFreeHook(sp);
                     if (hook && dist(sp, hook) < CONFIG.INTERACT_DISTANCE + 20) {
-                        hangSurvivor(ct, hook);
-                        ai.carryTarget = null;
+                        if (!ai._hookDelay) ai._hookDelay = 0;
+                        ai._hookDelay += dt / 1000;
                         
-                        // Reset scale when dropping survivor
-                        ct.sprite.setScale(1, 1);
-                        
-                        UI.showToast('🪝 Тебя повесили!', 2000);
+                        if (ai._hookDelay >= 0.5) {
+                            hangSurvivor(ct, hook);
+                            ai.carryTarget = null;
+                            ai._hookDelay = 0;
+                            
+                            // Reset scale when dropping survivor
+                            ct.sprite.setScale(1, 1);
+                            
+                            UI.showToast('🪝 Тебя повесили!', 2000);
+                        }
+                    } else {
+                        ai._hookDelay = 0;
+                        if (hook) {
+                            moveTo(sp, hook.x, hook.y, CONFIG.KILLER_SPEED * 0.85);
+                        }
                     }
                 }
             }
@@ -1838,6 +2457,8 @@ function checkWinLose() {
 function doEndGame(won, msg) {
     if (gameEnded) return;
     gameEnded = true;
+    isCarryingNearHook = false;
+    updateActionButton(false);
 
     // Reset any carried state when game ends
     if (player && player.carryTarget) {
@@ -1957,43 +2578,65 @@ function updateRemotePlayers(players) {
             rp.targetX = pdata.x;
             rp.targetY = pdata.y;
             rp.state = pdata.state || rp.state;
+            rp.animation = pdata.animation || null;
 
             if (pdata.state === 'dead') {
                 rp.sprite.setAlpha(0.3);
+                rp.sprite.setVelocity(0, 0);
+                // Reset killer strike texture
+                if (rp.sprite.texture.key.includes('killer_strike')) {
+                    rp.sprite.setTexture('killer');
+                }
             } else if (pdata.state === 'dying') {
                 // Show dying texture for remote players
                 if (!rp.sprite.texture.key.includes('_dying') && rp.tex) {
                     rp.sprite.setTexture(rp.tex + '_dying');
                 }
+                rp.sprite.setTint(0xff4444);
+                // Reset any repair animation
+                if (rp.sprite.texture.key.includes('_repair') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex + '_dying');
+                }
+            } else if (pdata.state === 'injured') {
+                rp.sprite.clearTint();
+                if (rp.sprite.texture.key.includes('_dying') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex);
+                }
+                if (rp.sprite.texture.key.includes('_repair') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex);
+                }
+                if (rp.sprite.texture.key.includes('_carried') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex);
+                    rp.sprite.setScale(1, 1);
+                }
+                rp.sprite.setTint(0xff8888);
             } else if (pdata.state === 'carrying') {
-                // Show carried texture for remote players who are being carried
+                // Killer is carrying someone - move toward hook
+                const hook = nearestFreeHookById(pdata.hookTarget);
+                if (hook) {
+                    moveTo(rp.sprite, hook.x, hook.y, CONFIG.KILLER_SPEED * 0.85);
+                    if (dist(rp.sprite, hook) < CONFIG.INTERACT_DISTANCE + 20) {
+                        rp.sprite.setVelocity(0, 0);
+                    }
+                }
+                // Find and position carried player
                 if (pdata.carryingId) {
-                    // Find the carried player and update their texture
                     const carriedPlayer = Object.values(remotePlayers).find(p => p.playerId === pdata.carryingId);
                     if (carriedPlayer) {
+                        carriedPlayer.sprite.setPosition(pdata.x, pdata.y - 28);
                         if (!carriedPlayer.sprite.texture.key.includes('_carried')) {
                             carriedPlayer.sprite.setTexture(carriedPlayer.tex + '_carried');
                         }
+                        carriedPlayer.sprite.setVelocity(0, 0);
                     }
                 }
             } else if (pdata.state === 'carried') {
                 // Show carried texture for remote players who are being carried
                 if (!rp.sprite.texture.key.includes('_carried') && rp.tex) {
                     rp.sprite.setTexture(rp.tex + '_carried');
-                    
-                    // Initialize resistance animation
-                    if (!rp._resistancePhase) {
-                        rp._resistancePhase = 0;
-                    }
+                    if (!rp._resistancePhase) rp._resistancePhase = 0;
                 }
-            } else if (pdata.state === 'alive' || pdata.state === 'injured') {
-                // Reset to normal texture when healed or recovered
-                if (rp.sprite.texture.key.includes('_dying') && rp.tex) {
-                    rp.sprite.setTexture(rp.tex);
-                } else if (rp.sprite.texture.key.includes('_carried') && rp.tex) {
-                    rp.sprite.setTexture(rp.tex);
-                    rp.sprite.setScale(1, 1); // Reset scale from resistance animation
-                }
+                rp.sprite.setVelocity(0, 0);
             } else if (pdata.state === 'hooked') {
                 // Find hook and position - no interpolation for hooked players
                 const hook = hooks.find(h => h.hookId === pdata.hookId);
@@ -2001,16 +2644,86 @@ function updateRemotePlayers(players) {
                     rp.sprite.setPosition(hook.x, hook.y - 12);
                     rp.targetX = hook.x;
                     rp.targetY = hook.y - 12;
+                    rp.sprite.setVelocity(0, 0);
+                }
+                // Reset textures
+                if (rp.sprite.texture.key.includes('_carried') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex);
+                    rp.sprite.setScale(1, 1);
+                }
+            } else if (pdata.state === 'alive' || pdata.state === 'injured') {
+                // Handle repair animation
+                if (pdata.animation === 'repair' && pdata.animationTarget !== undefined) {
+                    const gen = generators.find(g => g.genId == pdata.animationTarget);
+                    if (gen) {
+                        if (!rp.sprite.texture.key.includes('_repair') && rp.tex) {
+                            rp.sprite.setTexture(rp.tex + '_repair');
+                        }
+                        rp.sprite.setVelocity(0, 0);
+                    }
+                } else if (rp.sprite.texture.key.includes('_repair') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex);
+                }
+                
+                // Reset dying/carried textures
+                if (rp.sprite.texture.key.includes('_dying') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex);
+                } else if (rp.sprite.texture.key.includes('_carried') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex);
+                    rp.sprite.setScale(1, 1);
+                }
+                
+                // Handle killer strike animation
+                if (rp.role === 'killer') {
+                    if (pdata.isStriking) {
+                        if (!rp.sprite.texture.key.includes('killer_strike')) {
+                            rp.sprite.setTexture('killer_strike');
+                        }
+                    } else if (rp.sprite.texture.key.includes('killer_strike')) {
+                        rp.sprite.setTexture('killer');
+                    }
+                }
+                
+                // Clear tint for alive state, set tint for injured
+                if (pdata.state === 'alive') {
+                    rp.sprite.clearTint();
+                } else {
+                    rp.sprite.setTint(0xff8888);
                 }
             }
         } else {
             // Create new remote player
-            const tex = pdata.role === 'killer' ? 'killer' : 's1';
+            let tex = pdata.role === 'killer' ? 'killer' : 's1';
+            let initialState = pdata.state || 'alive';
+            
+            // Set appropriate texture based on state
+            if (initialState === 'dying' && tex !== 'killer') {
+                tex = tex + '_dying';
+            } else if (initialState === 'carried' && tex !== 'killer') {
+                tex = tex + '_carried';
+            } else if (initialState === 'repair' && pdata.animationTarget !== undefined && tex !== 'killer') {
+                tex = tex + '_repair';
+            } else if (pdata.role === 'killer' && pdata.isStriking) {
+                tex = 'killer_strike';
+            }
+            
             const sp = scene.add.sprite(pdata.x || 1200, pdata.y || 900, tex);
             sp.setDepth(1000 + (pdata.y || 900));
             scene.physics.add.existing(sp);
             sp.body.setCollideWorldBounds(true);
             sp.body.setSize(24, 28, true);
+            
+            // Set alpha for dead players
+            if (initialState === 'dead') {
+                sp.setAlpha(0.3);
+            }
+            
+            // Set tint for injured/dying players
+            if (initialState === 'injured') {
+                sp.setTint(0xff8888);
+            } else if (initialState === 'dying') {
+                sp.setTint(0xff4444);
+            }
 
             const glow = scene.add.graphics();
             glow.fillStyle(pdata.role === 'killer' ? 0xff2222 : 0x44aaff, 0.15);
@@ -2020,12 +2733,13 @@ function updateRemotePlayers(players) {
             remotePlayers[pid] = {
                 sprite: sp,
                 glowFx: glow,
-                tex: tex,
+                tex: pdata.role === 'killer' ? 'killer' : 's1',
                 role: pdata.role,
                 state: pdata.state || 'alive',
                 playerId: pid,
                 targetX: pdata.x || 1200,
-                targetY: pdata.y || 900
+                targetY: pdata.y || 900,
+                animation: pdata.animation || null
             };
         }
     });
@@ -2204,6 +2918,11 @@ function nearestFreeHook(sp) {
     return best;
 }
 
+function nearestFreeHookById(hookId) {
+    if (hookId === undefined || hookId === null) return nearestFreeHook({ x: 0, y: 0 });
+    return hooks.find(h => h.hookId === hookId) || null;
+}
+
 function hangSurvivor(p, hook) {
     hook.occupied = true;
     hook.hookedSurvivor = p;
@@ -2366,6 +3085,21 @@ function onKey(e) {
         inputVec.y /= len;
     }
     if (e.code === 'Space' || e.code === 'KeyE') actionPressed = (e.type === 'keydown');
+}
+
+function updateActionButton(forHook = false) {
+    const ab = document.getElementById('action-btn');
+    if (!ab) return;
+    
+    if (forHook) {
+        ab.textContent = '🪝';
+        ab.style.background = 'linear-gradient(135deg, #ff3333, #aa0000)';
+        ab.style.boxShadow = '0 0 16px rgba(255,50,50,0.7)';
+    } else {
+        ab.textContent = '⚡';
+        ab.style.background = 'linear-gradient(135deg,#ff6600,#cc2200)';
+        ab.style.boxShadow = '0 0 16px rgba(255,80,0,0.5)';
+    }
 }
 
 function removeControls() {
