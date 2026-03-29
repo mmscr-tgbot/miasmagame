@@ -98,6 +98,25 @@ let boostTimer = 0;
 let killerSlowdown = 0;
 let survivorSpeedBoost = 0;
 let killerStrikeTimer = 0;
+let isRoomHost = false;
+
+function seededRandom(seed) {
+    let s = seed;
+    return function() {
+        s = Math.sin(s * 9999) * 10000;
+        return s - Math.floor(s);
+    };
+}
+
+function hashCode(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash);
+}
 let killerAttackCooldown = 0;
 let actionPressed = false;
 let inputVec = { x: 0, y: 0 };
@@ -2587,8 +2606,8 @@ function create() {
     
     // Get valid landing spots (obstacles, trees, etc.)
     const landingSpots = [];
-    const obstacles = getMapObstacles();
-    obstacles.forEach(o => {
+    const mapObstacles = getMapObstacles();
+    mapObstacles.forEach(o => {
         if (o.t.includes('tree') || o.t.includes('pine') || o.t.includes('stone') || o.t.includes('brick')) {
             landingSpots.push({
                 x: o.x + o.sw / 2,
@@ -2598,14 +2617,18 @@ function create() {
         }
     });
     
-    // Create up to 10 crows
-    const numCrows = 5 + Math.floor(Math.random() * 6); // 5-10 crows
+    // Use deterministic random based on roomCode for multiplayer consistency
+    const crowSeed = roomCode ? hashCode(roomCode + '_crows') : Date.now();
+    const crowRand = seededRandom(crowSeed);
+    
+    // Create up to 10 crows - deterministic count
+    const numCrows = 5 + Math.floor(crowRand() * 6); // 5-10 crows
     for (let i = 0; i < numCrows; i++) {
-        const isFlying = Math.random() > 0.3; // 70% start flying
+        const isFlying = crowRand() > 0.3; // 70% start flying
         const crow = {
             sprite: this.add.sprite(
-                100 + Math.random() * (MAP_W - 200),
-                100 + Math.random() * (MAP_H - 200),
+                100 + crowRand() * (MAP_W - 200),
+                100 + crowRand() * (MAP_H - 200),
                 isFlying ? 'crow' : 'crow_sitting'
             ),
             state: isFlying ? 'flying' : 'sitting',
@@ -2613,21 +2636,24 @@ function create() {
             speedY: 0,
             targetX: 0,
             targetY: 0,
-            flapPhase: Math.random() * Math.PI * 2,
-            flapSpeed: 0.1 + Math.random() * 0.05,
+            flapPhase: crowRand() * Math.PI * 2,
+            flapSpeed: 0.1 + crowRand() * 0.05,
             wanderTimer: 0,
-            wanderInterval: 3 + Math.random() * 5,
+            wanderInterval: 3 + crowRand() * 5,
             sitTimer: 0,
-            maxSitTime: 5 + Math.random() * 10,
+            maxSitTime: 5 + crowRand() * 10,
             landingSpot: null,
             isAI: true,
-            heightOffset: 0
+            heightOffset: 0,
+            cawTimer: 0,
+            cawBubble: null,
+            cawText: null
         };
         crow.sprite.setDepth(200);
-        crow.sprite.setScale(0.6 + Math.random() * 0.3);
+        crow.sprite.setScale(0.6 + crowRand() * 0.3);
         
         if (!isFlying && landingSpots.length > 0) {
-            crow.landingSpot = landingSpots[Math.floor(Math.random() * landingSpots.length)];
+            crow.landingSpot = landingSpots[Math.floor(crowRand() * landingSpots.length)];
             crow.sprite.setPosition(crow.landingSpot.x, crow.landingSpot.y);
             crow.targetX = crow.landingSpot.x;
             crow.targetY = crow.landingSpot.y;
@@ -2635,6 +2661,9 @@ function create() {
         
         this.crows.push(crow);
     }
+    
+    // Caw text graphics group
+    this.cawGfx = this.add.graphics().setDepth(300);
     
     // Vignette overlay (dark edges)
     this.vignetteGfx = this.add.graphics().setDepth(99999);
@@ -3110,243 +3139,38 @@ function update(time, dt) {
     }
     
     // ═══════ Update Crows ═══════
+    // In multiplayer: only host (killer) controls crow AI, others receive updates
+    // In single player: local AI controls crows
+    // Host is always the killer in this game
+    const isHost = !isMultiplayer || isKiller;
+    
     if (scene.crows) {
-        scene.crows.forEach(crow => {
-            const cs = crow.sprite;
-            
-            // Get all player positions for avoidance
-            const playerPositions = [];
-            if (player && player.sprite) {
-                playerPositions.push({ x: player.sprite.x, y: player.sprite.y });
-            }
-            if (player && player.aiPlayers) {
-                player.aiPlayers.forEach(ai => {
-                    if (ai.sprite) playerPositions.push({ x: ai.sprite.x, y: ai.sprite.y });
-                });
-            }
-            
-            if (crow.state === 'flying') {
-                // Flapping animation
-                crow.flapPhase += crow.flapSpeed;
-                const flapOffset = Math.sin(crow.flapPhase) * 2;
-                
-                // Check if should land
-                crow.sitTimer += dt / 1000;
-                if (crow.sitTimer > crow.maxSitTime) {
-                    // Find a landing spot
-                    const obstacles = getMapObstacles();
-                    const landingCandidates = [];
-                    obstacles.forEach(o => {
-                        if (o.t.includes('tree') || o.t.includes('pine') || o.t.includes('stone') || o.t.includes('brick')) {
-                            landingCandidates.push({
-                                x: o.x + o.sw / 2,
-                                y: o.y + o.sh / 2 - 20
-                            });
-                        }
-                    });
+        if (isHost && !scene.crowsServerSync) {
+            // Host controls crows - update positions and send to server
+            updateCrowsAI(dt, scene.crows);
+            sendCrowUpdate();
+        } else if (scene.crowsServerSync) {
+            // Receive crow updates from server - interpolate positions
+            scene.crows.forEach(crow => {
+                if (crow.serverX !== undefined && crow.serverY !== undefined) {
+                    const dx = crow.serverX - crow.sprite.x;
+                    const dy = crow.serverY - crow.sprite.y;
+                    crow.sprite.x += dx * 0.1;
+                    crow.sprite.y += dy * 0.1;
                     
-                    if (landingCandidates.length > 0 && Math.random() > 0.3) {
-                        const spot = landingCandidates[Math.floor(Math.random() * landingCandidates.length)];
-                        crow.landingSpot = spot;
-                        crow.targetX = spot.x;
-                        crow.targetY = spot.y;
-                        crow.state = 'landing';
-                        crow.sitTimer = 0;
-                    } else {
-                        // Just keep flying, find new wander target
-                        crow.wanderTimer = 0;
-                    }
-                }
-                
-                // Wander behavior
-                crow.wanderTimer += dt / 1000;
-                if (crow.wanderTimer > crow.wanderInterval) {
-                    crow.wanderTimer = 0;
-                    crow.wanderInterval = 3 + Math.random() * 5;
-                    crow.targetX = 100 + Math.random() * (MAP_W - 200);
-                    crow.targetY = 100 + Math.random() * (MAP_H - 200);
-                }
-                
-                // Avoid players - NEVER fly near players
-                let avoidPlayer = false;
-                playerPositions.forEach(pp => {
-                    const distToPlayer = Math.sqrt((cs.x - pp.x) ** 2 + (cs.y - pp.y) ** 2);
-                    if (distToPlayer < 150) {
-                        avoidPlayer = true;
-                        // Fly away from player
-                        const angle = Math.atan2(cs.y - pp.y, cs.x - pp.x);
-                        crow.targetX = cs.x + Math.cos(angle) * 300;
-                        crow.targetY = cs.y + Math.sin(angle) * 200;
-                        crow.targetX = Math.max(100, Math.min(MAP_W - 100, crow.targetX));
-                        crow.targetY = Math.max(100, Math.min(MAP_H - 100, crow.targetY));
-                    }
-                });
-                
-                // Caw sound effect - occasionally caw when flying
-                if (!crow.nextCawTime) crow.nextCawTime = 0;
-                crow.nextCawTime -= dt;
-                if (crow.nextCawTime <= 0) {
-                    crow.nextCawTime = 5000 + Math.random() * 10000;
-                    // Only caw if player is somewhat close (ambient effect)
-                    let playerNearby = false;
-                    playerPositions.forEach(pp => {
-                        const d = Math.sqrt((cs.x - pp.x) ** 2 + (cs.y - pp.y) ** 2);
-                        if (d < 400) playerNearby = true;
-                    });
-                    if (playerNearby) {
-                        // Visual caw indicator
-                        if (!crow.cawBubble) {
-                            crow.cawBubble = scene.add.text(cs.x, cs.y - 20, '', {
-                                fontSize: '14px',
-                                fontFamily: 'Arial',
-                                color: '#666666'
-                            }).setDepth(250);
-                        }
-                        crow.cawBubble.setPosition(cs.x, cs.y - 25);
-                        crow.cawBubble.setAlpha(0.7);
-                        crow.cawBubble.setText('Kaw!');
-                        crow.cawTimer = 500;
-                    }
-                }
-                
-                // Fade out caw bubble
-                if (crow.cawTimer > 0) {
-                    crow.cawTimer -= dt;
-                    if (crow.cawTimer <= 0 && crow.cawBubble) {
-                        crow.cawBubble.setAlpha(0);
-                    }
-                }
-                
-                // Move towards target
-                const dx = crow.targetX - cs.x;
-                const dy = crow.targetY - cs.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist > 5) {
-                    const speed = 60 + Math.random() * 30;
-                    crow.speedX = (dx / dist) * speed;
-                    crow.speedY = (dy / dist) * speed;
+                    // Update depth based on Y position
+                    crow.sprite.setDepth(150 + crow.sprite.y);
                     
-                    cs.x += crow.speedX * (dt / 1000);
-                    cs.y += crow.speedY * (dt / 1000) + flapOffset;
+                    // Update flip
+                    crow.sprite.setFlipX(crow.flipX || false);
                     
-                    // Flip based on direction
-                    cs.setFlipX(crow.speedX < 0);
-                } else {
-                    crow.speedX *= 0.9;
-                    crow.speedY *= 0.9;
-                }
-                
-                // Keep in bounds
-                cs.x = Math.max(50, Math.min(MAP_W - 50, cs.x));
-                cs.y = Math.max(50, Math.min(MAP_H - 50, cs.y));
-                
-            } else if (crow.state === 'landing') {
-                // Move to landing spot
-                const dx = crow.targetX - cs.x;
-                const dy = crow.targetY - cs.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                crow.flapPhase += crow.flapSpeed * 2;
-                
-                if (dist > 10) {
-                    const speed = 80;
-                    cs.x += (dx / dist) * speed * (dt / 1000);
-                    cs.y += (dy / dist) * speed * (dt / 1000);
-                    cs.setTexture('crow');
-                    cs.setFlipX(dx < 0);
-                } else {
-                    // Landed
-                    crow.state = 'sitting';
-                    crow.sitTimer = 0;
-                    crow.maxSitTime = 5 + Math.random() * 15;
-                    cs.setTexture('crow_sitting');
-                }
-                
-            } else if (crow.state === 'sitting') {
-                // Sitting on object, occasionally look around
-                crow.sitTimer += dt / 1000;
-                
-                // Check if player is approaching - fly away immediately if player gets too close
-                let playerTooClose = false;
-                let killerNearby = false;
-                playerPositions.forEach(pp => {
-                    const distToPlayer = Math.sqrt((cs.x - pp.x) ** 2 + (cs.y - pp.y) ** 2);
-                    if (distToPlayer < 80) {
-                        playerTooClose = true;
-                    }
-                    // Warn if killer is nearby (but don't flee from it)
-                    if (pp.isKiller && distToPlayer < 200) {
-                        killerNearby = true;
-                    }
-                });
-                
-                // Caw when killer is nearby (warning!)
-                if (killerNearby) {
-                    if (!crow.nextCawTime) crow.nextCawTime = 0;
-                    crow.nextCawTime -= dt;
-                    if (crow.nextCawTime <= 0) {
-                        crow.nextCawTime = 2000 + Math.random() * 3000;
-                        
-                        if (!crow.cawBubble) {
-                            crow.cawBubble = scene.add.text(cs.x, cs.y - 20, '', {
-                                fontSize: '12px',
-                                fontFamily: 'Arial',
-                                color: '#888888'
-                            }).setDepth(250);
-                        }
-                        crow.cawBubble.setPosition(cs.x, cs.y - 30);
-                        crow.cawBubble.setAlpha(0.8);
-                        crow.cawBubble.setText('KAW!');
-                        crow.cawTimer = 800;
-                        
-                        // Head shake animation
-                        cs.setScale(cs.scaleX * 1.1, cs.scaleY);
-                        
-                        // Warn player if killer is nearby and player is a survivor
-                        if (player && player.role === 'survivor') {
-                            const distToMe = Math.sqrt((cs.x - player.sprite.x) ** 2 + (cs.y - player.sprite.y) ** 2);
-                            if (distToMe < 300 && !crow._warnedPlayer) {
-                                crow._warnedPlayer = true;
-                                UI.showToast('🦅 Вороны каркают... Маньяк близко!', 2000);
-                                setTimeout(() => crow._warnedPlayer = false, 5000);
-                            }
-                        }
+                    // Caw animation when flying
+                    if (crow.state === 'flying') {
+                        crow.flapPhase += crow.flapSpeed || 0.1;
                     }
                 }
-                
-                // Fade out caw bubble
-                if (crow.cawTimer > 0) {
-                    crow.cawTimer -= dt;
-                    if (crow.cawTimer <= 0 && crow.cawBubble) {
-                        crow.cawBubble.setAlpha(0);
-                        cs.setScale(cs.scaleX / 1.1, cs.scaleY);
-                    }
-                }
-                
-                if (playerTooClose || crow.sitTimer > crow.maxSitTime) {
-                    // Take off!
-                    crow.state = 'flying';
-                    crow.sitTimer = 0;
-                    crow.maxSitTime = 5 + Math.random() * 15;
-                    cs.setTexture('crow');
-                    
-                    // Fly away from current position
-                    crow.targetX = cs.x + (Math.random() - 0.5) * 400;
-                    crow.targetY = cs.y - 100 - Math.random() * 200;
-                    crow.targetX = Math.max(100, Math.min(MAP_W - 100, crow.targetX));
-                    crow.targetY = Math.max(100, Math.min(MAP_H - 100, crow.targetY));
-                    
-                    if (playerTooClose) {
-                        // Extra scared flight if player is really close
-                        crow.targetY = Math.max(100, crow.targetY - 200);
-                    }
-                }
-            }
-            
-            // Update depth based on Y position
-            cs.setDepth(150 + cs.y);
-        });
+            });
+        }
     }
     
     // Animate dust particles
@@ -3373,40 +3197,196 @@ function update(time, dt) {
             dust.fillCircle(p.x, p.y, p.size);
         });
     }
-    
-    // Animate ash/ember particles
-    if (scene.ashGfx && scene.ashParticles) {
-        const ash = scene.ashGfx;
-        ash.clear();
+}
+
+// ═══════ Update Crows AI (Host only) ═══════
+function updateCrowsAI(dt, crows) {
+    crows.forEach(crow => {
+        const cs = crow.sprite;
         
-        scene.ashParticles.forEach(p => {
-            // Update position
-            p.flicker += 0.03;
-            p.x += p.speedX;
-            p.y += p.speedY;
+        // Get all player positions for avoidance
+        const playerPositions = [];
+        if (player && player.sprite) {
+            playerPositions.push({ x: player.sprite.x, y: player.sprite.y });
+        }
+        if (player && player.aiPlayers) {
+            player.aiPlayers.forEach(ai => {
+                if (ai.sprite) playerPositions.push({ x: ai.sprite.x, y: ai.sprite.y });
+            });
+        }
+        // Add remote players in multiplayer
+        if (isMultiplayer) {
+            Object.values(remotePlayers).forEach(rp => {
+                if (rp.sprite) playerPositions.push({ x: rp.sprite.x, y: rp.sprite.y });
+            });
+        }
+        
+        if (crow.state === 'flying') {
+            // Flapping animation
+            crow.flapPhase += crow.flapSpeed;
+            const flapOffset = Math.sin(crow.flapPhase) * 2;
             
-            // Reset when off screen or too high
-            if (p.y < -50 || p.x > MAP_W + 50) {
-                p.x = Math.random() * MAP_W * 0.3 + MAP_W * 0.35;
-                p.y = MAP_H + 50;
+            // Check if should land
+            crow.sitTimer += dt / 1000;
+            if (crow.sitTimer > crow.maxSitTime) {
+                // Find a landing spot
+                const obstacles = getMapObstacles();
+                const landingCandidates = [];
+                obstacles.forEach(o => {
+                    if (o.t.includes('tree') || o.t.includes('pine') || o.t.includes('stone') || o.t.includes('brick')) {
+                        landingCandidates.push({
+                            x: o.x + o.sw / 2,
+                            y: o.y + o.sh / 2 - 20
+                        });
+                    }
+                });
+                
+                if (landingCandidates.length > 0 && Math.random() > 0.3) {
+                    const spot = landingCandidates[Math.floor(Math.random() * landingCandidates.length)];
+                    crow.landingSpot = spot;
+                    crow.targetX = spot.x;
+                    crow.targetY = spot.y;
+                    crow.state = 'landing';
+                    crow.sitTimer = 0;
+                } else {
+                    // Just keep flying, find new wander target
+                    crow.wanderTimer = 0;
+                }
             }
             
-            // Flickering glow
-            const flickerAlpha = p.alpha * (0.7 + Math.sin(p.flicker) * 0.3);
-            const flickerSize = p.size * (0.8 + Math.sin(p.flicker * 2) * 0.2);
+            // Wander behavior
+            crow.wanderTimer += dt / 1000;
+            if (crow.wanderTimer > crow.wanderInterval) {
+                crow.wanderTimer = 0;
+                crow.wanderInterval = 3 + Math.random() * 5;
+                crow.targetX = 100 + Math.random() * (MAP_W - 200);
+                crow.targetY = 100 + Math.random() * (MAP_H - 200);
+            }
             
-            // Orange glow
-            ash.fillStyle(0xff6622, flickerAlpha * 0.3);
-            ash.fillCircle(p.x, p.y, flickerSize * 3);
-            ash.fillStyle(0xff8844, flickerAlpha * 0.5);
-            ash.fillCircle(p.x, p.y, flickerSize * 1.5);
-            ash.fillStyle(0xffaa66, flickerAlpha);
-            ash.fillCircle(p.x, p.y, flickerSize);
-        });
-    }
-    
-    // Update vignette effect
-    if (scene.vignetteGfx) {
+            // Avoid players - NEVER fly near players
+            playerPositions.forEach(pp => {
+                const distToPlayer = Math.sqrt((cs.x - pp.x) ** 2 + (cs.y - pp.y) ** 2);
+                if (distToPlayer < 150) {
+                    // Fly away from player
+                    const angle = Math.atan2(cs.y - pp.y, cs.x - pp.x);
+                    crow.targetX = cs.x + Math.cos(angle) * 300;
+                    crow.targetY = cs.y + Math.sin(angle) * 200;
+                    crow.targetX = Math.max(100, Math.min(MAP_W - 100, crow.targetX));
+                    crow.targetY = Math.max(100, Math.min(MAP_H - 100, crow.targetY));
+                }
+            });
+            
+            // Move towards target
+            const dx = crow.targetX - cs.x;
+            const dy = crow.targetY - cs.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 5) {
+                const speed = 60 + Math.random() * 30;
+                crow.speedX = (dx / dist) * speed;
+                crow.speedY = (dy / dist) * speed;
+                
+                cs.x += crow.speedX * (dt / 1000);
+                cs.y += crow.speedY * (dt / 1000) + flapOffset;
+                
+                // Flip based on direction
+                crow.flipX = crow.speedX < 0;
+                cs.setFlipX(crow.flipX);
+            }
+            
+            // Keep in bounds
+            cs.x = Math.max(50, Math.min(MAP_W - 50, cs.x));
+            cs.y = Math.max(50, Math.min(MAP_H - 50, cs.y));
+            
+        } else if (crow.state === 'landing') {
+            // Move to landing spot
+            const dx = crow.targetX - cs.x;
+            const dy = crow.targetY - cs.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            crow.flapPhase += crow.flapSpeed * 2;
+            
+            if (dist > 10) {
+                const speed = 80;
+                cs.x += (dx / dist) * speed * (dt / 1000);
+                cs.y += (dy / dist) * speed * (dt / 1000);
+                cs.setTexture('crow');
+                crow.flipX = dx < 0;
+                cs.setFlipX(crow.flipX);
+            } else {
+                // Landed
+                crow.state = 'sitting';
+                crow.sitTimer = 0;
+                crow.maxSitTime = 5 + Math.random() * 15;
+                cs.setTexture('crow_sitting');
+            }
+            
+        } else if (crow.state === 'sitting') {
+            // Sitting on object
+            crow.sitTimer += dt / 1000;
+            
+            // Check if player is approaching - fly away immediately
+            let playerTooClose = false;
+            playerPositions.forEach(pp => {
+                const distToPlayer = Math.sqrt((cs.x - pp.x) ** 2 + (cs.y - pp.y) ** 2);
+                if (distToPlayer < 80) {
+                    playerTooClose = true;
+                }
+            });
+            
+            if (playerTooClose || crow.sitTimer > crow.maxSitTime) {
+                // Take off!
+                crow.state = 'flying';
+                crow.sitTimer = 0;
+                crow.maxSitTime = 5 + Math.random() * 15;
+                cs.setTexture('crow');
+                
+                // Show caw bubble when taking off
+                crow.cawTimer = 1.5;
+                
+                // Fly away from current position
+                crow.targetX = cs.x + (Math.random() - 0.5) * 400;
+                crow.targetY = cs.y - 100 - Math.random() * 200;
+                crow.targetX = Math.max(100, Math.min(MAP_W - 100, crow.targetX));
+                crow.targetY = Math.max(100, Math.min(MAP_H - 100, crow.targetY));
+            }
+        }
+        
+        // Update caw timer and display
+        crow.cawTimer -= dt / 1000;
+        if (crow.cawTimer > 0 && crow.cawTimer < 1.2) {
+            // Show caw bubble
+            if (!crow.cawBubble) {
+                crow.cawBubble = scene.add.graphics();
+            }
+            crow.cawBubble.clear();
+            const cawAlpha = crow.cawTimer > 0.3 ? 1 : crow.cawTimer / 0.3;
+            const cawY = cs.y - 25 - (1.5 - crow.cawTimer) * 10;
+            crow.cawBubble.fillStyle(0xffffff, 0.85 * cawAlpha);
+            crow.cawBubble.fillRoundedRect(cs.x - 12, cawY, 24, 14, 4);
+            crow.cawBubble.lineStyle(1, 0x000000, 0.5 * cawAlpha);
+            crow.cawBubble.strokeRoundedRect(cs.x - 12, cawY, 24, 14, 4);
+            
+            if (!crow.cawText) {
+                crow.cawText = scene.add.text(0, 0, 'KAW!', {
+                    fontFamily: 'Arial Black',
+                    fontSize: '8px',
+                    color: '#1a1a1a',
+                    fontStyle: 'bold'
+                }).setOrigin(0.5);
+            }
+            crow.cawText.setPosition(cs.x, cawY + 7);
+            crow.cawText.setAlpha(0.85 * cawAlpha);
+            crow.cawText.setDepth(301);
+        } else {
+            if (crow.cawBubble) crow.cawBubble.clear();
+            if (crow.cawText) crow.cawText.setAlpha(0);
+        }
+        
+        // Update depth based on Y position
+        cs.setDepth(150 + cs.y);
+    });
+}
         const vig = scene.vignetteGfx;
         vig.clear();
         
@@ -4823,6 +4803,9 @@ function initMultiplayerSync() {
 
     // Initialize generators in DB
     initializeGenerators(roomCode);
+    
+    // Initialize crows in DB (only if not already initialized)
+    initializeCrows(roomCode, scene.crows ? scene.crows.length : 8);
 
     // Subscribe to game session
     subscribeToGameSession(roomCode, {
@@ -4831,6 +4814,9 @@ function initMultiplayerSync() {
         },
         onGeneratorsUpdate: (gens) => {
             updateGeneratorsFromServer(gens);
+        },
+        onCrowsUpdate: (crowsData) => {
+            updateCrowsFromServer(crowsData);
         },
         onGateUpdate: (gate) => {
             if (gate.opened && !exitOpen) {
@@ -4894,6 +4880,63 @@ function sendPositionUpdate() {
     if (player.health !== undefined) {
         updatePlayerHealth(roomCode, playerId, player.health);
     }
+}
+
+// ═══════ Update crows from server (for multiplayer) ═══════
+function updateCrowsFromServer(crowsData) {
+    if (!scene || !scene.crows) return;
+    
+    // Only update if crows are controlled by server (not local)
+    if (!scene.crowsServerSync) scene.crowsServerSync = true;
+    
+    Object.keys(crowsData).forEach((crowId, index) => {
+        if (index >= scene.crows.length) return;
+        
+        const serverCrow = crowsData[crowId];
+        const localCrow = scene.crows[index];
+        
+        if (!localCrow) return;
+        
+        // Update crow state from server
+        localCrow.state = serverCrow.state;
+        localCrow.targetX = serverCrow.targetX;
+        localCrow.targetY = serverCrow.targetY;
+        localCrow.flipX = serverCrow.flipX;
+        
+        // Smoothly interpolate position from server
+        localCrow.serverX = serverCrow.x;
+        localCrow.serverY = serverCrow.y;
+        
+        // Update landing spot if sitting
+        if (serverCrow.state === 'sitting' && serverCrow.landingX && serverCrow.landingY) {
+            localCrow.landingSpot = {
+                x: serverCrow.landingX,
+                y: serverCrow.landingY
+            };
+        }
+        
+        // Update texture based on state
+        if (serverCrow.state === 'sitting' && !localCrow.sprite.texture.key.includes('sitting')) {
+            localCrow.sprite.setTexture('crow_sitting');
+        } else if (serverCrow.state === 'flying' && localCrow.sprite.texture.key.includes('sitting')) {
+            localCrow.sprite.setTexture('crow');
+        }
+    });
+}
+
+// ═══════ Send crow updates to server ═══════
+let lastCrowUpdate = 0;
+const CROW_UPDATE_INTERVAL = 100; // Update every 100ms
+
+function sendCrowUpdate() {
+    if (!isMultiplayer || !roomCode || !scene || !scene.crows) return;
+    
+    const now = Date.now();
+    if (now - lastCrowUpdate < CROW_UPDATE_INTERVAL) return;
+    lastCrowUpdate = now;
+    
+    // Send current crow state to server
+    updateCrows(roomCode, scene.crows);
 }
 
 function updateRemotePlayers(players) {

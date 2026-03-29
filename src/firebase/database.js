@@ -319,6 +319,10 @@ function subscribeToGameSession(roomCode, callbacks) {
             callbacks.onHatchUpdate(data.hatch);
         }
 
+        if (callbacks.onCrowsUpdate && data.crows) {
+            callbacks.onCrowsUpdate(data.crows);
+        }
+
         if (callbacks.onStatusUpdate) {
             callbacks.onStatusUpdate(data.status || 'waiting');
         }
@@ -342,6 +346,64 @@ function unsubscribeFromGameSession() {
         gameUnsubscribe = null;
     }
     gameSessionRef = null;
+}
+
+// ═══════ CROW SYNC (Вороны) ═══════
+
+// Инициализировать ворон в сессии (только если их ещё нет)
+function initializeCrows(roomCode, crowCount) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('crows').once('value')
+        .then((snapshot) => {
+            if (snapshot.exists()) {
+                return;
+            }
+
+            const crows = {};
+            for (let i = 0; i < crowCount; i++) {
+                crows[i] = {
+                    id: i,
+                    state: Math.random() > 0.3 ? 'flying' : 'sitting',
+                    x: 100 + Math.random() * 2400,
+                    y: 100 + Math.random() * 1600,
+                    targetX: 100 + Math.random() * 2400,
+                    targetY: 100 + Math.random() * 1600,
+                    landingX: 0,
+                    landingY: 0,
+                    flipX: false,
+                    lastUpdate: Date.now()
+                };
+            }
+
+            db.ref('gameSessions/' + roomCode).child('crows').set(crows)
+                .catch(() => {});
+        })
+        .catch(() => {});
+}
+
+// Отправить обновление ворон
+function updateCrows(roomCode, crowsData) {
+    if (!firebaseReady || !db) return;
+
+    const crows = {};
+    crowsData.forEach((crow, i) => {
+        crows[i] = {
+            id: i,
+            state: crow.state,
+            x: crow.sprite ? crow.sprite.x : crow.x,
+            y: crow.sprite ? crow.sprite.y : crow.y,
+            targetX: crow.targetX,
+            targetY: crow.targetY,
+            landingX: crow.landingSpot ? crow.landingSpot.x : 0,
+            landingY: crow.landingSpot ? crow.landingSpot.y : 0,
+            flipX: crow.sprite ? crow.sprite.flipX : false,
+            lastUpdate: Date.now()
+        };
+    });
+
+    db.ref('gameSessions/' + roomCode).child('crows').update(crows)
+        .catch(() => {});
 }
 
 // Очистить сессию
@@ -437,3 +499,5 @@ window.cleanupGameSession = cleanupGameSession;
 window.leaveGameSession = leaveGameSession;
 window.initializeGenerators = initializeGenerators;
 window.checkAllGeneratorsRepaired = checkAllGeneratorsRepaired;
+window.initializeCrows = initializeCrows;
+window.updateCrows = updateCrows;
