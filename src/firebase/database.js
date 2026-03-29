@@ -171,6 +171,16 @@ function setPlayerDead(roomCode, playerId) {
     }).catch(() => {});
 }
 
+// Игрок сбежал через люк
+function setPlayerEscaped(roomCode, playerId) {
+    if (!firebaseReady || !db) return;
+
+    db.ref('gameSessions/' + roomCode).child('players').child(playerId).update({
+        state: 'escaped',
+        escapedAt: Date.now()
+    }).catch(() => {});
+}
+
 // Ранить игрока
 function setPlayerInjured(roomCode, playerId) {
     if (!firebaseReady || !db) return;
@@ -411,6 +421,7 @@ window.closeHatch = closeHatch;
 window.hookSurvivor = hookSurvivor;
 window.unhookSurvivor = unhookSurvivor;
 window.setPlayerDead = setPlayerDead;
+window.setPlayerEscaped = setPlayerEscaped;
 window.setPlayerInjured = setPlayerInjured;
 window.setPlayerDying = setPlayerDying;
 window.setPlayerCarrying = setPlayerCarrying;

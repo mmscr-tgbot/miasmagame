@@ -99,6 +99,10 @@ let killerAttackCooldown = 0;
 let actionPressed = false;
 let inputVec = { x: 0, y: 0 };
 let isCarryingNearHook = false;
+let isNearHatch = false;
+let isEscapingHatch = false;
+let hatchEscapeProgress = 0;
+const HATCH_ESCAPE_TIME = 1.5;
 
 let floatBars = [];
 let floatBarGfx = null;
@@ -135,6 +139,9 @@ function startGame(killerMode, multiplayer = false, code = null, pid = null) {
     actionPressed = false;
     inputVec = { x: 0, y: 0 };
     isCarryingNearHook = false;
+    isNearHatch = false;
+    isEscapingHatch = false;
+    hatchEscapeProgress = 0;
     floatBars = [];
     gameEnded = false;
     remotePlayers = {};
@@ -690,351 +697,361 @@ function preload() {
     createCarriedTextures(g, 's3', 0x27ae60, 0x1a1a1a);
     createCarriedTextures(g, 's4', 0xf1c40f, 0x8B4513);
 
-    // Killer - highly detailed DBD-style killer (The Trapper inspired)
+    // ═══════ KILLER - DETAILED HUMAN WITH LEATHER JACKET ═══════
     // Shadow under feet
-    g.fillStyle(0x000000, 0.35); g.fillEllipse(30, 86, 40, 12);
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(30, 86, 38, 11);
     
-    // Left leg - slightly bent at knee
-    g.fillStyle(0x151515); g.fillRect(16, 54, 11, 24);
-    g.fillStyle(0x1f1f1f); g.fillRect(16, 54, 4, 24);
-    g.fillStyle(0x0a0a0a); g.fillRect(14, 70, 14, 10); // Boot
-    g.fillStyle(0x1a1a1a); g.fillRect(14, 70, 5, 10); // Boot highlight
+    // Boots - detailed military style
+    g.fillStyle(0x0a0a0a); g.fillRect(14, 70, 13, 10);
+    g.fillStyle(0x151515); g.fillRect(14, 70, 4, 10);
+    g.fillStyle(0x0d0d0d); g.fillRect(12, 78, 17, 4); // Boot sole
+    g.fillStyle(0x1a1a1a); g.fillRect(12, 78, 5, 4); // Boot sole highlight
     
-    // Right leg - slightly bent at knee
-    g.fillStyle(0x151515); g.fillRect(33, 54, 11, 24);
-    g.fillStyle(0x1f1f1f); g.fillRect(33, 54, 4, 24);
-    g.fillStyle(0x0a0a0a); g.fillRect(32, 70, 14, 10); // Boot
-    g.fillStyle(0x1a1a1a); g.fillRect(32, 70, 5, 10); // Boot highlight
+    g.fillStyle(0x0a0a0a); g.fillRect(33, 70, 13, 10);
+    g.fillStyle(0x151515); g.fillRect(33, 70, 4, 10);
+    g.fillStyle(0x0d0d0d); g.fillRect(31, 78, 17, 4);
+    g.fillStyle(0x1a1a1a); g.fillRect(31, 78, 5, 4);
     
-    // Torn robe bottom - jagged edges
-    g.fillStyle(0x0f0f0f); g.fillRect(8, 52, 44, 6);
-    g.fillStyle(0x0f0f0f); g.fillRect(4, 56, 6, 12);
-    g.fillStyle(0x0f0f0f); g.fillRect(14, 56, 5, 10);
-    g.fillStyle(0x0f0f0f); g.fillRect(26, 56, 4, 14);
-    g.fillStyle(0x0f0f0f); g.fillRect(36, 56, 6, 11);
-    g.fillStyle(0x0f0f0f); g.fillRect(48, 56, 8, 8);
+    // Pants - dark tactical pants
+    g.fillStyle(0x1a1a1a); g.fillRect(16, 54, 10, 26);
+    g.fillStyle(0x222222); g.fillRect(16, 54, 3, 26); // Pant crease
+    g.fillStyle(0x1a1a1a); g.fillRect(34, 54, 10, 26);
+    g.fillStyle(0x222222); g.fillRect(34, 54, 3, 26);
     
-    // Main robe body - more organic shape
-    g.fillStyle(0x1a1a1a); g.fillRect(10, 26, 40, 30);
-    g.fillStyle(0x252525); g.fillRect(10, 26, 8, 30); // Left fold
-    g.fillStyle(0x202020); g.fillRect(42, 26, 8, 30); // Right fold
+    // Belt with buckle
+    g.fillStyle(0x2a2a2a); g.fillRect(14, 52, 32, 4);
+    g.fillStyle(0x3a3a3a); g.fillRect(26, 51, 8, 6); // Buckle
+    g.fillStyle(0x4a4a4a); g.fillRect(28, 52, 4, 4); // Buckle center
     
-    // Robe stitching details
-    g.fillStyle(0x333333); g.fillRect(10, 32, 40, 2);
-    g.fillStyle(0x333333); g.fillRect(10, 42, 40, 2);
-    g.fillStyle(0x333333); g.fillRect(10, 50, 40, 2);
+    // ═══════ BLACK LEATHER JACKET ═══════
+    // Main jacket body - leather texture
+    g.fillStyle(0x1a1a1a); g.fillRect(10, 26, 40, 28);
+    g.fillStyle(0x222222); g.fillRect(10, 26, 6, 28); // Left lapel shadow
+    g.fillStyle(0x252525); g.fillRect(44, 26, 6, 28); // Right lapel shadow
     
-    // Dark crimson chest emblem
-    g.fillStyle(0x8B0000); g.fillRect(18, 30, 24, 18);
-    g.fillStyle(0x6a0000); g.fillRect(18, 30, 6, 18); // Shadow side
-    g.fillStyle(0xaa1111); g.fillRect(36, 30, 6, 18); // Highlight side
-    g.fillStyle(0x7a0000); g.fillCircle(30, 39, 8); // Central emblem
+    // Jacket collar - leather lapels
+    g.fillStyle(0x2a2a2a); g.fillRect(8, 20, 12, 10);
+    g.fillStyle(0x1a1a1a); g.fillRect(40, 20, 12, 10);
+    g.fillStyle(0x333333); g.fillRect(8, 20, 4, 10); // Collar highlight
+    g.fillStyle(0x333333); g.fillRect(48, 20, 4, 10);
     
-    // Shoulder pads
-    g.fillStyle(0x1a1a1a); g.fillCircle(10, 28, 8);
-    g.fillStyle(0x252525); g.fillCircle(10, 28, 6);
-    g.fillStyle(0x1a1a1a); g.fillCircle(50, 28, 8);
-    g.fillStyle(0x252525); g.fillCircle(50, 28, 6);
+    // Jacket zipper - center
+    g.fillStyle(0x4a4a4a); g.fillRect(28, 26, 4, 26);
+    g.fillStyle(0x5a5a5a); g.fillRect(29, 26, 2, 26);
+    g.fillStyle(0x3a3a3a); g.fillCircle(30, 50, 2); // Zipper pull
     
-    // Left arm - detailed sleeve
-    g.fillStyle(0x1a1a1a); g.fillRect(-2, 26, 12, 22);
-    g.fillStyle(0x252525); g.fillRect(-2, 26, 4, 22);
+    // Jacket pockets with zippers
+    g.fillStyle(0x1a1a1a); g.fillRect(12, 40, 10, 8);
+    g.fillStyle(0x151515); g.fillRect(12, 40, 10, 2); // Pocket flap
+    g.fillStyle(0x4a4a4a); g.fillRect(14, 46, 6, 1); // Pocket zipper
+    
+    g.fillStyle(0x1a1a1a); g.fillRect(38, 40, 10, 8);
+    g.fillStyle(0x151515); g.fillRect(38, 40, 10, 2);
+    g.fillStyle(0x4a4a4a); g.fillRect(40, 46, 6, 1);
+    
+    // Leather jacket stitching details
+    g.fillStyle(0x333333); g.fillRect(10, 28, 40, 1);
+    g.fillStyle(0x333333); g.fillRect(10, 38, 40, 1);
+    g.fillStyle(0x333333); g.fillRect(10, 48, 40, 1);
+    
+    // Shoulder epaulettes
+    g.fillStyle(0x2a2a2a); g.fillRect(8, 24, 10, 4);
+    g.fillStyle(0x333333); g.fillRect(8, 24, 10, 2); // Epaulette highlight
+    g.fillStyle(0x2a2a2a); g.fillRect(42, 24, 10, 4);
+    g.fillStyle(0x333333); g.fillRect(42, 24, 10, 2);
+    
+    // Shoulder straps
+    g.fillStyle(0x1a1a1a); g.fillCircle(10, 26, 4);
+    g.fillStyle(0x252525); g.fillCircle(10, 26, 3);
+    g.fillStyle(0x1a1a1a); g.fillCircle(50, 26, 4);
+    g.fillStyle(0x252525); g.fillCircle(50, 26, 3);
+    
+    // ═══════ ARMS WITH LEATHER SLEEVES ═══════
+    // Left arm - leather sleeve
+    g.fillStyle(0x1a1a1a); g.fillRect(-2, 26, 12, 20);
+    g.fillStyle(0x252525); g.fillRect(-2, 26, 4, 20); // Sleeve highlight
     g.fillStyle(0x1a1a1a); g.fillRect(-4, 40, 14, 10); // Forearm
-    g.fillStyle(0x151515); g.fillRect(-4, 40, 5, 10); // Forearm shadow
+    g.fillStyle(0x151515); g.fillRect(-4, 40, 4, 10); // Forearm shadow
     
-    // Right arm - detailed sleeve
-    g.fillStyle(0x1a1a1a); g.fillRect(50, 26, 12, 22);
-    g.fillStyle(0x252525); g.fillRect(54, 26, 6, 22);
-    g.fillStyle(0x1a1a1a); g.fillRect(50, 40, 14, 10); // Forearm
-    g.fillStyle(0x151515); g.fillRect(59, 40, 5, 10); // Forearm shadow
+    // Left sleeve zipper detail
+    g.fillStyle(0x3a3a3a); g.fillRect(6, 30, 1, 16);
     
-    // Clawed left hand
-    g.fillStyle(0x3a3a3a); g.fillCircle(2, 52, 7);
-    g.fillStyle(0x4a4a4a); g.fillCircle(2, 51, 5);
-    g.fillStyle(0x3a3a3a); g.fillCircle(2, 51, 4);
-    // Claws
-    g.fillStyle(0x555555); g.fillRect(-2, 56, 3, 10); g.fillRect(1, 58, 3, 11); g.fillRect(4, 57, 3, 10); g.fillRect(7, 55, 3, 9);
-    g.fillStyle(0x666666); g.fillRect(-2, 56, 1, 10); g.fillRect(1, 58, 1, 11); g.fillRect(4, 57, 1, 10); g.fillRect(7, 55, 1, 9);
+    // Left hand - gloved
+    g.fillStyle(0x0a0a0a); g.fillCircle(2, 52, 6);
+    g.fillStyle(0x151515); g.fillCircle(2, 51, 4);
     
-    // Clawed right hand
-    g.fillStyle(0x3a3a3a); g.fillCircle(58, 52, 7);
-    g.fillStyle(0x4a4a4a); g.fillCircle(58, 51, 5);
-    g.fillStyle(0x3a3a3a); g.fillCircle(58, 51, 4);
-    // Claws
-    g.fillStyle(0x555555); g.fillRect(50, 55, 3, 9); g.fillRect(53, 57, 3, 10); g.fillRect(56, 58, 3, 11); g.fillRect(59, 56, 3, 10);
-    g.fillStyle(0x666666); g.fillRect(59, 56, 1, 10); g.fillRect(56, 58, 1, 11); g.fillRect(53, 57, 1, 10); g.fillRect(50, 55, 1, 9);
+    // Left gloved fingers
+    g.fillStyle(0x0a0a0a); g.fillRect(-2, 54, 3, 8); g.fillRect(1, 55, 3, 9); g.fillRect(4, 54, 3, 8); g.fillRect(7, 53, 3, 7);
+    g.fillStyle(0x1a1a1a); g.fillRect(-2, 54, 1, 8); g.fillRect(1, 55, 1, 9); g.fillRect(4, 54, 1, 8); g.fillRect(7, 53, 1, 7);
     
-    // Neck
-    g.fillStyle(0x2a2a2a); g.fillRect(22, 20, 16, 8);
-    g.fillStyle(0x333333); g.fillRect(22, 20, 5, 8);
+    // Right arm - leather sleeve
+    g.fillStyle(0x1a1a1a); g.fillRect(50, 26, 12, 20);
+    g.fillStyle(0x252525); g.fillRect(54, 26, 4, 20);
+    g.fillStyle(0x1a1a1a); g.fillRect(50, 40, 14, 10);
+    g.fillStyle(0x151515); g.fillRect(59, 40, 5, 10);
     
-    // Head base - skull shape
-    g.fillStyle(0x2a2a2a); g.fillCircle(30, 12, 16);
-    g.fillStyle(0x1f1f1f); g.fillCircle(30, 12, 14);
-    g.fillStyle(0x252525); g.fillCircle(30, 10, 12);
+    // Right sleeve zipper
+    g.fillStyle(0x3a3a3a); g.fillRect(53, 30, 1, 16);
     
-    // Skull cracks and details
-    g.fillStyle(0x151515); g.fillRect(28, 2, 2, 6);
-    g.fillStyle(0x151515); g.fillRect(24, 4, 3, 2);
-    g.fillStyle(0x151515); g.fillRect(34, 3, 2, 4);
+    // Right hand - gloved
+    g.fillStyle(0x0a0a0a); g.fillCircle(58, 52, 6);
+    g.fillStyle(0x151515); g.fillCircle(58, 51, 4);
     
-    // Face mask - smooth white porcelain style
-    g.fillStyle(0xf0f0f0); g.fillEllipse(30, 14, 20, 16);
-    g.fillStyle(0xe8e8e8); g.fillEllipse(30, 13, 18, 14);
-    g.fillStyle(0xdddddd); g.fillEllipse(30, 12, 16, 12);
+    // Right gloved fingers
+    g.fillStyle(0x0a0a0a); g.fillRect(50, 53, 3, 7); g.fillRect(53, 54, 3, 8); g.fillRect(56, 55, 3, 9); g.fillRect(59, 54, 3, 8);
+    g.fillStyle(0x1a1a1a); g.fillRect(50, 53, 1, 7); g.fillRect(53, 54, 1, 8); g.fillRect(56, 55, 1, 9); g.fillRect(59, 54, 1, 8);
     
-    // Mask cracks and age marks
-    g.fillStyle(0xcccccc, 0.5); g.fillRect(22, 8, 2, 4);
-    g.fillStyle(0xbbbbbb, 0.5); g.fillRect(36, 16, 3, 2);
-    g.fillStyle(0xcccccc, 0.4); g.fillCircle(40, 10, 2);
+    // Neck - visible above collar
+    g.fillStyle(0x3d2817); g.fillRect(24, 20, 12, 6);
+    g.fillStyle(0x4d3827); g.fillRect(24, 20, 4, 6);
     
-    // Eye sockets - deep dark holes
-    g.fillStyle(0x0a0a0a); g.fillEllipse(22, 11, 10, 8);
-    g.fillStyle(0x000000); g.fillEllipse(22, 11, 8, 6);
-    g.fillStyle(0x0a0a0a); g.fillEllipse(38, 11, 10, 8);
-    g.fillStyle(0x000000); g.fillEllipse(38, 11, 8, 6);
+    // ═══════ HEAD WITH SUNGLASSES ═══════
+    // Head shape - more natural, slightly angular jaw
+    g.fillStyle(0x3d2817); g.fillCircle(30, 10, 14);
+    g.fillStyle(0x4d3827); g.fillCircle(30, 8, 12);
+    g.fillStyle(0x5d4837); g.fillCircle(30, 6, 10);
     
-    // Eye socket shadows
-    g.fillStyle(0x050505); g.fillEllipse(22, 12, 6, 4);
-    g.fillStyle(0x050505); g.fillEllipse(38, 12, 6, 4);
+    // Ears
+    g.fillStyle(0x3d2817); g.fillCircle(16, 10, 4);
+    g.fillStyle(0x4d3827); g.fillCircle(16, 10, 3);
+    g.fillStyle(0x3d2817); g.fillCircle(44, 10, 4);
+    g.fillStyle(0x4d3827); g.fillCircle(44, 10, 3);
     
-    // Glowing red eyes - intense
-    g.fillStyle(0xff0000); g.fillCircle(22, 11, 4);
-    g.fillStyle(0xff2222); g.fillCircle(22, 10, 3);
-    g.fillStyle(0xff4444); g.fillCircle(21, 9, 1.5);
-    g.fillStyle(0xff0000); g.fillCircle(38, 11, 4);
-    g.fillStyle(0xff2222); g.fillCircle(38, 10, 3);
-    g.fillStyle(0xff4444); g.fillCircle(39, 9, 1.5);
+    // Hair - short dark hair
+    g.fillStyle(0x1a1a1a); g.fillCircle(30, 4, 12);
+    g.fillStyle(0x222222); g.fillCircle(30, 2, 10);
+    g.fillStyle(0x2a2a2a); g.fillCircle(28, 0, 6);
+    g.fillStyle(0x1a1a1a); g.fillRect(18, 2, 24, 6);
     
-    // Eye glow effect
-    g.fillStyle(0xff0000, 0.3); g.fillCircle(22, 11, 6);
-    g.fillStyle(0xff0000, 0.2); g.fillCircle(38, 11, 6);
+    // Hair texture lines
+    g.fillStyle(0x333333); g.fillRect(22, 2, 1, 4);
+    g.fillStyle(0x333333); g.fillRect(28, 1, 1, 5);
+    g.fillStyle(0x333333); g.fillRect(34, 1, 1, 5);
+    g.fillStyle(0x333333); g.fillRect(40, 2, 1, 4);
     
-    // Nose hole
-    g.fillStyle(0x1a1a1a); g.fillEllipse(30, 16, 3, 4);
-    g.fillStyle(0x0a0a0a); g.fillEllipse(30, 17, 2, 2);
+    // Sideburns
+    g.fillStyle(0x1a1a1a); g.fillRect(17, 8, 3, 8);
+    g.fillStyle(0x1a1a1a); g.fillRect(40, 8, 3, 8);
     
-    // Mouth - stitched shut
-    g.fillStyle(0x1a1a1a); g.fillRect(22, 20, 16, 4);
-    g.fillStyle(0x151515); g.fillRect(22, 21, 16, 2);
-    // Stitches
-    g.fillStyle(0x888888); g.fillRect(24, 19, 2, 6);
-    g.fillStyle(0x888888); g.fillRect(28, 19, 2, 6);
-    g.fillStyle(0x888888); g.fillRect(32, 19, 2, 6);
-    g.fillStyle(0x888888); g.fillRect(36, 19, 2, 6);
-    // Stitch thread
-    g.fillStyle(0x666666); g.fillRect(25, 21, 2, 1);
-    g.fillStyle(0x666666); g.fillRect(29, 21, 2, 1);
-    g.fillStyle(0x666666); g.fillRect(33, 21, 2, 1);
-    g.fillStyle(0x666666); g.fillRect(37, 21, 2, 1);
+    // ═══════ BLACK SUNGLASSES ═══════
+    // Sunglasses frame - black plastic/metal
+    g.fillStyle(0x0a0a0a); g.fillRect(16, 6, 28, 8);
+    g.fillStyle(0x151515); g.fillRect(16, 6, 28, 2); // Frame top highlight
     
-    // Hair wisps from under mask
-    g.fillStyle(0x1a1a1a); g.fillRect(14, 4, 4, 8);
-    g.fillStyle(0x1a1a1a); g.fillRect(42, 3, 5, 10);
-    g.fillStyle(0x222222); g.fillRect(16, 2, 3, 6);
+    // Left lens
+    g.fillStyle(0x050505); g.fillRect(17, 7, 11, 6);
+    g.fillStyle(0x080808); g.fillRect(17, 7, 11, 2); // Lens reflection
     
-    // Blood drips from mask edge
-    g.fillStyle(0x8B0000); g.fillCircle(12, 22, 2);
-    g.fillStyle(0x6a0000); g.fillCircle(12, 26, 1.5);
-    g.fillStyle(0x8B0000); g.fillCircle(48, 24, 2);
-    g.fillStyle(0x6a0000); g.fillCircle(48, 28, 1.5);
+    // Right lens
+    g.fillStyle(0x050505); g.fillRect(32, 7, 11, 6);
+    g.fillStyle(0x080808); g.fillRect(32, 7, 11, 2);
     
-    // Rust stains on robe
-    g.fillStyle(0x3a2a1a, 0.4); g.fillCircle(20, 44, 4);
-    g.fillStyle(0x3a2a1a, 0.3); g.fillCircle(42, 48, 3);
+    // Bridge of sunglasses
+    g.fillStyle(0x0a0a0a); g.fillRect(28, 9, 4, 3);
+    g.fillStyle(0x151515); g.fillRect(28, 9, 2, 2);
     
-    // Chain accessory around neck
-    g.fillStyle(0x4a4a4a); g.fillCircle(20, 24, 3);
-    g.fillStyle(0x5a5a5a); g.fillCircle(20, 24, 2);
-    g.fillStyle(0x4a4a4a); g.fillCircle(40, 24, 3);
-    g.fillStyle(0x5a5a5a); g.fillCircle(40, 24, 2);
-    g.fillStyle(0x555555); g.fillRect(23, 23, 14, 3);
-    g.fillStyle(0x666666); g.fillRect(23, 23, 14, 1);
+    // Temple arms of glasses
+    g.fillStyle(0x0a0a0a); g.fillRect(14, 8, 3, 2);
+    g.fillStyle(0x0a0a0a); g.fillRect(43, 8, 3, 2);
+    
+    // Sunglasses shine/reflection
+    g.fillStyle(0x2a2a2a, 0.3); g.fillRect(18, 7, 4, 1);
+    g.fillStyle(0x2a2a2a, 0.3); g.fillRect(33, 7, 4, 1);
+    
+    // Nose - natural shape
+    g.fillStyle(0x4d3827); g.fillEllipse(30, 16, 4, 5);
+    g.fillStyle(0x3d2817); g.fillEllipse(30, 17, 2, 2);
+    
+    // Mouth - neutral expression
+    g.fillStyle(0x3d2817); g.fillRect(24, 20, 12, 2);
+    g.fillStyle(0x4d3827); g.fillRect(24, 20, 12, 1); // Upper lip highlight
+    g.fillStyle(0x2d1807); g.fillRect(25, 21, 10, 1); // Lower lip shadow
+    
+    // Subtle stubble/beard shadow
+    g.fillStyle(0x2a1a0a, 0.3); g.fillRect(20, 16, 20, 8);
+    
+    // Neck shadow
+    g.fillStyle(0x2d1807, 0.3); g.fillRect(24, 24, 12, 3);
     
     g.generateTexture('killer', 60, 90);
     g.clear();
 
     // ═══════ KILLER STRIKE ANIMATION ═══════
     // Shadow under feet - wider for impact
-    g.fillStyle(0x000000, 0.4); g.fillEllipse(30, 86, 44, 14);
+    g.fillStyle(0x000000, 0.4); g.fillEllipse(32, 86, 42, 13);
     
-    // Left leg - planted
-    g.fillStyle(0x151515); g.fillRect(16, 54, 11, 24);
-    g.fillStyle(0x1f1f1f); g.fillRect(16, 54, 4, 24);
-    g.fillStyle(0x0a0a0a); g.fillRect(14, 70, 14, 10);
-    g.fillStyle(0x1a1a1a); g.fillRect(14, 70, 5, 10);
+    // Boots - planted stance
+    g.fillStyle(0x0a0a0a); g.fillRect(16, 70, 12, 10);
+    g.fillStyle(0x151515); g.fillRect(16, 70, 4, 10);
+    g.fillStyle(0x0d0d0d); g.fillRect(14, 78, 16, 4);
+    g.fillStyle(0x1a1a1a); g.fillRect(14, 78, 4, 4);
     
-    // Right leg - lunging forward
-    g.fillStyle(0x151515); g.fillRect(33, 56, 11, 22);
-    g.fillStyle(0x1f1f1f); g.fillRect(33, 56, 4, 22);
-    g.fillStyle(0x0a0a0a); g.fillRect(32, 70, 16, 10);
-    g.fillStyle(0x1a1a1a); g.fillRect(32, 70, 6, 10);
+    g.fillStyle(0x0a0a0a); g.fillRect(32, 70, 12, 10);
+    g.fillStyle(0x151515); g.fillRect(32, 70, 4, 10);
+    g.fillStyle(0x0d0d0d); g.fillRect(30, 78, 16, 4);
+    g.fillStyle(0x1a1a1a); g.fillRect(30, 78, 4, 4);
     
-    // Torn robe - more dynamic
-    g.fillStyle(0x0f0f0f); g.fillRect(8, 52, 44, 6);
-    g.fillStyle(0x0f0f0f); g.fillRect(4, 56, 6, 12);
-    g.fillStyle(0x0f0f0f); g.fillRect(14, 56, 5, 10);
-    g.fillStyle(0x0f0f0f); g.fillRect(26, 56, 4, 14);
-    g.fillStyle(0x0f0f0f); g.fillRect(36, 56, 6, 11);
-    g.fillStyle(0x0f0f0f); g.fillRect(48, 56, 8, 8);
+    // Pants - wider stance
+    g.fillStyle(0x1a1a1a); g.fillRect(17, 54, 10, 26);
+    g.fillStyle(0x222222); g.fillRect(17, 54, 3, 26);
+    g.fillStyle(0x1a1a1a); g.fillRect(33, 54, 10, 26);
+    g.fillStyle(0x222222); g.fillRect(33, 54, 3, 26);
     
-    // Main robe body - leaning forward
-    g.fillStyle(0x1a1a1a); g.fillRect(10, 26, 40, 30);
-    g.fillStyle(0x252525); g.fillRect(10, 26, 8, 30);
-    g.fillStyle(0x202020); g.fillRect(42, 26, 8, 30);
+    // Belt
+    g.fillStyle(0x2a2a2a); g.fillRect(15, 52, 30, 4);
+    g.fillStyle(0x3a3a3a); g.fillRect(27, 51, 6, 6);
     
-    // Robe movement effect
-    g.fillStyle(0x151515); g.fillRect(4, 30, 8, 20);
-    g.fillStyle(0x0f0f0f); g.fillRect(2, 36, 6, 14);
+    // ═══════ LEATHER JACKET - STRIKE POSE ═══════
+    // Jacket body - leaning forward
+    g.fillStyle(0x1a1a1a); g.fillRect(12, 26, 36, 28);
+    g.fillStyle(0x222222); g.fillRect(12, 26, 6, 28);
+    g.fillStyle(0x252525); g.fillRect(42, 26, 6, 28);
     
-    // Robe stitching
-    g.fillStyle(0x333333); g.fillRect(10, 32, 40, 2);
-    g.fillStyle(0x333333); g.fillRect(10, 42, 40, 2);
-    g.fillStyle(0x333333); g.fillRect(10, 50, 40, 2);
+    // Collar - flared back
+    g.fillStyle(0x2a2a2a); g.fillRect(10, 20, 10, 10);
+    g.fillStyle(0x1a1a1a); g.fillRect(40, 20, 10, 10);
+    g.fillStyle(0x333333); g.fillRect(10, 20, 3, 10);
+    g.fillStyle(0x333333); g.fillRect(47, 20, 3, 10);
     
-    // Dark crimson chest emblem - glowing brighter
-    g.fillStyle(0xaa0000); g.fillRect(18, 30, 24, 18);
-    g.fillStyle(0x8B0000); g.fillRect(18, 30, 6, 18);
-    g.fillStyle(0xcc2222); g.fillRect(36, 30, 6, 18);
-    g.fillStyle(0x990000); g.fillCircle(30, 39, 8);
-    // Emblem glow
-    g.fillStyle(0xff0000, 0.3); g.fillCircle(30, 39, 12);
+    // Jacket details
+    g.fillStyle(0x1a1a1a); g.fillRect(14, 40, 8, 8);
+    g.fillStyle(0x151515); g.fillRect(14, 40, 8, 2);
+    g.fillStyle(0x4a4a4a); g.fillRect(16, 46, 4, 1);
     
-    // Shoulder pads - more pronounced
-    g.fillStyle(0x1a1a1a); g.fillCircle(10, 28, 9);
-    g.fillStyle(0x252525); g.fillCircle(10, 28, 7);
-    g.fillStyle(0x1a1a1a); g.fillCircle(50, 28, 9);
-    g.fillStyle(0x252525); g.fillCircle(50, 28, 7);
+    g.fillStyle(0x1a1a1a); g.fillRect(38, 40, 8, 8);
+    g.fillStyle(0x151515); g.fillRect(38, 40, 8, 2);
+    g.fillStyle(0x4a4a4a); g.fillRect(40, 46, 4, 1);
     
-    // Left arm - raised and ready to strike
-    g.fillStyle(0x1a1a1a); g.fillRect(-2, 18, 12, 20);
-    g.fillStyle(0x252525); g.fillRect(-2, 18, 4, 20);
-    g.fillStyle(0x1a1a1a); g.fillRect(-12, 10, 14, 10); // Raised forearm
-    g.fillStyle(0x151515); g.fillRect(-12, 10, 5, 10);
+    // Zipper
+    g.fillStyle(0x4a4a4a); g.fillRect(30, 26, 4, 26);
+    g.fillStyle(0x5a5a5a); g.fillRect(31, 26, 2, 26);
     
-    // Right arm - extended forward with claw
-    g.fillStyle(0x1a1a1a); g.fillRect(50, 26, 12, 22);
-    g.fillStyle(0x252525); g.fillRect(54, 26, 6, 22);
-    g.fillStyle(0x1a1a1a); g.fillRect(58, 30, 22, 10); // Extended arm
-    g.fillStyle(0x151515); g.fillRect(58, 30, 6, 10);
+    // Stitching
+    g.fillStyle(0x333333); g.fillRect(12, 28, 36, 1);
+    g.fillStyle(0x333333); g.fillRect(12, 38, 36, 1);
+    g.fillStyle(0x333333); g.fillRect(12, 48, 36, 1);
     
-    // Extended claw hand
-    g.fillStyle(0x3a3a3a); g.fillCircle(82, 36, 8);
-    g.fillStyle(0x4a4a4a); g.fillCircle(82, 36, 6);
-    g.fillStyle(0x3a3a3a); g.fillCircle(82, 36, 5);
+    // Epaulettes
+    g.fillStyle(0x2a2a2a); g.fillRect(10, 24, 10, 4);
+    g.fillStyle(0x333333); g.fillRect(10, 24, 10, 2);
+    g.fillStyle(0x2a2a2a); g.fillRect(40, 24, 10, 4);
+    g.fillStyle(0x333333); g.fillRect(40, 24, 10, 2);
     
-    // Extended claws - longer and more menacing
-    g.fillStyle(0x555555); g.fillRect(76, 40, 4, 14); g.fillRect(80, 42, 4, 15); g.fillRect(84, 41, 4, 14); g.fillRect(88, 38, 4, 12);
-    g.fillStyle(0x777777); g.fillRect(76, 40, 1, 14); g.fillRect(80, 42, 1, 15); g.fillRect(84, 41, 1, 14); g.fillRect(88, 38, 1, 12);
+    // Shoulders
+    g.fillStyle(0x1a1a1a); g.fillCircle(12, 26, 5);
+    g.fillStyle(0x252525); g.fillCircle(12, 26, 4);
+    g.fillStyle(0x1a1a1a); g.fillCircle(48, 26, 5);
+    g.fillStyle(0x252525); g.fillCircle(48, 26, 4);
     
-    // Motion trail effect for extended arm
-    g.fillStyle(0x2a2a2a, 0.4); g.fillRect(60, 33, 20, 4);
-    g.fillStyle(0x3a3a3a, 0.3); g.fillRect(62, 33, 16, 3);
-    g.fillStyle(0x4a4a4a, 0.2); g.fillRect(64, 33, 12, 2);
+    // Left arm - raised high
+    g.fillStyle(0x1a1a1a); g.fillRect(2, 16, 10, 20);
+    g.fillStyle(0x252525); g.fillRect(2, 16, 3, 20);
+    g.fillStyle(0x1a1a1a); g.fillRect(-6, 8, 12, 10);
+    g.fillStyle(0x151515); g.fillRect(-6, 8, 4, 10);
+    g.fillStyle(0x3a3a3a); g.fillRect(4, 20, 1, 16);
     
-    // Impact effect - blood splatter
-    g.fillStyle(0x8B0000); g.fillCircle(92, 38, 3);
-    g.fillStyle(0x6a0000); g.fillCircle(96, 42, 2);
-    g.fillStyle(0x8B0000); g.fillCircle(94, 34, 2);
+    // Left gloved fist - clenched
+    g.fillStyle(0x0a0a0a); g.fillCircle(0, 20, 7);
+    g.fillStyle(0x151515); g.fillCircle(0, 19, 5);
+    g.fillStyle(0x0a0a0a); g.fillRect(-4, 22, 3, 6); g.fillRect(-1, 23, 3, 7); g.fillRect(2, 22, 3, 6); g.fillRect(5, 21, 3, 5);
     
-    // Left claw - raised
-    g.fillStyle(0x3a3a3a); g.fillCircle(2, 42, 7);
-    g.fillStyle(0x4a4a4a); g.fillCircle(2, 42, 5);
-    g.fillStyle(0x3a3a3a); g.fillCircle(2, 42, 4);
-    g.fillStyle(0x555555); g.fillRect(-2, 46, 3, 12); g.fillRect(1, 48, 3, 13); g.fillRect(4, 47, 3, 12); g.fillRect(7, 45, 3, 11);
-    g.fillStyle(0x666666); g.fillRect(-2, 46, 1, 12); g.fillRect(1, 48, 1, 13); g.fillRect(4, 47, 1, 12); g.fillRect(7, 45, 1, 11);
+    // Right arm - thrust forward aggressively
+    g.fillStyle(0x1a1a1a); g.fillRect(48, 24, 12, 18);
+    g.fillStyle(0x252525); g.fillRect(54, 24, 4, 18);
+    g.fillStyle(0x1a1a1a); g.fillRect(56, 28, 20, 12);
+    g.fillStyle(0x151515); g.fillRect(56, 28, 5, 12);
+    g.fillStyle(0x3a3a3a); g.fillRect(50, 28, 1, 14);
+    
+    // Right gloved fist - striking
+    g.fillStyle(0x0a0a0a); g.fillCircle(78, 34, 8);
+    g.fillStyle(0x151515); g.fillCircle(78, 33, 6);
+    g.fillStyle(0x0a0a0a); g.fillRect(74, 36, 3, 8); g.fillRect(77, 37, 3, 9); g.fillRect(80, 36, 3, 8); g.fillRect(83, 34, 3, 7);
+    g.fillStyle(0x1a1a1a); g.fillRect(74, 36, 1, 8); g.fillRect(77, 37, 1, 9); g.fillRect(80, 36, 1, 8); g.fillRect(83, 34, 1, 7);
+    
+    // Motion lines for punch
+    g.fillStyle(0x2a2a2a, 0.4); g.fillRect(60, 31, 16, 4);
+    g.fillStyle(0x3a3a3a, 0.3); g.fillRect(62, 32, 12, 3);
+    g.fillStyle(0x4a4a4a, 0.2); g.fillRect(64, 33, 8, 2);
+    
+    // Impact effect
+    g.fillStyle(0xffffff, 0.3); g.fillCircle(86, 34, 4);
+    g.fillStyle(0xcccccc, 0.2); g.fillCircle(88, 32, 3);
+    g.fillStyle(0xaaaaaa, 0.15); g.fillCircle(90, 36, 2);
     
     // Neck - tense
-    g.fillStyle(0x2a2a2a); g.fillRect(22, 20, 16, 8);
-    g.fillStyle(0x333333); g.fillRect(22, 20, 5, 8);
+    g.fillStyle(0x3d2817); g.fillRect(26, 20, 8, 6);
+    g.fillStyle(0x4d3827); g.fillRect(26, 20, 3, 6);
     
+    // ═══════ HEAD - STRIKE EXPRESSION ═══════
     // Head - tilted forward aggressively
-    g.fillStyle(0x2a2a2a); g.fillCircle(30, 12, 16);
-    g.fillStyle(0x1f1f1f); g.fillCircle(30, 12, 14);
-    g.fillStyle(0x252525); g.fillCircle(30, 10, 12);
+    g.fillStyle(0x3d2817); g.fillCircle(32, 10, 14);
+    g.fillStyle(0x4d3827); g.fillCircle(32, 8, 12);
+    g.fillStyle(0x5d4837); g.fillCircle(32, 6, 10);
     
-    // Skull cracks
-    g.fillStyle(0x151515); g.fillRect(28, 2, 2, 6);
-    g.fillStyle(0x151515); g.fillRect(24, 4, 3, 2);
-    g.fillStyle(0x151515); g.fillRect(34, 3, 2, 4);
+    // Ears
+    g.fillStyle(0x3d2817); g.fillCircle(18, 10, 4);
+    g.fillStyle(0x4d3827); g.fillCircle(18, 10, 3);
+    g.fillStyle(0x3d2817); g.fillCircle(46, 10, 4);
+    g.fillStyle(0x4d3827); g.fillCircle(46, 10, 3);
     
-    // Face mask - strained expression
-    g.fillStyle(0xf0f0f0); g.fillEllipse(30, 14, 20, 16);
-    g.fillStyle(0xe8e8e8); g.fillEllipse(30, 13, 18, 14);
-    g.fillStyle(0xdddddd); g.fillEllipse(30, 12, 16, 12);
+    // Hair - swept back from motion
+    g.fillStyle(0x1a1a1a); g.fillCircle(32, 4, 12);
+    g.fillStyle(0x222222); g.fillCircle(32, 2, 10);
+    g.fillStyle(0x2a2a2a); g.fillCircle(34, 0, 6);
+    g.fillStyle(0x1a1a1a); g.fillRect(20, 2, 24, 6);
     
-    // Mask cracks
-    g.fillStyle(0xcccccc, 0.5); g.fillRect(22, 8, 2, 4);
-    g.fillStyle(0xbbbbbb, 0.5); g.fillRect(36, 16, 3, 2);
-    g.fillStyle(0xcccccc, 0.4); g.fillCircle(40, 10, 2);
+    // Hair motion lines
+    g.fillStyle(0x333333); g.fillRect(18, 2, 1, 4);
+    g.fillStyle(0x333333); g.fillRect(24, 1, 1, 5);
+    g.fillStyle(0x333333); g.fillRect(30, 0, 1, 5);
+    g.fillStyle(0x333333); g.fillRect(36, 1, 1, 5);
+    g.fillStyle(0x333333); g.fillRect(42, 2, 1, 4);
     
-    // Eye sockets - darker, angrier
-    g.fillStyle(0x050505); g.fillEllipse(22, 11, 10, 8);
-    g.fillStyle(0x000000); g.fillEllipse(22, 11, 8, 6);
-    g.fillStyle(0x050505); g.fillEllipse(38, 11, 10, 8);
-    g.fillStyle(0x000000); g.fillEllipse(38, 11, 8, 6);
+    // Sideburns
+    g.fillStyle(0x1a1a1a); g.fillRect(19, 8, 3, 8);
+    g.fillStyle(0x1a1a1a); g.fillRect(42, 8, 3, 8);
     
-    // Eye socket shadows
-    g.fillStyle(0x020202); g.fillEllipse(22, 12, 6, 4);
-    g.fillStyle(0x020202); g.fillEllipse(38, 12, 6, 4);
+    // ═══════ BLACK SUNGLASSES - STRIKE ═══════
+    g.fillStyle(0x0a0a0a); g.fillRect(20, 6, 24, 8);
+    g.fillStyle(0x151515); g.fillRect(20, 6, 24, 2);
     
-    // Glowing red eyes - brighter, angrier
-    g.fillStyle(0xff0000); g.fillCircle(22, 11, 5);
-    g.fillStyle(0xff2222); g.fillCircle(22, 10, 4);
-    g.fillStyle(0xff5555); g.fillCircle(21, 9, 2);
-    g.fillStyle(0xff0000); g.fillCircle(38, 11, 5);
-    g.fillStyle(0xff2222); g.fillCircle(38, 10, 4);
-    g.fillStyle(0xff5555); g.fillCircle(39, 9, 2);
+    // Left lens
+    g.fillStyle(0x050505); g.fillRect(21, 7, 9, 6);
+    g.fillStyle(0x080808); g.fillRect(21, 7, 9, 2);
     
-    // Eye glow - more intense
-    g.fillStyle(0xff0000, 0.4); g.fillCircle(22, 11, 8);
-    g.fillStyle(0xff0000, 0.3); g.fillCircle(38, 11, 8);
-    g.fillStyle(0xff0000, 0.2); g.fillCircle(22, 11, 12);
-    g.fillStyle(0xff0000, 0.15); g.fillCircle(38, 11, 12);
+    // Right lens
+    g.fillStyle(0x050505); g.fillRect(32, 7, 9, 6);
+    g.fillStyle(0x080808); g.fillRect(32, 7, 9, 2);
+    
+    // Bridge
+    g.fillStyle(0x0a0a0a); g.fillRect(30, 9, 4, 3);
+    g.fillStyle(0x151515); g.fillRect(30, 9, 2, 2);
+    
+    // Temple arms
+    g.fillStyle(0x0a0a0a); g.fillRect(18, 8, 3, 2);
+    g.fillStyle(0x0a0a0a); g.fillRect(43, 8, 3, 2);
+    
+    // Lens reflection
+    g.fillStyle(0x2a2a2a, 0.3); g.fillRect(22, 7, 3, 1);
+    g.fillStyle(0x2a2a2a, 0.3); g.fillRect(33, 7, 3, 1);
     
     // Nose
-    g.fillStyle(0x1a1a1a); g.fillEllipse(30, 16, 3, 4);
-    g.fillStyle(0x0a0a0a); g.fillEllipse(30, 17, 2, 2);
+    g.fillStyle(0x4d3827); g.fillEllipse(32, 16, 4, 5);
+    g.fillStyle(0x3d2817); g.fillEllipse(32, 17, 2, 2);
     
-    // Mouth - slightly open, more menacing
-    g.fillStyle(0x0a0a0a); g.fillRect(22, 20, 16, 5);
-    g.fillStyle(0x050505); g.fillRect(22, 21, 16, 3);
-    // Stitches - strained
-    g.fillStyle(0x999999); g.fillRect(24, 19, 2, 7);
-    g.fillStyle(0x999999); g.fillRect(28, 19, 2, 7);
-    g.fillStyle(0x999999); g.fillRect(32, 19, 2, 7);
-    g.fillStyle(0x999999); g.fillRect(36, 19, 2, 7);
-    g.fillStyle(0x777777); g.fillRect(25, 22, 2, 1);
-    g.fillStyle(0x777777); g.fillRect(29, 22, 2, 1);
-    g.fillStyle(0x777777); g.fillRect(33, 22, 2, 1);
-    g.fillStyle(0x777777); g.fillRect(37, 22, 2, 1);
+    // Mouth - gritting teeth slightly
+    g.fillStyle(0x3d2817); g.fillRect(26, 20, 12, 3);
+    g.fillStyle(0x2a1807); g.fillRect(28, 22, 8, 1); // Teeth hint
     
-    // Hair wisps - flying back
-    g.fillStyle(0x1a1a1a); g.fillRect(14, 4, 4, 8);
-    g.fillStyle(0x1a1a1a); g.fillRect(42, 3, 5, 10);
-    g.fillStyle(0x222222); g.fillRect(16, 2, 3, 6);
+    // Stubble
+    g.fillStyle(0x2a1a0a, 0.3); g.fillRect(22, 16, 20, 8);
     
-    // Blood drips - more intense
-    g.fillStyle(0x8B0000); g.fillCircle(12, 22, 3);
-    g.fillStyle(0x6a0000); g.fillCircle(12, 28, 2);
-    g.fillStyle(0x8B0000); g.fillCircle(48, 24, 3);
-    g.fillStyle(0x6a0000); g.fillCircle(48, 30, 2);
+    // Neck shadow
+    g.fillStyle(0x2d1807, 0.3); g.fillRect(26, 24, 12, 3);
     
-    // Rust stains
-    g.fillStyle(0x3a2a1a, 0.5); g.fillCircle(20, 44, 5);
-    g.fillStyle(0x3a2a1a, 0.4); g.fillCircle(42, 48, 4);
-    
-    // Chain - taut
-    g.fillStyle(0x4a4a4a); g.fillCircle(20, 24, 3);
-    g.fillStyle(0x5a5a5a); g.fillCircle(20, 24, 2);
-    g.fillStyle(0x4a4a4a); g.fillCircle(40, 24, 3);
-    g.fillStyle(0x5a5a5a); g.fillCircle(40, 24, 2);
-    g.fillStyle(0x555555); g.fillRect(23, 23, 14, 3);
-    g.fillStyle(0x666666); g.fillRect(23, 23, 14, 1);
-    
-    // Power aura effect
-    g.fillStyle(0xff0000, 0.1); g.fillCircle(30, 45, 40);
-    g.fillStyle(0xff0000, 0.08); g.fillCircle(30, 45, 50);
+    // Motion blur effect around figure
+    g.fillStyle(0x1a1a1a, 0.1); g.fillCircle(32, 45, 45);
+    g.fillStyle(0x0a0a0a, 0.05); g.fillCircle(32, 45, 55);
     
     g.generateTexture('killer_strike', 100, 95);
     g.clear();
@@ -1507,7 +1524,7 @@ function makePlayer(scene, x, y, tex, isMe) {
     sp.body.setSize(hitboxSize.w, hitboxSize.h, true);
 
     const glow = scene.add.graphics();
-    const glowColor = (tex === 'killer') ? 0xff2222 : 0x44aaff;
+    const glowColor = (tex === 'killer') ? 0x333333 : 0x44aaff;
     glow.fillStyle(glowColor, 0.15);
     glow.fillCircle(0, 0, 25);
     glow.setDepth(999);
@@ -1990,16 +2007,6 @@ function killerAction(dt) {
     
     // Missed - short cooldown so player can't spam infinitely
     killerAttackCooldown = 0.3;
-}
-            t.state = 'carried';
-            UI.showToast('💪 Поднимаешь выжившего...', 2000);
-
-            if (isMultiplayer && roomCode && playerId) {
-                setPlayerCarrying(roomCode, playerId, t.playerId);
-            }
-        }
-        return;
-    }
 
     // Break generator
     generators.forEach(gen => {
@@ -2040,6 +2047,94 @@ function survivorAction(dt) {
     const sp = p.sprite;
 
     if (p.state === 'dying' || p.state === 'hooked') return;
+
+    // Hatch escape logic
+    const nearHatch = hatch && hatchOpen && (p.state === 'alive' || p.state === 'injured') && dist(sp, hatch) < 60;
+    
+    // Check if killer is near (in single player, check aiPlayers; in multiplayer check remotePlayers)
+    let nearKiller = false;
+    if (isMultiplayer) {
+        Object.values(remotePlayers).forEach(rp => {
+            if (rp.role === 'killer') {
+                nearKiller = nearKiller || dist(sp, { x: rp.x, y: rp.y }) < 120;
+            }
+        });
+    } else {
+        (player.aiPlayers || []).forEach(ai => {
+            if (ai.isAIKiller) {
+                nearKiller = nearKiller || dist(sp, ai.sprite) < 120;
+            }
+        });
+    }
+    
+    if (nearHatch && !nearKiller) {
+        isNearHatch = true;
+        
+        // Check if survivor is escaping
+        if (isEscapingHatch) {
+            hatchEscapeProgress += dt / 1000;
+            const pct = Math.min(100, (hatchEscapeProgress / HATCH_ESCAPE_TIME) * 100);
+            
+            // Animate: scale down, fade out, and sink
+            const scale = 1 - (pct / 100) * 0.8;
+            const alpha = 1 - (pct / 100) * 0.9;
+            const sinkY = pct / 100 * 30;
+            
+            sp.setScale(scale);
+            sp.setAlpha(alpha);
+            sp.y += sinkY * (dt / 1000 * 20);
+            
+            // Show progress bar
+            drawBar(floatBarGfx || scene.add.graphics(), sp.x, sp.y - 50, pct, 0xffaa00);
+            
+            if (hatchEscapeProgress >= HATCH_ESCAPE_TIME) {
+                p.state = 'escaped';
+                UI.showToast('🏆 Ты сбежал через люк!', 2000);
+                
+                if (isMultiplayer && roomCode && playerId) {
+                    setPlayerEscaped(roomCode, playerId);
+                }
+                
+                doEndGame(true, 'Ты сбежал через люк!');
+            }
+            return;
+        }
+        
+        // Show action button for hatch escape
+        updateActionButtonForHatch(true);
+        
+        if (actionPressed && !isEscapingHatch) {
+            isEscapingHatch = true;
+            hatchEscapeProgress = 0;
+            sp.body.setVelocity(0, 0);
+            UI.showToast('🔓 Пытаешься сбежать...', 1000);
+            
+            if (isMultiplayer && roomCode && playerId) {
+                setPlayerAnimation(roomCode, playerId, 'escape_hatch', 0);
+            }
+        }
+        
+        if (!actionPressed && !isEscapingHatch) {
+            updateActionButtonForHatch(false);
+        }
+        
+        return;
+    } else {
+        isNearHatch = false;
+        updateActionButtonForHatch(false);
+        
+        // Reset escape state if moved away or killer is near
+        if (isEscapingHatch) {
+            isEscapingHatch = false;
+            hatchEscapeProgress = 0;
+            sp.setScale(1);
+            sp.setAlpha(1);
+            UI.showToast('❌ Побег прерван!', 1000);
+            if (isMultiplayer && roomCode && playerId) {
+                clearPlayerAnimation(roomCode, playerId);
+            }
+        }
+    }
 
     // Check if still near the generator being repaired
     if (p.isRepairing && p.progressAction && p.progressAction.type === 'repair') {
@@ -2654,10 +2749,6 @@ function checkWinLose() {
                         doEndGame(true, 'Ты сбежал через ворота!');
                     }
                 });
-
-                if (hatch && hatchOpen && !hatchClosed && dist(player.sprite, hatch) < 50) {
-                    doEndGame(true, 'Ты сбежал через люк!');
-                }
             }
         }
     }
@@ -2990,7 +3081,7 @@ function updateRemotePlayers(players) {
             }
 
             const glow = scene.add.graphics();
-            glow.fillStyle(pdata.role === 'killer' ? 0xff2222 : 0x44aaff, 0.15);
+            glow.fillStyle(pdata.role === 'killer' ? 0x333333 : 0x44aaff, 0.15);
             glow.fillCircle(0, 0, 25);
             glow.setDepth(999);
 
@@ -3401,6 +3492,17 @@ function updateActionButton(forHook = false) {
         ab.textContent = '⚡';
         ab.style.background = 'linear-gradient(135deg,#ff6600,#cc2200)';
         ab.style.boxShadow = '0 0 16px rgba(255,80,0,0.5)';
+    }
+}
+
+function updateActionButtonForHatch(forHatch = false) {
+    const ab = document.getElementById('action-btn');
+    if (!ab) return;
+    
+    if (forHatch) {
+        ab.textContent = '🚪';
+        ab.style.background = 'linear-gradient(135deg, #ffaa00, #cc8800)';
+        ab.style.boxShadow = '0 0 16px rgba(255,170,0,0.7)';
     }
 }
 
