@@ -697,8 +697,19 @@ window.leaveLobby = function() {
 
 /* ═══════ SOLO GAME ═══════ */
 function startSoloGame(killerMode) {
-  if (typeof Game !== 'undefined') {
-    Game.start(killerMode, false, null, null);
+  console.log('startSoloGame called, killerMode:', killerMode);
+  console.log('Game object:', typeof Game);
+  try {
+    if (typeof Game !== 'undefined' && Game.start) {
+      console.log('Calling Game.start...');
+      Game.start(killerMode, false, null, null);
+      console.log('Game.start completed');
+    } else {
+      console.error('Game or Game.start not found!');
+    }
+  } catch (e) {
+    console.error('Error starting game:', e);
+    alert('Ошибка запуска игры: ' + e.message);
   }
 }
 

@@ -20,6 +20,9 @@ const CONFIG = {
     CATCH_COOLDOWN: 2
 };
 
+const MAP_W = 2400;
+const MAP_H = 1800;
+
 const UI = {
     showScreen(name) {
         const screens = ['loading-screen', 'main-menu', 'role-select', 'lobby-create', 'lobby-join', 'game-screen', 'game-over'];
@@ -185,31 +188,39 @@ function stopGame() {
 }
 
 function initGame() {
+    console.log('initGame called');
     document.getElementById('game-container').innerHTML = '';
-
-    game = new Phaser.Game({
-        type: Phaser.AUTO,
-        parent: 'game-container',
-        width: window.innerWidth,
-        height: window.innerHeight,
-        backgroundColor: '#1a1a1a',
-        physics: {
-            default: 'arcade',
-            arcade: {
-                gravity: { y: 0 },
-                debug: false
+    
+    try {
+        console.log('Creating Phaser.Game...');
+        game = new Phaser.Game({
+            type: Phaser.AUTO,
+            parent: 'game-container',
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: '#1a1a1a',
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 0 },
+                    debug: false
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            },
+            scale: {
+                mode: Phaser.Scale.RESIZE,
+                autoCenter: Phaser.Scale.CENTER_BOTH
             }
-        },
-        scene: {
-            preload: preload,
-            create: create,
-            update: update
-        },
-        scale: {
-            mode: Phaser.Scale.RESIZE,
-            autoCenter: Phaser.Scale.CENTER_BOTH
-        }
-    });
+        });
+        console.log('Phaser.Game created successfully');
+    } catch (e) {
+        console.error('Error creating Phaser.Game:', e);
+        alert('Ошибка создания игры: ' + e.message);
+    }
 }
 
 // ═══════ TEXTURE BUILDER ═══════
@@ -986,26 +997,27 @@ function preload() {
     createSurvivorTextures(g, 's1', 0xc0392b, 0x3d2314);
     createSurvivorTextures(g, 's2', 0x8e44ad, 0x4a3020);
     createSurvivorTextures(g, 's3', 0x27ae60, 0x1a1a1a);
-    // s4 uses the same texture as s3 (can be replaced with custom pixel art later)
-    createSurvivorTextures(g, 's4', 0x27ae60, 0x1a1a1a);
+    
+    // Pixel art Cyberpunk survivor (s4) - фиолетовые волосы, красная куртка
+    createPixelSurvivor(g, 's4', 0xaa00ff, 0xcc0033, 0x2a2a4a);
 
     // Repairing textures for survivors
     createRepairingTextures(g, 's1', 0xc0392b, 0x3d2314);
     createRepairingTextures(g, 's2', 0x8e44ad, 0x4a3020);
     createRepairingTextures(g, 's3', 0x27ae60, 0x1a1a1a);
-    createRepairingTextures(g, 's4', 0xf1c40f, 0x8B4513);
+    createRepairingTextures(g, 's4', 0xcc0033, 0xaa00ff); // красная куртка для ремонта
 
     // Dying (crawling) textures for survivors
     createDyingTextures(g, 's1', 0xc0392b, 0x3d2314);
     createDyingTextures(g, 's2', 0x8e44ad, 0x4a3020);
     createDyingTextures(g, 's3', 0x27ae60, 0x1a1a1a);
-    createDyingTextures(g, 's4', 0xf1c40f, 0x8B4513);
+    createDyingTextures(g, 's4', 0xcc0033, 0xaa00ff); // красная куртка для умирающего
 
     // Carried (on killer's shoulder) textures for survivors
     createCarriedTextures(g, 's1', 0xc0392b, 0x3d2314);
     createCarriedTextures(g, 's2', 0x8e44ad, 0x4a3020);
     createCarriedTextures(g, 's3', 0x27ae60, 0x1a1a1a);
-    createCarriedTextures(g, 's4', 0xf1c40f, 0x8B4513);
+    createCarriedTextures(g, 's4', 0xcc0033, 0xaa00ff); // красная куртка, фиолетовые волосы
 
     // ═══════ HIGHLY DETAILED 3D-STYLE KILLER ═══════
     // Shadow under feet - realistic oval shadow
@@ -1796,6 +1808,141 @@ function createSurvivorTextures(g, name, shirtColor, hairColor) {
     g.clear();
 }
 
+// Create Cyberpunk-style pixel art survivor (48x80 pixels, displayed 1.5x)
+function createPixelSurvivor(g, name, hairColor, jacketColor, pantsColor) {
+    const scale = 1;
+    const w = 48, h = 80;
+    const cx = w / 2;
+    
+    // Shadow
+    g.fillStyle(0x000000, 0.4);
+    g.fillEllipse(cx, 76, 20, 6);
+    
+    // === BOOTS ===
+    // Left boot
+    g.fillStyle(0x1a1a1a); g.fillRect(12, 68, 10, 8);
+    g.fillStyle(0x2a2a2a); g.fillRect(12, 68, 10, 2);
+    g.fillStyle(0x0a0a0a); g.fillRect(10, 74, 14, 4);
+    // Boot detail
+    g.fillStyle(0x333333); g.fillRect(14, 70, 1, 4);
+    g.fillStyle(0x333333); g.fillRect(18, 70, 1, 4);
+    
+    // Right boot
+    g.fillStyle(0x1a1a1a); g.fillRect(26, 68, 10, 8);
+    g.fillStyle(0x2a2a2a); g.fillRect(26, 68, 10, 2);
+    g.fillStyle(0x0a0a0a); g.fillRect(24, 74, 14, 4);
+    g.fillStyle(0x333333); g.fillRect(28, 70, 1, 4);
+    g.fillStyle(0x333333); g.fillRect(32, 70, 1, 4);
+    
+    // === PANTS ===
+    g.fillStyle(pantsColor); g.fillRect(14, 52, 9, 18);
+    g.fillStyle(pantsColor - 0x111111); g.fillRect(14, 52, 3, 18);
+    g.fillStyle(pantsColor - 0x222222); g.fillRect(25, 52, 9, 18);
+    g.fillStyle(pantsColor - 0x111111); g.fillRect(25, 52, 3, 18);
+    // Belt
+    g.fillStyle(0x333333); g.fillRect(12, 50, 24, 4);
+    g.fillStyle(0x444444); g.fillRect(20, 49, 8, 6);
+    g.fillStyle(0x666666); g.fillRect(22, 50, 4, 4);
+    
+    // === JACKET ===
+    g.fillStyle(jacketColor); g.fillRect(10, 28, 28, 24);
+    g.fillStyle(jacketColor + 0x111111); g.fillRect(10, 28, 5, 24);
+    g.fillStyle(jacketColor - 0x111111); g.fillRect(33, 28, 5, 24);
+    // Zipper
+    g.fillStyle(0x888888); g.fillRect(23, 28, 2, 24);
+    g.fillStyle(0xaaaaaa); g.fillRect(23, 28, 1, 24);
+    // Collar
+    g.fillStyle(jacketColor - 0x222222); g.fillRect(14, 26, 20, 4);
+    // Pockets
+    g.fillStyle(jacketColor - 0x333333); g.fillRect(12, 38, 8, 8);
+    g.fillStyle(jacketColor - 0x222222); g.fillRect(12, 38, 8, 2);
+    g.fillStyle(jacketColor - 0x333333); g.fillRect(28, 38, 8, 8);
+    g.fillStyle(jacketColor - 0x222222); g.fillRect(28, 38, 8, 2);
+    
+    // === ARMS ===
+    // Left arm
+    g.fillStyle(jacketColor); g.fillRect(4, 30, 8, 16);
+    g.fillStyle(jacketColor - 0x111111); g.fillRect(4, 30, 3, 16);
+    // Left hand
+    g.fillStyle(0xd4a574); g.fillRect(3, 44, 10, 6);
+    g.fillStyle(0xc49564); g.fillRect(3, 44, 3, 6);
+    
+    // Right arm
+    g.fillStyle(jacketColor); g.fillRect(36, 30, 8, 16);
+    g.fillStyle(jacketColor - 0x111111); g.fillRect(36, 30, 3, 16);
+    // Right hand
+    g.fillStyle(0xd4a574); g.fillRect(35, 44, 10, 6);
+    g.fillStyle(0xc49564); g.fillRect(35, 44, 3, 6);
+    
+    // === HEAD ===
+    // Neck
+    g.fillStyle(0xd4a574); g.fillRect(20, 24, 8, 4);
+    
+    // Head base
+    g.fillStyle(0xd4a574); g.fillRect(14, 6, 20, 20);
+    g.fillStyle(0xc49564); g.fillRect(14, 6, 4, 20);
+    g.fillStyle(0xe4b584); g.fillRect(30, 6, 4, 20);
+    
+    // === HAIR (Neon style) ===
+    g.fillStyle(hairColor); g.fillRect(12, 2, 24, 8);
+    g.fillStyle(hairColor - 0x222222); g.fillRect(12, 2, 4, 8);
+    // Neon streaks
+    g.fillStyle(hairColor + 0x444444); g.fillRect(14, 4, 2, 4);
+    g.fillStyle(hairColor + 0x444444); g.fillRect(20, 4, 2, 4);
+    g.fillStyle(hairColor + 0x444444); g.fillRect(26, 4, 2, 4);
+    // Side hair
+    g.fillStyle(hairColor); g.fillRect(10, 6, 4, 10);
+    g.fillStyle(hairColor); g.fillRect(34, 6, 4, 10);
+    
+    // === FACE ===
+    // Eyes
+    g.fillStyle(0xffffff); g.fillRect(16, 12, 5, 4);
+    g.fillStyle(0xffffff); g.fillRect(27, 12, 5, 4);
+    g.fillStyle(0x222222); g.fillRect(18, 13, 3, 3);
+    g.fillStyle(0x222222); g.fillRect(29, 13, 3, 3);
+    // Eye glow
+    g.fillStyle(0x88ffff); g.fillRect(18, 13, 1, 1);
+    g.fillStyle(0x88ffff); g.fillRect(29, 13, 1, 1);
+    
+    // Eyebrows
+    g.fillStyle(hairColor - 0x333333); g.fillRect(16, 10, 5, 1);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(27, 10, 5, 1);
+    
+    // Nose
+    g.fillStyle(0xc49564); g.fillRect(22, 16, 2, 3);
+    
+    // Mouth
+    g.fillStyle(0xaa6655); g.fillRect(20, 20, 8, 2);
+    g.fillStyle(0x996655); g.fillRect(22, 20, 4, 1);
+    
+    // Ears
+    g.fillStyle(0xc49564); g.fillRect(12, 14, 2, 4);
+    g.fillStyle(0xc49564); g.fillRect(34, 14, 2, 4);
+    
+    // === HEADPHONES ===
+    // Left earpiece
+    g.fillStyle(0x333333); g.fillRect(8, 10, 6, 10);
+    g.fillStyle(0x444444); g.fillRect(8, 10, 6, 2);
+    g.fillStyle(0x222222); g.fillRect(9, 12, 4, 6);
+    // Neon glow on earpiece
+    g.fillStyle(0xff0066, 0.5); g.fillRect(10, 14, 2, 2);
+    
+    // Right earpiece
+    g.fillStyle(0x333333); g.fillRect(34, 10, 6, 10);
+    g.fillStyle(0x444444); g.fillRect(34, 10, 6, 2);
+    g.fillStyle(0x222222); g.fillRect(35, 12, 4, 6);
+    // Neon glow on earpiece
+    g.fillStyle(0xff0066, 0.5); g.fillRect(36, 14, 2, 2);
+    
+    // Headband
+    g.fillStyle(0x222222); g.fillRect(12, 4, 24, 3);
+    g.fillStyle(0xff0066); g.fillRect(14, 5, 4, 1); // Neon stripe
+    g.fillStyle(0x00ffff); g.fillRect(22, 5, 4, 1); // Neon stripe
+    
+    g.generateTexture(name, w, h);
+    g.clear();
+}
+
 // Create repairing (crouching) textures for survivors
 function createRepairingTextures(g, name, shirtColor, hairColor) {
     // ═══════ REPAIRING (CROUCHING) SURVIVOR ═══════
@@ -2171,7 +2318,6 @@ function createCarriedTextures(g, name, shirtColor, hairColor) {
 
 function create() {
     scene = this;
-    const MAP_W = 2400, MAP_H = 1800;
 
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
 
@@ -2204,7 +2350,6 @@ function create() {
     });
 
     // Generate random generator positions
-    const MAP_W = 2400, MAP_H = 1800;
     const allObstacles = getMapObstacles();
     const GEN_SIZE = 60; // Generator collision size
     const GEN_SAFE_DIST = 60; // Must be away from obstacles
@@ -2588,7 +2733,6 @@ function getMapObstacles() {
 
 function spawnPlayers() {
     // Map boundaries (with padding from edges)
-    const MAP_W = 2400, MAP_H = 1800;
     const PADDING = 150; // Distance from map edges
     const MIN_KILLER_DIST = 600; // Minimum distance between killer and survivors
     const SPAWN_ATTEMPTS = 100; // Attempts to find valid spawn point
@@ -2715,7 +2859,7 @@ function spawnPlayers() {
 
         // AI survivors - only in singleplayer mode
         if (!isMultiplayer) {
-            const sTex = ['s1', 's2', 's3'];
+            const sTex = ['s1', 's2', 's4'];
             sTex.forEach((t, i) => {
                 const ai = makePlayer(this, sSpawns[i].x, sSpawns[i].y, t, false);
                 ai.aiDir = { x: 0, y: 0 }; ai.aiTimer = 0;
@@ -2754,8 +2898,13 @@ function makePlayer(scene, x, y, tex, isMe) {
     const hitboxSize = (tex === 'killer') ? { w: 30, h: 35 } : { w: 24, h: 28 };
     sp.body.setSize(hitboxSize.w, hitboxSize.h, true);
     
-    // Reduce all character sizes by 15% for better visibility
-    sp.setScale(0.85, 0.85);
+    // Pixel art characters (s4) need different scale to match normal characters
+    if (tex === 's4') {
+        sp.setScale(1.5, 1.5); // Pixel art is 48x80, needs to match 72x120
+    } else {
+        // Reduce all character sizes by 15% for better visibility
+        sp.setScale(0.85, 0.85);
+    }
 
     const glow = scene.add.graphics();
     const glowColor = (tex === 'killer') ? 0x333333 : 0x44aaff;
