@@ -143,6 +143,18 @@ function stopGame() {
     }
     scene = null;
 
+    // Reset any carried state when game stops
+    if (player && player.carryTarget) {
+        const carried = player.carryTarget;
+        if (carried && carried.sprite) {
+            carried.sprite.setScale(1, 1);
+            if (carried.sprite.texture.key.includes('_carried')) {
+                carried.sprite.setTexture(carried.tex);
+            }
+        }
+        player.carryTarget = null;
+    }
+
     if (isMultiplayer && roomCode) {
         leaveGameSession(roomCode, playerId);
     }
@@ -465,6 +477,12 @@ function preload() {
     createDyingTextures(g, 's3', 0x27ae60, 0x1a1a1a);
     createDyingTextures(g, 's4', 0xf1c40f, 0x8B4513);
 
+    // Carried (on killer's shoulder) textures for survivors
+    createCarriedTextures(g, 's1', 0xc0392b, 0x3d2314);
+    createCarriedTextures(g, 's2', 0x8e44ad, 0x4a3020);
+    createCarriedTextures(g, 's3', 0x27ae60, 0x1a1a1a);
+    createCarriedTextures(g, 's4', 0xf1c40f, 0x8B4513);
+
     // Killer - detailed DBD-style killer
     // Shadow
     g.fillStyle(0x000000, 0.3); g.fillEllipse(24, 76, 32, 10);
@@ -691,6 +709,56 @@ function createDyingTextures(g, name, shirtColor, hairColor) {
     g.fillStyle(0xffccaa); g.fillRect(11, 36, 3, 4);
     g.fillStyle(0xffccaa); g.fillRect(30, 36, 3, 4);
     g.generateTexture(name + '_dying', 56, 66);
+    g.clear();
+}
+
+// Create carried (on killer's shoulder) textures for survivors
+function createCarriedTextures(g, name, shirtColor, hairColor) {
+    // Shadow - smaller since elevated
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(22, 80, 20, 6);
+    // Body - vertical, on killer's shoulder
+    g.fillStyle(shirtColor); g.fillRect(16, 20, 28, 36);
+    g.fillStyle(shirtColor + 0x111111); g.fillRect(16, 20, 6, 36);
+    g.fillStyle(shirtColor + 0x222222); g.fillRect(38, 20, 4, 36);
+    // Head - tilted, showing distress
+    g.fillStyle(0xffccaa); g.fillCircle(28, 14, 10);
+    g.fillStyle(0xeebb99); g.fillCircle(28, 15, 8);
+    // Hair - disheveled
+    g.fillStyle(hairColor); g.fillCircle(28, 10, 9);
+    g.fillStyle(hairColor - 0x222222); g.fillCircle(28, 7, 6);
+    g.fillStyle(hairColor); g.fillRect(18, 6, 20, 7);
+    // Eyes - wide/open with fear
+    g.fillStyle(0x222222); g.fillCircle(24, 13, 2.5);
+    g.fillStyle(0x222222); g.fillCircle(32, 13, 2.5);
+    g.fillStyle(0xffffff); g.fillCircle(23, 12, 1.2);
+    g.fillStyle(0xffffff); g.fillCircle(31, 12, 1.2);
+    // Eyebrows - raised in fear
+    g.fillStyle(hairColor - 0x333333); g.fillRect(21, 9, 6, 2);
+    g.fillStyle(hairColor - 0x333333); g.fillRect(29, 9, 6, 2);
+    // Nose
+    g.fillStyle(0xddaa88); g.fillRect(26, 15, 4, 3);
+    // Mouth - open in scream or protest
+    g.fillStyle(0xcc8877); g.fillRect(24, 19, 8, 3);
+    g.fillStyle(0xaa6655); g.fillRect(25, 19.5, 6, 1);
+    // Arms - one hanging, one resisting (animated)
+    g.fillStyle(0xffccaa); g.fillRect(0, 24, 16, 6); // Left arm hanging
+    g.fillStyle(0xeeaa88); g.fillRect(0, 24, 4, 6);
+    g.fillStyle(0xffccaa); g.fillRect(44, 18, 16, 8); // Right arm resisting (raised)
+    g.fillStyle(0xeeaa88); g.fillRect(50, 18, 4, 8);
+    // Hands
+    g.fillStyle(0xffccaa); g.fillCircle(4, 27, 4);
+    g.fillStyle(0xffccaa); g.fillCircle(56, 16, 4);
+    // Legs - dangling
+    g.fillStyle(0x2c3e70); g.fillRect(18, 56, 10, 20);
+    g.fillStyle(0x1a2a50); g.fillRect(18, 56, 3, 20);
+    g.fillStyle(0x2c3e70); g.fillRect(32, 56, 10, 20);
+    g.fillStyle(0x1a2a50); g.fillRect(32, 56, 3, 20);
+    // Boots
+    g.fillStyle(0x4a3a2a); g.fillRect(16, 74, 12, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(16, 74, 4, 8);
+    g.fillStyle(0x4a3a2a); g.fillRect(30, 74, 12, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(30, 74, 4, 8);
+    g.generateTexture(name + '_carried', 60, 84);
     g.clear();
 }
 
@@ -1074,10 +1142,33 @@ function update(time, dt) {
                 sp.setScale(1, 1);
                 p._crawlPhase = 0;
             }
+        } else if (p.carryTarget) {
+            // Update carried texture for the carried survivor
+            const carried = p.carryTarget;
+            const carriedSprite = carried.sprite;
+            
+            // Show carried texture (on killer's shoulder)
+            if (!carriedSprite.texture.key.includes('_carried')) {
+                carriedSprite.setTexture(carried.tex + '_carried');
+            }
+            
+            // Resistance animation for carried survivor
+            if (!carried._resistancePhase) {
+                carried._resistancePhase = 0;
+            }
+            
+            // Update resistance animation
+            carried._resistancePhase += dt * 0.02; // Speed of resistance animation
+            
+            // Apply subtle shaking effect to simulate resistance
+            const resistanceShake = Math.sin(carried._resistancePhase * 3) * 0.05;
+            carriedSprite.setScale(1 + resistanceShake, 1 - resistanceShake * 0.3);
         } else if (!p.isRepairing && !p.progressAction) {
             // Reset to normal texture when not repairing and not dying
-            if (sp.texture.key.includes('_dying') || sp.texture.key.includes('_repair')) {
+            if (sp.texture.key.includes('_dying') || sp.texture.key.includes('_repair') || sp.texture.key.includes('_carried')) {
                 sp.setTexture(p.tex);
+                // Reset scale if it was modified for resistance animation
+                sp.setScale(1, 1);
             }
         }
     });
@@ -1110,6 +1201,21 @@ function updatePlayer(dt) {
         if (killerStun > 0) {
             killerStun -= dt / 1000;
             sp.body.setVelocity(0, 0);
+            
+            // If the killer was carrying someone and gets stunned, drop the carried survivor
+            if (p.carryTarget) {
+                const droppedSurvivor = p.carryTarget;
+                p.carryTarget = null;
+                
+                // Reset scale and texture when dropping survivor
+                droppedSurvivor.sprite.setScale(1, 1);
+                if (droppedSurvivor.sprite.texture.key.includes('_carried')) {
+                    droppedSurvivor.sprite.setTexture(droppedSurvivor.tex);
+                }
+                
+                UI.showToast('💪 Выживший выпал из рук!', 2000);
+            }
+            
             return;
         }
         const spd = CONFIG.KILLER_SPEED;
@@ -1131,8 +1237,8 @@ function updatePlayer(dt) {
         const v = normalize(inputVec);
         sp.body.setVelocity(v.x * spd, v.y * spd);
 
-        // Rotate sprite based on movement direction
-        if (v.x !== 0 || v.y !== 0) {
+        // Rotate sprite based on movement direction only when dying (crawling on ground)
+        if (p.state === 'dying' && (v.x !== 0 || v.y !== 0)) {
             const targetAngle = Math.atan2(v.y, v.x) * (180 / Math.PI);
             // Smooth rotation
             let currentAngle = sp.rotation * (180 / Math.PI);
@@ -1155,10 +1261,20 @@ function killerAction(dt) {
     if (p.carryTarget) {
         const ct = p.carryTarget;
         ct.sprite.setPosition(sp.x, sp.y - 28);
+        
+        // Reset carried texture if not already set
+        if (!ct.sprite.texture.key.includes('_carried')) {
+            ct.sprite.setTexture(ct.tex + '_carried');
+        }
+        
         const hook = nearestFreeHook(sp);
         if (hook && dist(sp, hook) < CONFIG.INTERACT_DISTANCE + 20) {
             hangSurvivor(ct, hook);
             p.carryTarget = null;
+            
+            // Reset scale when dropping survivor
+            ct.sprite.setScale(1, 1);
+            
             UI.showToast('🪝 Выживший повешен!', 2000);
 
             if (isMultiplayer && roomCode && playerId) {
@@ -1467,6 +1583,12 @@ function updateHooks(dt) {
 
         const p = hook.hookedSurvivor;
         p.sprite.setPosition(hook.x, hook.y - 12);
+        
+        // Make sure the texture is set to normal when on hook (not carried)
+        if (p.sprite.texture.key.includes('_carried')) {
+            p.sprite.setTexture(p.tex);
+        }
+        
         p.hookTimer += dt / 1000;
 
         const pct = 100 - (p.hookTimer / CONFIG.HOOK_TIME * 100);
@@ -1513,6 +1635,19 @@ function updateAI(dt) {
                 sp.body.setVelocity(0, 0);
                 if (ai.aiHitCooldown <= 0) {
                     ai.aiHitCooldown = CONFIG.STUN_TIME + 0.3;
+                    
+                    // If the AI killer was carrying someone, drop the carried survivor when hitting a player
+                    if (ai.carryTarget) {
+                        const droppedSurvivor = ai.carryTarget;
+                        ai.carryTarget = null;
+                        
+                        // Reset scale and texture when dropping survivor
+                        droppedSurvivor.sprite.setScale(1, 1);
+                        if (droppedSurvivor.sprite.texture.key.includes('_carried')) {
+                            droppedSurvivor.sprite.setTexture(droppedSurvivor.tex);
+                        }
+                    }
+                    
                     const p2 = player;
                     if (p2.state === 'alive') {
                         p2.state = 'injured';
@@ -1524,15 +1659,56 @@ function updateAI(dt) {
                         p2.sprite.setTint(0xff4444);
                         UI.showToast('⬇️ Ты упал!', 2000);
                     } else if (p2.state === 'dying') {
-                        const hook = nearestFreeHook(sp);
-                        if (hook) {
-                            hangSurvivor(p2, hook);
-                            UI.showToast('🪝 Тебя повесили!', 2000);
+                        // AI killer picks up dying survivor
+                        ai.carryTarget = p2;
+                        p2.sprite.setPosition(sp.x, sp.y - 28);
+                        
+                        // Set carried texture
+                        if (!p2.sprite.texture.key.includes('_carried')) {
+                            p2.sprite.setTexture(p2.tex + '_carried');
                         }
+                        
+                        UI.showToast('💪 Тебя подняли!', 2000);
                     }
                 }
             } else {
+                // Move toward target
                 moveTo(sp, target.sprite.x, target.sprite.y, CONFIG.KILLER_SPEED);
+                
+                // If AI killer is carrying someone, update position
+                if (ai.carryTarget) {
+                    const ct = ai.carryTarget;
+                    ct.sprite.setPosition(sp.x, sp.y - 28);
+                    
+                    // Set carried texture if not already set
+                    if (!ct.sprite.texture.key.includes('_carried')) {
+                        ct.sprite.setTexture(ct.tex + '_carried');
+                    }
+                    
+                    // Resistance animation for carried survivor
+                    if (!ct._resistancePhase) {
+                        ct._resistancePhase = 0;
+                    }
+                    
+                    // Update resistance animation
+                    ct._resistancePhase += dt * 0.02; // Speed of resistance animation
+                    
+                    // Apply subtle shaking effect to simulate resistance
+                    const resistanceShake = Math.sin(ct._resistancePhase * 3) * 0.05;
+                    ct.sprite.setScale(1 + resistanceShake, 1 - resistanceShake * 0.3);
+                    
+                    // Check if reached a hook to hang the survivor
+                    const hook = nearestFreeHook(sp);
+                    if (hook && dist(sp, hook) < CONFIG.INTERACT_DISTANCE + 20) {
+                        hangSurvivor(ct, hook);
+                        ai.carryTarget = null;
+                        
+                        // Reset scale when dropping survivor
+                        ct.sprite.setScale(1, 1);
+                        
+                        UI.showToast('🪝 Тебя повесили!', 2000);
+                    }
+                }
             }
         } else {
             ai.aiTimer = (ai.aiTimer || 0) - dt / 1000;
@@ -1555,8 +1731,8 @@ function updateAI(dt) {
                 ai.state === 'injured' ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED;
             sp.body.setVelocity(ai.aiDir.x * as, ai.aiDir.y * as);
 
-            // Rotate sprite based on movement direction
-            if (ai.aiDir.x !== 0 || ai.aiDir.y !== 0) {
+            // Rotate sprite based on movement direction only when dying (crawling on ground)
+            if (ai.state === 'dying' && (ai.aiDir.x !== 0 || ai.aiDir.y !== 0)) {
                 const targetAngle = Math.atan2(ai.aiDir.y, ai.aiDir.x) * (180 / Math.PI);
                 let currentAngle = sp.rotation * (180 / Math.PI);
                 let diff = targetAngle - currentAngle;
@@ -1581,6 +1757,10 @@ function updateAI(dt) {
                     ai._crawlPhase = 0;
                 }
             } else if (sp.texture.key.includes('_dying')) {
+                sp.setTexture(ai.tex);
+                sp.setScale(1, 1);
+            } else if (sp.texture.key.includes('_carried')) {
+                // If AI survivor is no longer being carried, reset to normal texture
                 sp.setTexture(ai.tex);
                 sp.setScale(1, 1);
             }
@@ -1658,6 +1838,18 @@ function checkWinLose() {
 function doEndGame(won, msg) {
     if (gameEnded) return;
     gameEnded = true;
+
+    // Reset any carried state when game ends
+    if (player && player.carryTarget) {
+        const carried = player.carryTarget;
+        if (carried && carried.sprite) {
+            carried.sprite.setScale(1, 1);
+            if (carried.sprite.texture.key.includes('_carried')) {
+                carried.sprite.setTexture(carried.tex);
+            }
+        }
+        player.carryTarget = null;
+    }
 
     if (isMultiplayer && roomCode) {
         setGameResult(roomCode, won ? (isKiller ? 'killer' : 'survivors') : (isKiller ? 'survivors' : 'killer'), msg);
@@ -1773,10 +1965,34 @@ function updateRemotePlayers(players) {
                 if (!rp.sprite.texture.key.includes('_dying') && rp.tex) {
                     rp.sprite.setTexture(rp.tex + '_dying');
                 }
+            } else if (pdata.state === 'carrying') {
+                // Show carried texture for remote players who are being carried
+                if (pdata.carryingId) {
+                    // Find the carried player and update their texture
+                    const carriedPlayer = Object.values(remotePlayers).find(p => p.playerId === pdata.carryingId);
+                    if (carriedPlayer) {
+                        if (!carriedPlayer.sprite.texture.key.includes('_carried')) {
+                            carriedPlayer.sprite.setTexture(carriedPlayer.tex + '_carried');
+                        }
+                    }
+                }
+            } else if (pdata.state === 'carried') {
+                // Show carried texture for remote players who are being carried
+                if (!rp.sprite.texture.key.includes('_carried') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex + '_carried');
+                    
+                    // Initialize resistance animation
+                    if (!rp._resistancePhase) {
+                        rp._resistancePhase = 0;
+                    }
+                }
             } else if (pdata.state === 'alive' || pdata.state === 'injured') {
                 // Reset to normal texture when healed or recovered
                 if (rp.sprite.texture.key.includes('_dying') && rp.tex) {
                     rp.sprite.setTexture(rp.tex);
+                } else if (rp.sprite.texture.key.includes('_carried') && rp.tex) {
+                    rp.sprite.setTexture(rp.tex);
+                    rp.sprite.setScale(1, 1); // Reset scale from resistance animation
                 }
             } else if (pdata.state === 'hooked') {
                 // Find hook and position - no interpolation for hooked players
@@ -1880,13 +2096,15 @@ function interpolateRemotePlayers(dt) {
             rp.sprite.x += dx * lerpFactor;
             rp.sprite.y += dy * lerpFactor;
 
-            // Rotate sprite based on movement direction
-            const targetAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-            let currentAngle = rp.sprite.rotation * (180 / Math.PI);
-            let diff = targetAngle - currentAngle;
-            while (diff > 180) diff -= 360;
-            while (diff < -180) diff += 360;
-            rp.sprite.rotation += (diff * 0.2) * (Math.PI / 180);
+            // Rotate sprite based on movement direction only when dying (crawling on ground)
+            if (rp.state === 'dying') {
+                const targetAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+                let currentAngle = rp.sprite.rotation * (180 / Math.PI);
+                let diff = targetAngle - currentAngle;
+                while (diff > 180) diff -= 360;
+                while (diff < -180) diff += 360;
+                rp.sprite.rotation += (diff * 0.2) * (Math.PI / 180);
+            }
         }
 
         // Update glow position
@@ -1902,6 +2120,18 @@ function interpolateRemotePlayers(dt) {
         } else if (rp.state === 'dying') {
             rp.sprite.setScale(1, 1);
             rp._crawlPhase = 0;
+        } else if (rp.state === 'carried') {
+            // Resistance animation for carried state
+            if (!rp._resistancePhase) {
+                rp._resistancePhase = 0;
+            }
+            
+            // Update resistance animation
+            rp._resistancePhase += dt * 0.02; // Speed of resistance animation
+            
+            // Apply subtle shaking effect to simulate resistance
+            const resistanceShake = Math.sin(rp._resistancePhase * 3) * 0.05;
+            rp.sprite.setScale(1 + resistanceShake, 1 - resistanceShake * 0.3);
         } else {
             rp.sprite.setScale(1, 1);
         }
@@ -1980,7 +2210,16 @@ function hangSurvivor(p, hook) {
     p.hookTimer = 0;
     p.state = 'hooked';
     p.sprite.setTint(0xaaaaaa);
-    p.sprite.setTexture(p.tex);
+    
+    // Reset to normal texture if it was carried
+    if (p.sprite.texture.key.includes('_carried')) {
+        p.sprite.setTexture(p.tex);
+        // Reset scale from resistance animation
+        p.sprite.setScale(1, 1);
+    } else {
+        p.sprite.setTexture(p.tex);
+    }
+    
     p.sprite.setPosition(hook.x, hook.y - 12);
 
     if (!p.isMe) {
