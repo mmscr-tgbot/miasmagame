@@ -697,16 +697,8 @@ window.leaveLobby = function() {
 
 /* ═══════ SOLO GAME ═══════ */
 function startSoloGame(killerMode) {
-  console.log('startSoloGame called, killerMode:', killerMode, 'Game defined:', typeof Game !== 'undefined');
   if (typeof Game !== 'undefined') {
-    try {
-      Game.start(killerMode, false, null, null);
-      console.log('Game.start called successfully');
-    } catch (e) {
-      console.error('Error starting game:', e);
-    }
-  } else {
-    console.error('Game is not defined!');
+    Game.start(killerMode, false, null, null);
   }
 }
 
@@ -714,15 +706,14 @@ function startSoloGame(killerMode) {
 function setupButtons() {
   function on(id, fn) {
     var el = document.getElementById(id);
-    console.log('Setting up button:', id, 'element found:', !!el);
     if (el) el.onclick = fn;
   }
   on('btn-create-lobby', createLobby);
   on('btn-find-lobby', findAndJoinLobby);
-  on('btn-solo', function() { console.log('btn-solo clicked'); showScreen('role-select'); });
+  on('btn-solo', function() { showScreen('role-select'); });
   on('btn-back-role', function() { showScreen('main-menu'); });
-  on('btn-play-killer', function() { console.log('btn-play-killer clicked'); startSoloGame(true); });
-  on('btn-play-survivor', function() { console.log('btn-play-survivor clicked'); startSoloGame(false); });
+  on('btn-play-killer', function() { startSoloGame(true); });
+  on('btn-play-survivor', function() { startSoloGame(false); });
   on('btn-back-menu', function() {
     if (typeof Game !== 'undefined') Game.stop();
     showScreen('main-menu');

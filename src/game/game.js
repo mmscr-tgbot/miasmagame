@@ -120,7 +120,6 @@ const POS_LERP_SPEED = 0.15; // Smooth interpolation factor (0.1-0.2 is good)
 // ═══════ GAME FUNCTIONS ═══════
 
 function startGame(killerMode, multiplayer = false, code = null, pid = null) {
-    console.log('startGame called', {killerMode, multiplayer, code, pid});
     isKiller = killerMode;
     isMultiplayer = multiplayer;
     roomCode = code;
