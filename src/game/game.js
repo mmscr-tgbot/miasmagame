@@ -217,13 +217,65 @@ function initGame() {
 function preload() {
     const g = this.make.graphics({ x: 0, y: 0, add: false });
 
-    // Ground
-    g.fillStyle(0x1a2610);
+    // Ground - detailed dark forest floor
+    g.fillStyle(0x0d1208);
     g.fillRect(0, 0, 64, 64);
-    g.fillStyle(0x243515);
-    for (let i = 0; i < 40; i++) g.fillRect(Math.random() * 64, Math.random() * 64, 2, 4);
-    g.fillStyle(0x2a4018);
-    for (let i = 0; i < 25; i++) g.fillCircle(Math.random() * 64, Math.random() * 64, 1.5);
+    
+    // Base dirt variations
+    g.fillStyle(0x1a2210);
+    g.fillRect(0, 0, 32, 32);
+    g.fillStyle(0x151d0c);
+    g.fillRect(32, 32, 32, 32);
+    
+    // Dirt patches
+    g.fillStyle(0x2a2a1a);
+    g.fillCircle(15, 20, 12);
+    g.fillStyle(0x252515);
+    g.fillCircle(50, 45, 10);
+    g.fillStyle(0x1f1f12);
+    g.fillCircle(30, 55, 8);
+    
+    // Mud puddles
+    g.fillStyle(0x15150d, 0.6);
+    g.fillEllipse(45, 15, 12, 6);
+    g.fillStyle(0x12120a, 0.5);
+    g.fillEllipse(10, 50, 8, 4);
+    
+    // Grass tufts
+    g.fillStyle(0x2a4015);
+    g.fillRect(8, 10, 2, 6);
+    g.fillRect(12, 12, 2, 5);
+    g.fillRect(10, 8, 2, 7);
+    g.fillRect(50, 30, 2, 6);
+    g.fillRect(54, 32, 2, 5);
+    g.fillRect(25, 45, 2, 6);
+    g.fillRect(28, 48, 2, 4);
+    
+    // Dead leaves and debris
+    g.fillStyle(0x3a3020, 0.4);
+    g.fillRect(20, 25, 4, 2);
+    g.fillRect(40, 40, 5, 2);
+    g.fillRect(55, 55, 3, 2);
+    g.fillStyle(0x2a2515, 0.5);
+    g.fillRect(5, 35, 3, 2);
+    g.fillRect(35, 15, 4, 2);
+    
+    // Small stones
+    g.fillStyle(0x3a3a35);
+    g.fillCircle(22, 42, 3);
+    g.fillStyle(0x454540);
+    g.fillCircle(21, 41, 2);
+    g.fillStyle(0x3a3a35);
+    g.fillCircle(48, 8, 2);
+    g.fillStyle(0x353530);
+    g.fillCircle(38, 52, 2);
+    
+    // Dark spots / shadows
+    g.fillStyle(0x080a05, 0.4);
+    g.fillCircle(30, 30, 15);
+    g.fillStyle(0x0a0c08, 0.3);
+    g.fillCircle(55, 25, 8);
+    
     g.generateTexture('ground', 64, 64);
     g.clear();
 
@@ -242,46 +294,99 @@ function preload() {
     g.generateTexture('fence_rail', 64, 12);
     g.clear();
 
-    // Brick wall tile - detailed DBD-style
-    // Background mortar
-    g.fillStyle(0x4a4a4a); g.fillRect(0, 0, 96, 48);
-    // Brick variations for realism
-    const brickColors = [0x8B4513, 0x7a3a10, 0x9a5520, 0x6B3008, 0x854015];
-    // Row 1 - bottom
-    for (let i = 0; i < 3; i++) {
-        const c = brickColors[(i * 2) % brickColors.length];
-        g.fillStyle(c); g.fillRect(2 + i * 32, 34, 30, 12);
-        g.fillStyle(c + 0x111111); g.fillRect(2 + i * 32, 34, 30, 2);
-        g.fillStyle(c - 0x111111); g.fillRect(2 + i * 32, 44, 30, 2);
+    // Brick wall tile - highly detailed DBD-style with more bricks
+    // Background mortar base
+    g.fillStyle(0x5a5a5a); g.fillRect(0, 0, 96, 48);
+    g.fillStyle(0x4a4a4a); g.fillRect(0, 0, 96, 4); // Top mortar
+    
+    // Detailed brick colors - varied red/brown tones
+    const brickColors = [
+        0x8B4513, 0x7a3a10, 0x9a5520, 0x6B3008, 0x854015,
+        0x943a20, 0x7d3a15, 0x8a4518, 0x783010, 0x8f5015,
+        0xa04020, 0x7a3512, 0x884515, 0x6a2a0a, 0x8b4012
+    ];
+    
+    // Row 4 - top (y=2)
+    g.fillStyle(0x3a3a3a); g.fillRect(0, 0, 96, 2); // Mortar top
+    for (let i = 0; i < 4; i++) {
+        const c = brickColors[i * 3 % brickColors.length];
+        g.fillStyle(c); g.fillRect(1 + i * 24, 2, 22, 10);
+        g.fillStyle(c + 0x151515); g.fillRect(1 + i * 24, 2, 22, 2); // Top highlight
+        g.fillStyle(c - 0x101010); g.fillRect(1 + i * 24, 10, 22, 2); // Bottom shadow
+        g.fillStyle(c + 0x080808); g.fillRect(1 + i * 24, 4, 6, 6); // Left highlight
     }
-    // Mortar line
-    g.fillStyle(0x3a3a3a); g.fillRect(0, 32, 96, 2);
-    g.fillStyle(0x5a5a5a); g.fillRect(0, 32, 96, 1);
-    // Row 2 - middle (offset)
-    g.fillStyle(brickColors[1]); g.fillRect(-14, 17, 30, 13);
-    g.fillStyle(brickColors[2]); g.fillRect(18, 17, 30, 13);
-    g.fillStyle(brickColors[3]); g.fillRect(50, 17, 30, 13);
-    g.fillStyle(brickColors[4]); g.fillRect(82, 17, 28, 13);
-    g.fillStyle(0x3a3a3a); g.fillRect(0, 16, 96, 2);
-    g.fillStyle(0x5a5a5a); g.fillRect(0, 16, 96, 1);
-    // Row 3 - top
+    g.fillStyle(0x3a3a3a); g.fillRect(0, 12, 96, 1); // Mortar line
+    
+    // Row 3 (y=13)
     for (let i = 0; i < 3; i++) {
-        const c = brickColors[(i + 1) % brickColors.length];
-        g.fillStyle(c); g.fillRect(2 + i * 32, 2, 30, 12);
-        g.fillStyle(c + 0x111111); g.fillRect(2 + i * 32, 2, 30, 2);
-        g.fillStyle(c - 0x111111); g.fillRect(2 + i * 32, 12, 30, 2);
+        const c = brickColors[(i * 2 + 1) % brickColors.length];
+        g.fillStyle(c); g.fillRect(13 + i * 28, 13, 26, 10);
+        g.fillStyle(c + 0x151515); g.fillRect(13 + i * 28, 13, 26, 2);
+        g.fillStyle(c - 0x101010); g.fillRect(13 + i * 28, 21, 26, 2);
+        // Brick texture details
+        g.fillStyle(c + 0x0a0a0a); g.fillRect(15 + i * 28, 15, 8, 3);
+        g.fillStyle(c + 0x1a1a1a); g.fillRect(30 + i * 28, 17, 6, 2);
     }
-    g.fillStyle(0x3a3a3a); g.fillRect(0, 0, 96, 2);
+    g.fillStyle(0x3a3a3a); g.fillRect(0, 23, 96, 1); // Mortar line
+    
+    // Row 2 (y=24)
+    for (let i = 0; i < 4; i++) {
+        const c = brickColors[(i * 4 + 2) % brickColors.length];
+        g.fillStyle(c); g.fillRect(1 + i * 24, 24, 22, 10);
+        g.fillStyle(c + 0x151515); g.fillRect(1 + i * 24, 24, 22, 2);
+        g.fillStyle(c - 0x101010); g.fillRect(1 + i * 24, 32, 22, 2);
+        g.fillStyle(c + 0x0d0d0d); g.fillRect(8 + i * 24, 26, 5, 4);
+    }
+    g.fillStyle(0x3a3a3a); g.fillRect(0, 34, 96, 1); // Mortar line
+    
+    // Row 1 - bottom (y=35)
+    for (let i = 0; i < 3; i++) {
+        const c = brickColors[(i * 3 + 3) % brickColors.length];
+        g.fillStyle(c); g.fillRect(13 + i * 28, 35, 26, 10);
+        g.fillStyle(c + 0x151515); g.fillRect(13 + i * 28, 35, 26, 2);
+        g.fillStyle(c - 0x101010); g.fillRect(13 + i * 28, 43, 26, 2);
+        g.fillStyle(c + 0x0c0c0c); g.fillRect(20 + i * 28, 37, 10, 3);
+    }
+    
     // Vertical mortar lines
-    g.fillStyle(0x3a3a3a); g.fillRect(30, 0, 2, 16); g.fillRect(62, 0, 2, 16);
-    g.fillStyle(0x3a3a3a); g.fillRect(14, 16, 2, 16); g.fillRect(46, 16, 2, 16); g.fillRect(78, 16, 2, 16);
-    g.fillStyle(0x3a3a3a); g.fillRect(30, 32, 2, 16); g.fillRect(62, 32, 2, 16);
-    // Random cracks and wear
-    g.fillStyle(0x2a2a2a, 0.5); g.fillRect(10, 36, 8, 1); g.fillRect(50, 38, 12, 1);
-    g.fillStyle(0x2a2a2a, 0.5); g.fillRect(70, 5, 10, 1); g.fillRect(25, 20, 6, 1);
-    // Dark spots / aging
-    g.fillStyle(0x3a2a1a, 0.3); g.fillCircle(50, 40, 4);
-    g.fillStyle(0x3a2a1a, 0.25); g.fillCircle(20, 8, 3);
+    g.fillStyle(0x3a3a3a);
+    g.fillRect(23, 0, 2, 12); g.fillRect(47, 0, 2, 12); g.fillRect(71, 0, 2, 12); // Top row
+    g.fillRect(0, 12, 2, 11); g.fillRect(41, 12, 2, 11); g.fillRect(82, 12, 2, 11); // Middle row offset
+    g.fillRect(23, 23, 2, 11); g.fillRect(47, 23, 2, 11); g.fillRect(71, 23, 2, 11); // Row 2
+    g.fillRect(0, 34, 2, 11); g.fillRect(41, 34, 2, 11); g.fillRect(82, 34, 2, 11); // Bottom row offset
+    g.fillRect(23, 34, 2, 14); g.fillRect(47, 34, 2, 14); g.fillRect(71, 34, 2, 14); // Bottom
+    
+    // Additional mortar texture
+    g.fillStyle(0x3a3a3a, 0.5); g.fillRect(24, 0, 1, 48); g.fillRect(48, 0, 1, 48); g.fillRect(72, 0, 1, 48);
+    g.fillRect(0, 12, 96, 1); g.fillRect(0, 23, 96, 1); g.fillRect(0, 34, 96, 1);
+    
+    // Random cracks and wear marks
+    g.fillStyle(0x2a2a2a, 0.7);
+    g.fillRect(8, 8, 6, 1); g.fillRect(35, 5, 10, 1); g.fillRect(60, 7, 8, 1);
+    g.fillRect(15, 27, 5, 1); g.fillRect(50, 26, 7, 1); g.fillRect(75, 28, 4, 1);
+    g.fillRect(5, 38, 5, 1); g.fillRect(45, 40, 8, 1); g.fillRect(70, 37, 6, 1);
+    
+    // Brick surface imperfections
+    g.fillStyle(0x9a5520, 0.3); g.fillRect(12, 15, 3, 2);
+    g.fillStyle(0x7a3a10, 0.3); g.fillRect(55, 25, 4, 2);
+    g.fillStyle(0x8B4513, 0.3); g.fillRect(25, 37, 3, 2);
+    g.fillStyle(0x6B3008, 0.3); g.fillRect(80, 5, 4, 2);
+    
+    // Dark spots / aging stains
+    g.fillStyle(0x2a1a0a, 0.35); g.fillCircle(15, 40, 5);
+    g.fillStyle(0x3a2a1a, 0.3); g.fillCircle(60, 8, 4);
+    g.fillStyle(0x2a1a0a, 0.25); g.fillCircle(85, 25, 3);
+    g.fillStyle(0x3a2a1a, 0.2); g.fillCircle(30, 30, 3);
+    g.fillStyle(0x2a1a0a, 0.15); g.fillCircle(75, 42, 4);
+    
+    // Moss/algae on bottom edge
+    g.fillStyle(0x3a4a2a, 0.4);
+    g.fillRect(0, 44, 20, 3);
+    g.fillRect(70, 44, 15, 3);
+    g.fillStyle(0x4a5a3a, 0.3);
+    g.fillRect(25, 45, 10, 2);
+    g.fillRect(55, 45, 8, 2);
+    
     g.generateTexture('brick', 96, 48);
     g.clear();
 
@@ -360,8 +465,10 @@ function preload() {
     g.clear();
 
     // ═══════ DETAILED 3D-STYLE TREE ═══════
-    // Shadow under tree
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(35, 95, 50, 18);
+    // Shadow under tree - detailed with multiple layers
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(37, 96, 55, 20);
+    g.fillStyle(0x000000, 0.2); g.fillEllipse(32, 94, 40, 14);
+    g.fillStyle(0x000000, 0.15); g.fillEllipse(40, 95, 35, 12);
     
     // Tree trunk - detailed bark texture
     g.fillStyle(0x3d2817); g.fillRect(28, 45, 14, 52);
@@ -416,8 +523,9 @@ function preload() {
     g.clear();
 
     // ═══════ DETAILED 3D-STYLE BUSH ═══════
-    // Shadow under bush
-    g.fillStyle(0x000000, 0.25); g.fillEllipse(30, 38, 44, 12);
+    // Shadow under bush - detailed with multiple layers
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(32, 40, 48, 14);
+    g.fillStyle(0x000000, 0.2); g.fillEllipse(28, 38, 35, 10);
     
     // Bush base layer - dark green
     g.fillStyle(0x1a4a0d); g.fillCircle(30, 28, 22);
@@ -457,17 +565,27 @@ function preload() {
     g.clear();
 
     // ═══════ SMALL TREE (THIN) ═══════
-    g.fillStyle(0x000000, 0.25); g.fillEllipse(20, 72, 28, 10);
+    // Detailed shadow
+    g.fillStyle(0x000000, 0.35); g.fillEllipse(22, 74, 32, 12);
+    g.fillStyle(0x000000, 0.2); g.fillEllipse(18, 72, 20, 8);
     
-    g.fillStyle(0x4a3020); g.fillRect(16, 35, 8, 38);
-    g.fillStyle(0x5d4037); g.fillRect(16, 35, 3, 38);
-    g.fillStyle(0x3d2817); g.fillRect(20, 35, 4, 38);
+    // Trunk with bark texture
+    g.fillStyle(0x3a2515); g.fillRect(16, 35, 8, 38);
+    g.fillStyle(0x4a3020); g.fillRect(16, 35, 3, 38);
+    g.fillStyle(0x2a1a10); g.fillRect(20, 35, 4, 38);
+    // Bark lines
+    g.fillStyle(0x2a1a10, 0.5); g.fillRect(17, 40, 1, 30);
+    g.fillStyle(0x5a4030, 0.3); g.fillRect(19, 45, 1, 25);
     
+    // Foliage layers with highlights
     g.fillStyle(0x1a4a0d); g.fillCircle(20, 28, 18);
     g.fillStyle(0x2a5a15); g.fillCircle(20, 25, 15);
     g.fillStyle(0x3a6a1f); g.fillCircle(20, 22, 12);
     g.fillStyle(0x4a7a2a); g.fillCircle(18, 18, 8);
     g.fillStyle(0x5a8a35); g.fillCircle(16, 15, 5);
+    // Highlight spots
+    g.fillStyle(0x6a9a45); g.fillCircle(22, 20, 4);
+    g.fillStyle(0x5a8a35); g.fillCircle(14, 24, 3);
     
     g.fillStyle(0x1a4a0d); g.fillCircle(8, 30, 8);
     g.fillStyle(0x2a5a15); g.fillCircle(32, 30, 8);
@@ -476,7 +594,9 @@ function preload() {
     g.clear();
 
     // ═══════ PINE TREE ═══════
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(25, 88, 30, 10);
+    // Detailed shadow
+    g.fillStyle(0x000000, 0.4); g.fillEllipse(27, 92, 36, 14);
+    g.fillStyle(0x000000, 0.25); g.fillEllipse(22, 90, 24, 10);
     
     g.fillStyle(0x4a3020); g.fillRect(21, 55, 8, 34);
     g.fillStyle(0x5d4037); g.fillRect(21, 55, 3, 34);
@@ -866,10 +986,8 @@ function preload() {
     createSurvivorTextures(g, 's1', 0xc0392b, 0x3d2314);
     createSurvivorTextures(g, 's2', 0x8e44ad, 0x4a3020);
     createSurvivorTextures(g, 's3', 0x27ae60, 0x1a1a1a);
-    // CSS Pixel Art Survivor (s4) - uses createCSSPixelSurvivor below
-    createCSSPixelSurvivor(g, 's4');
-    // Copy s3 textures for s4's other states (dying, carried, repair)
-    // These will be created below using s3's colors
+    // s4 uses the same texture as s3 (can be replaced with custom pixel art later)
+    createSurvivorTextures(g, 's4', 0x27ae60, 0x1a1a1a);
 
     // Repairing textures for survivors
     createRepairingTextures(g, 's1', 0xc0392b, 0x3d2314);
@@ -1955,183 +2073,6 @@ function createDyingTextures(g, name, shirtColor, hairColor) {
     g.clear();
 }
 
-// CSS Pixel Art Survivor - 20x53 pixels scaled to ~40x106 (displayed at 1.8x)
-function createCSSPixelSurvivor(g, name) {
-    // CSS pixel scale: 1 CSS em = 2 game pixels (then displayed 1.8x = 72x120)
-    const scale = 2;
-    const offsetX = 6; // Center horizontally in 72px width
-    
-    // Color map for CSS hex colors
-    const colorMap = {
-        'black': 0x000000,
-        'white': 0xffffff,
-        '#8c6a3d': 0x8c6a3d,
-        '#8e693d': 0x8e693d,
-        '#cfaf89': 0xcfaf89,
-        '#6e5537': 0x6e5537,
-        '#af8a60': 0xaf8a60,
-        '#8b683e': 0x8b683e,
-        '#8c693f': 0x8c693f,
-        '#ad8a62': 0xad8a62,
-        '#8d6b3e': 0x8d6b3e,
-        '#8c6a3d': 0x8c6a3d,
-        '#ae895d': 0xae895d,
-        '#5b4327': 0x5b4327,
-        '#f0d6b5': 0xf0d6b5,
-        '#594427': 0x594427,
-        '#cea672': 0xcea672,
-        '#ffe5c4': 0xffe5c4,
-        '#e8c79a': 0xe8c79a,
-        '#fee4c3': 0xfee4c3,
-        '#fdeacc': 0xfdeacc,
-        '#ffe9cf': 0xffe9cf,
-        '#f1d4b2': 0xf1d4b2,
-        '#efd5b0': 0xefd5b0,
-        '#d9d9d9': 0xd9d9d9,
-        '#cda572': 0xcda572,
-        '#fee3c6': 0xfee3c6,
-        '#f0d6b3': 0xf0d6b3,
-        '#cca770': 0xcca770,
-        '#f2d5b3': 0xf2d5b3,
-        '#e9c69c': 0xe9c69c,
-        '#fce4c2': 0xfce4c2,
-        '#fbe3c1': 0xfbe3c1,
-        '#cea770': 0xcea770,
-        '#fcdcb5': 0xfcdcb5,
-        '#fcdcb3': 0xfcdcb3,
-        '#db6c50': 0xdb6c50,
-        '#cfa673': 0xcfa673,
-        '#efd5b2': 0xefd5b2,
-        '#cfa670': 0xcfa670,
-        '#cfa672': 0xcfa672,
-        '#ffeacf': 0xffeacf,
-        '#ffe7cb': 0xffe7cb,
-        '#bababc': 0xbababc,
-        '#bababa': 0xbababa,
-        '#3a444d': 0x3a444d,
-        '#c14e85': 0xc14e85,
-        '#ec8cbc': 0xec8cbc,
-        '#f4bed8': 0xf4bed8,
-        '#1e468b': 0x1e468b,
-        '#70498a': 0x70498a,
-        '#704a87': 0x704a87,
-        '#f5bdd8': 0xf5bdd8,
-        '#dc679e': 0xdc679e,
-        '#6f4b88': 0x6f4b88,
-        '#6e4a88': 0x6e4a88,
-        '#f6bed9': 0xf6bed9,
-        '#e98cb8': 0xe98cb8,
-        '#eb8bb9': 0xeb8bb9,
-        '#1d4688': 0x1d4688,
-        '#8983b1': 0x8983b1,
-        '#8882b2': 0x8882b2,
-        '#714987': 0x714987,
-        '#6e4a87': 0x6e4a87,
-        '#ec8db9': 0xec8db9,
-        '#714a8b': 0x714a8b,
-        '#6e4a8a': 0x6e4a8a,
-        '#e98cb9': 0xe98cb9,
-        '#dc679c': 0xdc679c,
-        '#f4bed6': 0xf4bed6,
-        '#ed8bba': 0xed8bba,
-        '#f5bdd6': 0xf5bdd6,
-        '#3c5a74': 0x3c5a74,
-        '#7a9dbd': 0x7a9dbd,
-        '#789cbc': 0x789cbc,
-        '#779ebd': 0x779ebd,
-        '#799dbd': 0x799dbd,
-        '#8cafcd': 0x8cafcd,
-        '#98b7d3': 0x98b7d3,
-        '#62809a': 0x62809a,
-        '#61819a': 0x61819a,
-        '#97b9d4': 0x97b9d4,
-        '#98b8d1': 0x98b8d1,
-        '#99b9d2': 0x99b9d2,
-        '#799dbf': 0x799dbf,
-        '#db669b': 0xdb669b,
-        '#dd669b': 0xdd669b
-    };
-
-    // Parse CSS pixel data - simplified version of the CSS box-shadow
-    // Each row is: [y, [x, color], [x, color], ...]
-    const pixelData = [
-        [0, [[7,'black'],[8,'black'],[9,'black'],[10,'black'],[11,'black'],[12,'black']]],
-        [1, [[5,'black'],[6,'black'],[7,'#8c6a3d'],[8,'#8e693d'],[9,'#8e693d'],[10,'#8e693d'],[11,'#cfaf89'],[12,'#6e5537'],[13,'black'],[14,'black']]],
-        [2, [[4,'black'],[5,'#8c6a3d'],[6,'#6e5537'],[7,'#ae895d'],[8,'#8b683e'],[9,'#8c693f'],[10,'#8e693d'],[11,'#8e693d'],[12,'#ad8a62'],[13,'#8d6b3e'],[14,'#8c6a3d'],[15,'black']]],
-        [3, [[3,'black'],[4,'#af8a60'],[5,'#8b683e'],[6,'#8c693f'],[7,'#6e5537'],[8,'#ad8a60'],[9,'#8c693f'],[10,'#8e693d'],[11,'#8e693d'],[12,'#8e693d'],[13,'#6e5537'],[14,'#6e5537'],[15,'#8c6a3d'],[16,'black']]],
-        [4, [[3,'black'],[4,'#8e693f'],[5,'#8e693d'],[6,'#6e5537'],[7,'#6e5537'],[8,'#5b4327'],[9,'#8e693d'],[10,'#8e693d'],[11,'#8e693d'],[12,'#8e693d'],[13,'#8e693d'],[14,'#6e5537'],[15,'#6e5537'],[16,'black']]],
-        [5, [[2,'black'],[3,'#ac895f'],[4,'#6e5537'],[5,'#6e5537'],[6,'#6e5537'],[7,'#5a4226'],[8,'#f0d6b5'],[9,'#594427'],[10,'#8e693d'],[11,'#8e693d'],[12,'#8e693d'],[13,'#8e693d'],[14,'#6e5537'],[15,'#6e5537'],[16,'#6c5536'],[17,'black']]],
-        [6, [[2,'black'],[3,'#8e693f'],[4,'#5b4327'],[5,'#6d5637'],[6,'#594427'],[7,'#f0d6b5'],[8,'#f0d6b1'],[9,'#efd7b3'],[10,'#5a4228'],[11,'#8c693f'],[12,'#8c6a3d'],[13,'#8c6a3d'],[14,'#8e693d'],[15,'#6e5537'],[16,'#6e5537'],[17,'black']]],
-        [7, [[2,'black'],[3,'#6d5436'],[4,'#5b4327'],[5,'#5b4327'],[6,'#cea672'],[7,'#cea672'],[8,'#cea672'],[9,'#ffe5c4'],[10,'#e8c79a'],[11,'#5b4327'],[12,'#5b4327'],[13,'#5b4327'],[14,'#6e5537'],[15,'#6d5436'],[16,'#6e5536'],[17,'black']]],
-        [8, [[2,'black'],[3,'#6e5537'],[4,'#594425'],[5,'#cda572'],[6,'#fee4c3'],[7,'#fee4c3'],[8,'#ffe5c4'],[9,'#fee3c6'],[10,'#fee3c5'],[11,'#fee3c5'],[12,'#e8c79c'],[13,'#e8c79c'],[14,'#5b4327'],[15,'#6d5539'],[16,'#6e5537'],[17,'black']]],
-        [9, [[2,'black'],[9,'#f1d4b2'],[10,'#efd5b0']]],
-        [10, [[2,'black'],[5,'#d9d9d9'],[6,'white'],[7,'white'],[8,'black'],[9,'black'],[10,'black'],[11,'black'],[12,'white'],[13,'white'],[14,'#d9d9d9']]],
-        [11, [[2,'black'],[3,'#6e5537'],[5,'#d9d9d9'],[6,'white'],[7,'white'],[8,'black'],[9,'#efd5b0'],[10,'#efd5b0'],[12,'white'],[13,'white'],[14,'#d9d9d9'],[16,'#6e5536']]],
-        [12, [[2,'black'],[3,'#6d5636'],[4,'#5b4327'],[8,'#f0d6b3'],[9,'#fdeacc'],[10,'#ffe9cf'],[11,'#f1d4b2'],[15,'#584326'],[16,'#6e5536']]],
-        [13, [[1,'black'],[2,'#ad8a60'],[3,'#6f5436'],[4,'#5b4329'],[5,'#e8c79c'],[6,'#fce4c2'],[7,'#f0d6b3'],[8,'#eed6b2'],[9,'#cea672'],[10,'#cca770'],[11,'#f2d5b3'],[12,'#f1d5b0'],[13,'#fbe3bf'],[14,'#e7c89c'],[15,'#594427'],[16,'#6e5536'],[17,'black']]],
-        [14, [[0,'black'],[1,'#ac895f'],[2,'#8e693d'],[3,'#6e5537'],[4,'#5a4226'],[5,'#e9c69c'],[6,'#fce4c2'],[7,'#fbe3c1'],[8,'#fce4c2'],[9,'#f0d6b3'],[10,'#f0d6b3'],[11,'#efd5b0'],[12,'#fbe3c1'],[13,'#fce4c2'],[14,'#e8c79c'],[15,'#5b4327'],[16,'#6e5536'],[17,'black']]],
-        [15, [[1,'black'],[2,'#8e693d'],[3,'#6e5537'],[4,'#5c4227'],[5,'#cca772'],[6,'#fcdcb5'],[7,'#cea770'],[8,'#d9d9d9'],[9,'white'],[10,'white'],[11,'#d9d9d9'],[12,'#cea770'],[13,'#fcdcb3'],[14,'#cea672'],[15,'#5c4227'],[16,'#6e5536'],[17,'black']]],
-        [16, [[2,'black'],[3,'#6d5637'],[4,'#6f5437'],[6,'#cfa773'],[7,'#efd5b2'],[8,'#f0d6b5'],[9,'#da6b4d'],[10,'#db6c50'],[11,'#efd5b0'],[12,'#f1d5b0'],[13,'#cea672'],[14,'#574426']]],
-        [17, [[7,'#cfa672'],[8,'#f0d6b1'],[9,'#f0d6b5'],[10,'#ffeacf'],[11,'#ffe7cb'],[12,'#cfa670']]],
-        [18, [[8,'black'],[9,'#cfa670'],[10,'#cea672'],[11,'black']]],
-        [19, [[6,'black'],[7,'white'],[8,'#bababc'],[9,'#f0d6b5'],[10,'#efd5b2'],[11,'#bababc'],[12,'white'],[13,'black']]],
-        [20, [[6,'black'],[7,'white'],[8,'#bababc'],[9,'#f0d6b5'],[10,'#efd5b2'],[11,'#bababc'],[12,'white'],[13,'black']]],
-        [21, [[5,'black'],[6,'#c14e85'],[7,'#bababa'],[8,'white'],[9,'#3a444d'],[10,'#3a444d'],[11,'white'],[12,'#bababa'],[13,'#c14e85'],[14,'black']]],
-        [22, [[4,'black'],[5,'#8882b2'],[6,'#ea8dba'],[7,'#f4bed6'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#f5bdd8'],[13,'#ed8bba'],[14,'#8981b0'],[15,'black']]],
-        [23, [[3,'black'],[4,'#ec8cbc'],[5,'#f4bed8'],[6,'#1e468b'],[7,'#70498a'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#70498a'],[13,'#1e468b'],[14,'#f4c0d7'],[15,'#ec8cbc'],[16,'black']]],
-        [24, [[3,'black'],[4,'#6f4b88'],[5,'#1e468b'],[6,'#f5bdd8'],[7,'#dc679e'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#dd669e'],[13,'#f5bdd8'],[14,'#1e468b'],[15,'#704a87'],[16,'black']]],
-        [25, [[3,'black'],[4,'#c15084'],[5,'#301a26'],[6,'#8983b1'],[7,'#714987'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a88'],[13,'#8882b2'],[14,'#301a26'],[15,'#c14e85'],[16,'black']]],
-        [26, [[3,'black'],[4,'#8a82b1'],[6,'#f6bed9'],[7,'#e98cb8'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#ec8cba'],[13,'#f6bed9'],[15,'#8981b0'],[16,'black']]],
-        [27, [[3,'black'],[4,'#eb8bb9'],[6,'#1d4688'],[7,'#6e4a87'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a88'],[13,'#1d4688'],[15,'#ec8db9'],[16,'black']]],
-        [28, [[3,'black'],[4,'#6f4b88'],[6,'#f5bdd8'],[7,'#dc679e'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#dd669e'],[13,'#f5bdd8'],[15,'#704a87'],[16,'black']]],
-        [29, [[3,'black'],[4,'#c15084'],[6,'#8983b1'],[7,'#714987'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a88'],[13,'#8882b2'],[15,'#c14e85'],[16,'black']]],
-        [30, [[3,'black'],[4,'#8a82b1'],[6,'#f6bed9'],[7,'#e98cb8'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#ec8cba'],[13,'#f6bed9'],[15,'#8981b0'],[16,'black']]],
-        [31, [[3,'black'],[4,'#eb8bb9'],[6,'#1d4688'],[7,'#6e4a87'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a88'],[13,'#1d4688'],[15,'#ec8db9'],[16,'black']]],
-        [32, [[3,'black'],[4,'#6f4b88'],[6,'#f5bdd8'],[7,'#dc679e'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#dd669e'],[13,'#f5bdd8'],[15,'#704a87'],[16,'black']]],
-        [33, [[3,'black'],[4,'#c15084'],[6,'#8983b1'],[7,'#714987'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a88'],[13,'#8882b2'],[15,'#c14e85'],[16,'black']]],
-        [34, [[3,'#cea672'],[4,'#f0d6b3'],[6,'#f4bed8'],[7,'#ec8db9'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#ec8cba'],[13,'#f6bed9'],[15,'#f0d6b3'],[16,'#cea770']]],
-        [35, [[3,'#cea770'],[4,'#f0d6b3'],[6,'#1d4688'],[7,'#714a8b'],[8,'black'],[9,'#3a444d'],[10,'#3a444d'],[11,'black'],[12,'#6e4a8a'],[13,'#1d4688'],[15,'#f0d6b3'],[16,'#cea672']],
-             [17,'black'],[18,'black'],[19,'black'],[20,'black'],[21,'black'],[22,'black'],[23,'black'],[24,'black'],[25,'black'],[26,'black'],[27,'black']],
-        [36, [[3,'black'],[4,'black'],[6,'#f4bed8'],[7,'#dc679c'],[8,'black'],[9,'#3c5a74'],[10,'#3c5a74'],[11,'black'],[12,'#e98cb9'],[13,'#f4bed6']]],
-        [37, [[5,'black'],[6,'black'],[7,'black'],[8,'black'],[9,'#7a9dbd'],[10,'#7a9dbd'],[11,'black'],[12,'black'],[13,'black'],[14,'black']]],
-        [38, [[5,'black'],[6,'#789cbc'],[7,'#799dbd'],[8,'#779ebd'],[9,'#799dbd'],[10,'#799dbd'],[11,'#799dbd'],[12,'#799dbd'],[13,'#799dbd'],[14,'black']]],
-        [39, [[5,'black'],[6,'#8cafcd'],[7,'#799dbd'],[8,'#7a9dbd'],[11,'#799dbd'],[12,'#799dbd'],[13,'#8cafcd'],[14,'black']]],
-        [40, [[5,'black'],[6,'#8cafcd'],[7,'#799dbd'],[13,'#8cafcd'],[14,'black']]],
-        [41, [[5,'black'],[6,'#8cafcd'],[7,'#799dbd'],[13,'#8cafcd'],[14,'black']]],
-        [42, [[5,'black'],[6,'#98b7d3'],[7,'#799dbd'],[13,'#98b7d3'],[14,'black']]],
-        [43, [[5,'black'],[6,'#98b7d3'],[7,'#799dbd'],[13,'#98b7d3'],[14,'black']]],
-        [44, [[5,'black'],[6,'#62809a'],[7,'#789cbc'],[13,'#62809a'],[14,'black']]],
-        [45, [[5,'black'],[6,'#799dbd'],[7,'#799dbd'],[13,'#799dbd'],[14,'black']]],
-        [46, [[5,'black'],[6,'#799dbd'],[7,'#799dbd'],[13,'#799dbd'],[14,'black']]],
-        [47, [[5,'black'],[6,'#799dbd'],[7,'#799dbd'],[13,'#799dbd'],[14,'black']]],
-        [48, [[5,'black'],[6,'#62809a'],[7,'#62809a'],[13,'#62809a'],[14,'black']]],
-        [49, [[4,'black'],[5,'#97b9d4'],[6,'#98b8d1'],[7,'#799dbd'],[14,'#61819a'],[15,'#62809a'],[16,'black']]],
-        [50, [[4,'black'],[5,'#799dbf'],[6,'#799dbd'],[7,'#799dbd'],[13,'#98b8d1'],[14,'#99b9d2'],[15,'#99b9d2'],[16,'black']]],
-        [51, [[3,'black'],[4,'black'],[5,'#db669b'],[6,'#db669b'],[7,'#db669b'],[12,'#db669b'],[13,'#db669b'],[14,'#db669b'],[15,'black'],[16,'black']]],
-        [52, [[2,'black'],[3,'white'],[4,'white'],[5,'white'],[6,'white'],[7,'white'],[12,'white'],[13,'white'],[14,'white'],[15,'white'],[16,'white'],[17,'black']]]
-    ];
-
-    // Draw shadow at bottom
-    g.fillStyle(0x000000, 0.2);
-    g.fillEllipse(36, 106, 32, 5);
-
-    // Draw all pixels
-    for (let row = 0; row < pixelData.length; row++) {
-        const [y, pixels] = pixelData[row];
-        for (let p = 0; p < pixels.length; p++) {
-            const [x, colorKey] = pixels[p];
-            if (colorMap[colorKey] !== undefined) {
-                g.fillStyle(colorMap[colorKey]);
-                g.fillRect(offsetX + x * scale, y * scale, scale, scale);
-            }
-        }
-    }
-
-    // Generate texture (width 72, height 108 - displayed at 1.8x = 72x120)
-    g.generateTexture(name + '_pixel', 72, 108);
-    g.clear();
-}
-
 // Create carried (on killer's shoulder) textures for survivors
 function createCarriedTextures(g, name, shirtColor, hairColor) {
     // ═══════ CARRIED SURVIVOR (on killer's shoulder) ═══════
@@ -2262,49 +2203,155 @@ function create() {
         }
     });
 
+    // Generate random generator positions
+    const MAP_W = 2400, MAP_H = 1800;
+    const allObstacles = getMapObstacles();
+    const GEN_SIZE = 60; // Generator collision size
+    const GEN_SAFE_DIST = 60; // Must be away from obstacles
+    const GEN_MIN_DIST = 300; // Minimum distance between generators
+    
+    function isValidGenPos(x, y) {
+        for (const o of allObstacles) {
+            const centerX = o.x + o.sw / 2;
+            const centerY = o.y + o.sh / 2;
+            const dx = Math.abs(x - centerX);
+            const dy = Math.abs(y - centerY);
+            const minDistX = o.sw / 2 + GEN_SAFE_DIST;
+            const minDistY = o.sh / 2 + GEN_SAFE_DIST;
+            
+            // Too close to obstacle
+            if (dx < minDistX && dy < minDistY) return false;
+        }
+        return true;
+    }
+    
+    function isNearAnyObstacle(x, y) {
+        for (const o of allObstacles) {
+            const centerX = o.x + o.sw / 2;
+            const centerY = o.y + o.sh / 2;
+            const dx = Math.abs(x - centerX);
+            const dy = Math.abs(y - centerY);
+            const maxDist = Math.max(o.sw, o.sh) + 150;
+            
+            if (dx < maxDist && dy < maxDist) return true;
+        }
+        return false;
+    }
+    
+    function generateRandomGens(count) {
+        const positions = [];
+        const padding = 200;
+        
+        for (let i = 0; i < count; i++) {
+            let placed = false;
+            
+            // First try to find position near obstacle
+            for (let attempt = 0; attempt < 50; attempt++) {
+                const x = padding + Math.random() * (MAP_W - padding * 2);
+                const y = padding + Math.random() * (MAP_H - padding * 2);
+                
+                // Must be near an obstacle but not on it
+                if (!isNearAnyObstacle(x, y)) continue;
+                if (!isValidGenPos(x, y)) continue;
+                
+                // Check distance from other generators
+                let tooClose = false;
+                for (const pos of positions) {
+                    const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
+                    if (dist < GEN_MIN_DIST) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+                
+                if (!tooClose) {
+                    positions.push({ x, y });
+                    placed = true;
+                    break;
+                }
+            }
+            
+            // If couldn't find near obstacle, try anywhere valid
+            if (!placed) {
+                for (let attempt = 0; attempt < 100; attempt++) {
+                    const x = padding + Math.random() * (MAP_W - padding * 2);
+                    const y = padding + Math.random() * (MAP_H - padding * 2);
+                    
+                    if (!isValidGenPos(x, y)) continue;
+                    
+                    let tooClose = false;
+                    for (const pos of positions) {
+                        const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
+                        if (dist < GEN_MIN_DIST) {
+                            tooClose = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!tooClose) {
+                        positions.push({ x, y });
+                        placed = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Fallback positions if not enough found
+        while (positions.length < count) {
+            positions.push({
+                x: 300 + positions.length * 400,
+                y: 300 + (positions.length % 3) * 500
+            });
+        }
+        
+        return positions;
+    }
+    
+    const genPositions = generateRandomGens(5);
+    
     // Generators with poles and flickering lights
-    [{ x: 300, y: 200 }, { x: 2100, y: 200 }, { x: 1200, y: 900 }, { x: 300, y: 1600 }, { x: 2100, y: 1600 }]
-        .forEach((p, i) => {
-            // Light glow (outer) - will flicker
-            const lightGlow = this.add.graphics();
-            lightGlow.fillStyle(0xffee88, 0.15);
-            lightGlow.fillCircle(p.x, p.y - 50, 60);
-            lightGlow.setDepth(p.y - 50 + 1);
+    genPositions.forEach((p, i) => {
+        // Light glow (outer) - will flicker
+        const lightGlow = this.add.graphics();
+        lightGlow.fillStyle(0xffee88, 0.15);
+        lightGlow.fillCircle(p.x, p.y - 45, 50);
+        lightGlow.setDepth(p.y - 50 + 1);
 
-            // Light glow (inner, brighter)
-            const lightGlowInner = this.add.graphics();
-            lightGlowInner.fillStyle(0xffee88, 0.3);
-            lightGlowInner.fillCircle(p.x, p.y - 50, 30);
-            lightGlowInner.setDepth(p.y - 50 + 2);
+        // Light glow (inner, brighter)
+        const lightGlowInner = this.add.graphics();
+        lightGlowInner.fillStyle(0xffee88, 0.3);
+        lightGlowInner.fillCircle(p.x, p.y - 45, 25);
+        lightGlowInner.setDepth(p.y - 50 + 2);
 
-            // Light fixture (on top of pole)
-            const light = this.add.sprite(p.x, p.y - 50, 'gen_light').setDepth(p.y - 50 + 3);
+        // Light fixture (on top of pole)
+        const light = this.add.sprite(p.x, p.y - 45, 'gen_light').setDepth(p.y - 50 + 3).setScale(0.7);
 
-            // Light pole
-            const pole = this.add.sprite(p.x, p.y - 26, 'gen_pole').setDepth(p.y - 26 + 1);
-            pole.setScale(0.8);
+        // Light pole
+        const pole = this.add.sprite(p.x, p.y - 22, 'gen_pole').setDepth(p.y - 26 + 1);
+        pole.setScale(0.6);
 
-            // Generator body glow
-            const glow = this.add.graphics();
-            glow.fillStyle(0x00ff44, 0.08);
-            glow.fillCircle(p.x, p.y, 50);
-            glow.setDepth(p.y + 1);
+        // Generator body glow
+        const glow = this.add.graphics();
+        glow.fillStyle(0x00ff44, 0.08);
+        glow.fillCircle(p.x, p.y, 40);
+        glow.setDepth(p.y + 1);
 
-            // Generator body
-            const sp = this.add.sprite(p.x, p.y, 'gen').setDepth(p.y + 2);
-            sp.genId = i;
-            sp.progress = 0;
-            sp.repaired = false;
-            sp.barGfx = this.add.graphics().setDepth(p.y + 3);
-            sp.bx = p.x;
-            sp.by = p.y;
-            sp.glowGfx = glow;
-            sp.lightGlowGfx = lightGlow;
-            sp.lightGlowInnerGfx = lightGlowInner;
-            sp.lightSprite = light;
-            sp.lightFlickerPhase = Math.random() * Math.PI * 2; // Random start phase for flicker
-            generators.push(sp);
-        }, this);
+        // Generator body (smaller scale)
+        const sp = this.add.sprite(p.x, p.y, 'gen').setDepth(p.y + 2).setScale(0.75);
+        sp.genId = i;
+        sp.progress = 0;
+        sp.repaired = false;
+        sp.barGfx = this.add.graphics().setDepth(p.y + 3);
+        sp.bx = p.x;
+        sp.by = p.y;
+        sp.glowGfx = glow;
+        sp.lightGlowGfx = lightGlow;
+        sp.lightGlowInnerGfx = lightGlowInner;
+        sp.lightSprite = light;
+        sp.lightFlickerPhase = Math.random() * Math.PI * 2; // Random start phase for flicker
+        generators.push(sp);
+    }, this);
 
     // Hooks
     [{ x: 500, y: 450 }, { x: 1900, y: 450 }, { x: 500, y: 1350 }, { x: 1900, y: 1350 },
@@ -2337,8 +2384,49 @@ function create() {
     // Camera
     this.cameras.main.setBounds(0, 0, MAP_W, MAP_H);
     this.cameras.main.startFollow(player.sprite, true, 0.1, 0.1);
-    this.cameras.main.setBackgroundColor('#050505');
+    this.cameras.main.setBackgroundColor('#030303');
 
+    // Atmospheric fog overlay (multiple layers for depth)
+    this.fogLayers = [];
+    for (let i = 0; i < 4; i++) {
+        const fog = this.add.graphics();
+        fog.setDepth(98 + i);
+        this.fogLayers.push({ gfx: fog, phase: i * 2.5, speed: 0.0002 + i * 0.0001, alpha: 0.025 - i * 0.005 });
+    }
+    
+    // Dust particles system
+    this.dustParticles = [];
+    for (let i = 0; i < 50; i++) {
+        this.dustParticles.push({
+            x: Math.random() * MAP_W,
+            y: Math.random() * MAP_H,
+            size: 1 + Math.random() * 2,
+            alpha: 0.1 + Math.random() * 0.15,
+            speedX: (Math.random() - 0.5) * 0.4,
+            speedY: (Math.random() - 0.5) * 0.3 - 0.15,
+            wobble: Math.random() * Math.PI * 2
+        });
+    }
+    this.dustGfx = this.add.graphics().setDepth(150);
+    
+    // Ash/ember particles (orange glowing)
+    this.ashParticles = [];
+    for (let i = 0; i < 25; i++) {
+        this.ashParticles.push({
+            x: Math.random() * MAP_W,
+            y: Math.random() * MAP_H,
+            size: 1 + Math.random() * 1.5,
+            alpha: 0.2 + Math.random() * 0.3,
+            speedX: 0.1 + Math.random() * 0.2,
+            speedY: -0.3 - Math.random() * 0.3,
+            flicker: Math.random() * Math.PI * 2
+        });
+    }
+    this.ashGfx = this.add.graphics().setDepth(149);
+    
+    // Vignette overlay (dark edges)
+    this.vignetteGfx = this.add.graphics().setDepth(99999);
+    
     // Floating bar graphics
     floatBarGfx = this.add.graphics().setDepth(55000);
 
@@ -2370,10 +2458,26 @@ function buildFence(W, H) {
 function getMapObstacles() {
     const obs = [];
 
+    // Helper: check if new object overlaps with any existing solid object
+    function overlapsAny(x, y, sw, sh, padding = 30) {
+        for (const o of obs) {
+            if (o.solid) {
+                const dx = Math.abs((x + sw/2) - (o.x + o.sw/2));
+                const dy = Math.abs((y + sh/2) - (o.y + o.sh/2));
+                const minDistX = (sw + o.sw) / 2 + padding;
+                const minDistY = (sh + o.sh) / 2 + padding;
+                if (dx < minDistX && dy < minDistY) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     function addBrickRow(sx, sy, n) { for (let i = 0; i < n; i++) obs.push({ t: 'brick', x: sx + i * 96, y: sy, sw: 94, sh: 46, solid: true }); }
     function addBrickCol(sx, sy, n) { for (let i = 0; i < n; i++) obs.push({ t: 'brick', x: sx, y: sy + i * 50, sw: 94, sh: 46, solid: true }); }
 
-    // Brick walls
+    // Brick walls (solid, placed first)
     addBrickRow(280, 260, 5); addBrickCol(280, 260, 6);
     addBrickRow(880, 340, 6); addBrickCol(880, 340, 5);
     addBrickRow(1880, 580, 5); addBrickCol(1880, 580, 6);
@@ -2382,8 +2486,7 @@ function getMapObstacles() {
     addBrickRow(1080, 1480, 6);
     addBrickCol(680, 820, 5); addBrickRow(680, 820, 4);
 
-    // Stones - varied types with different shapes and colors
-    const stoneTypes = ['stone1', 'stone2', 'stone3', 'stone4', 'stone5'];
+    // Stones - only placed if not overlapping bricks or other objects
     const stoneSizes = {
         stone1: { sw: 40, sh: 38 },
         stone2: { sw: 38, sh: 34 },
@@ -2398,64 +2501,213 @@ function getMapObstacles() {
     [1050, 1600, 'stone2'], [750, 450, 'stone4'], [1800, 1000, 'stone1'], [2200, 1200, 'stone3']
     ].forEach(p => {
         const st = stoneSizes[p[2]];
-        obs.push({ t: p[2], x: p[0], y: p[1], sw: st.sw, sh: st.sh, solid: true });
+        if (!overlapsAny(p[0], p[1], st.sw, st.sh, 40)) {
+            obs.push({ t: p[2], x: p[0], y: p[1], sw: st.sw, sh: st.sh, solid: true });
+        }
     });
 
-    // Large detailed trees
+    // Large detailed trees (only if not overlapping)
     [[120, 120], [580, 80], [1100, 130], [1580, 90], [2180, 180],
     [80, 580], [380, 380], [880, 480], [1380, 280], [1980, 380],
     [130, 1080], [480, 880], [980, 1280], [1480, 1080], [2080, 780],
     [280, 1680], [680, 1680], [1180, 1680], [1680, 1680], [2180, 1580],
     [250, 350], [720, 550], [1250, 450], [1750, 350], [2150, 550],
     [450, 1150], [950, 950], [1450, 1250], [1950, 950], [2350, 1150]
-    ].forEach(p => obs.push({ t: 'tree', x: p[0], y: p[1], sw: 70, sh: 100, solid: false }));
+    ].forEach(p => {
+        if (!overlapsAny(p[0], p[1], 70, 100, 50)) {
+            obs.push({ t: 'tree', x: p[0], y: p[1], sw: 70, sh: 100, solid: false });
+        }
+    });
 
-    // Pine trees
+    // Pine trees (only if not overlapping)
     [[350, 150], [850, 250], [1350, 150], [1850, 250], [2350, 150],
     [150, 750], [650, 650], [1150, 750], [1650, 650], [2150, 750],
     [250, 1350], [750, 1250], [1250, 1350], [1750, 1250], [2250, 1350]
-    ].forEach(p => obs.push({ t: 'pine_tree', x: p[0], y: p[1], sw: 50, sh: 95, solid: false }));
+    ].forEach(p => {
+        if (!overlapsAny(p[0], p[1], 50, 95, 45)) {
+            obs.push({ t: 'pine_tree', x: p[0], y: p[1], sw: 50, sh: 95, solid: false });
+        }
+    });
 
-    // Small trees
+    // Small trees (only if not overlapping)
     [[200, 250], [700, 150], [1200, 250], [1700, 150], [2200, 250],
     [320, 650], [820, 550], [1320, 650], [1820, 550], [2320, 650],
     [180, 1250], [680, 1150], [1180, 1250], [1680, 1150], [2180, 1250]
-    ].forEach(p => obs.push({ t: 'tree_small', x: p[0], y: p[1], sw: 40, sh: 80, solid: false }));
+    ].forEach(p => {
+        if (!overlapsAny(p[0], p[1], 40, 80, 35)) {
+            obs.push({ t: 'tree_small', x: p[0], y: p[1], sw: 40, sh: 80, solid: false });
+        }
+    });
 
-    // Detailed bushes
+    // Detailed bushes (only if not overlapping)
     [[220, 480], [680, 280], [1020, 380], [1780, 680], [2080, 280],
     [330, 1180], [780, 980], [1280, 1380], [1580, 780], [2180, 1180],
     [420, 320], [920, 420], [1420, 320], [1920, 420], [2420, 320],
     [280, 820], [780, 720], [1280, 820], [1780, 720], [2280, 820],
     [520, 1420], [1020, 1320], [1520, 1420], [2020, 1320], [520, 220],
     [1020, 120], [1520, 220], [2020, 120]
-    ].forEach(p => obs.push({ t: 'bush', x: p[0], y: p[1], sw: 60, sh: 45, solid: false }));
+    ].forEach(p => {
+        if (!overlapsAny(p[0], p[1], 60, 45, 25)) {
+            obs.push({ t: 'bush', x: p[0], y: p[1], sw: 60, sh: 45, solid: false });
+        }
+    });
 
-    // Tall grass patches
+    // Tall grass patches (only if not overlapping)
     [[180, 320], [580, 180], [980, 280], [1380, 180], [1880, 320], [2280, 180],
     [280, 720], [680, 620], [1080, 720], [1480, 620], [1980, 720],
     [180, 1120], [580, 1020], [1080, 1120], [1580, 1020], [2080, 1120],
     [380, 1520], [880, 1420], [1380, 1520], [1880, 1420]
-    ].forEach(p => obs.push({ t: 'tall_grass', x: p[0], y: p[1], sw: 50, sh: 40, solid: false }));
+    ].forEach(p => {
+        if (!overlapsAny(p[0], p[1], 50, 40, 20)) {
+            obs.push({ t: 'tall_grass', x: p[0], y: p[1], sw: 50, sh: 40, solid: false });
+        }
+    });
 
-    // Flower patches
+    // Flower patches (only if not overlapping)
     [[280, 420], [780, 320], [1280, 420], [1780, 320], [2280, 420],
     [380, 820], [880, 720], [1380, 820], [1880, 720], [2380, 820],
     [280, 1220], [680, 1120], [1180, 1220], [1680, 1120], [2180, 1220]
-    ].forEach(p => obs.push({ t: 'flower_patch', x: p[0], y: p[1], sw: 52, sh: 35, solid: false }));
+    ].forEach(p => {
+        if (!overlapsAny(p[0], p[1], 52, 35, 20)) {
+            obs.push({ t: 'flower_patch', x: p[0], y: p[1], sw: 52, sh: 35, solid: false });
+        }
+    });
 
-    // Detailed rocks
+    // Detailed rocks (only if not overlapping)
     [[350, 450], [850, 350], [1350, 450], [1850, 350], [2350, 450],
     [450, 850], [950, 750], [1450, 850], [1950, 750], [2450, 850],
     [350, 1250], [750, 1150], [1250, 1250], [1750, 1150], [2250, 1250]
-    ].forEach(p => obs.push({ t: 'rock_detailed', x: p[0], y: p[1], sw: 56, sh: 45, solid: false }));
+    ].forEach(p => {
+        if (!overlapsAny(p[0], p[1], 56, 45, 30)) {
+            obs.push({ t: 'rock_detailed', x: p[0], y: p[1], sw: 56, sh: 45, solid: false });
+        }
+    });
 
     return obs;
 }
 
 function spawnPlayers() {
-    const kSpawn = { x: 1200, y: 900 };
-    const sSpawns = [{ x: 200, y: 200 }, { x: 2200, y: 200 }, { x: 200, y: 1600 }, { x: 2200, y: 1600 }];
+    // Map boundaries (with padding from edges)
+    const MAP_W = 2400, MAP_H = 1800;
+    const PADDING = 150; // Distance from map edges
+    const MIN_KILLER_DIST = 600; // Minimum distance between killer and survivors
+    const SPAWN_ATTEMPTS = 100; // Attempts to find valid spawn point
+    const SAFE_DIST = 80; // Minimum distance from any obstacle
+    
+    // Get all obstacles once for reuse
+    const allObstacles = getMapObstacles();
+    
+    // Check if a point is too close to any obstacle
+    function isNearObstacle(x, y) {
+        for (const o of allObstacles) {
+            const centerX = o.x + o.sw / 2;
+            const centerY = o.y + o.sh / 2;
+            const dx = Math.abs(x - centerX);
+            const dy = Math.abs(y - centerY);
+            const minDistX = o.sw / 2 + SAFE_DIST;
+            const minDistY = o.sh / 2 + SAFE_DIST;
+            
+            // Check if point is inside or too close to obstacle
+            if (dx < minDistX && dy < minDistY) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    // Generate random spawn points avoiding all obstacles
+    function getRandomSpawnPoint() {
+        for (let attempt = 0; attempt < SPAWN_ATTEMPTS; attempt++) {
+            const x = PADDING + Math.random() * (MAP_W - PADDING * 2);
+            const y = PADDING + Math.random() * (MAP_H - PADDING * 2);
+            
+            // Check if point is too close to any obstacle
+            if (!isNearObstacle(x, y)) {
+                return { x, y };
+            }
+        }
+        // Fallback to center if no valid point found
+        return { x: MAP_W / 2, y: MAP_H / 2 };
+    }
+    
+    // Calculate distance between two points
+    function dist(p1, p2) {
+        return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+    }
+    
+    // Get random spawn points for survivors
+    function getSurvivorSpawnPoints(killerSpawn, count) {
+        const points = [];
+        const usedPoints = [];
+        
+        for (let i = 0; i < count; i++) {
+            for (let attempt = 0; attempt < SPAWN_ATTEMPTS; attempt++) {
+                const spawn = getRandomSpawnPoint();
+                
+                // Check distance from killer
+                if (dist(spawn, killerSpawn) < MIN_KILLER_DIST) continue;
+                
+                // Check distance from other survivors
+                let tooClose = false;
+                for (const used of usedPoints) {
+                    if (dist(spawn, used) < 200) {
+                        tooClose = true;
+                        break;
+                    }
+                }
+                
+                if (!tooClose) {
+                    points.push(spawn);
+                    usedPoints.push(spawn);
+                    break;
+                }
+            }
+        }
+        
+        // Fallback if not enough points found
+        while (points.length < count) {
+            points.push(getRandomSpawnPoint());
+        }
+        
+        return points;
+    }
+    
+    // Get killer spawn point (far from center where survivors usually spawn)
+    function getKillerSpawnPoint() {
+        // Divide map into quadrants, killer spawns in quadrant opposite to center
+        const quadrants = [
+            { minX: 100, maxX: 600, minY: 100, maxY: 600 },      // Top-left
+            { minX: 1800, maxX: 2300, minY: 100, maxY: 600 },   // Top-right
+            { minX: 100, maxX: 600, minY: 1200, maxY: 1700 },   // Bottom-left
+            { minX: 1800, maxX: 2300, minY: 1200, maxY: 1700 } // Bottom-right
+        ];
+        
+        // Shuffle quadrants
+        for (let i = quadrants.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [quadrants[i], quadrants[j]] = [quadrants[j], quadrants[i]];
+        }
+        
+        // Try to find valid spawn in quadrants (far from center)
+        for (const quad of quadrants) {
+            for (let attempt = 0; attempt < SPAWN_ATTEMPTS; attempt++) {
+                const x = quad.minX + Math.random() * (quad.maxX - quad.minX);
+                const y = quad.minY + Math.random() * (quad.maxY - quad.minY);
+                
+                // Check if too close to any obstacle
+                if (!isNearObstacle(x, y)) {
+                    return { x, y };
+                }
+            }
+        }
+        
+        // Fallback
+        return { x: 200, y: 200 };
+    }
+
+    // Generate spawn points
+    const kSpawn = getKillerSpawnPoint();
+    const sSpawns = getSurvivorSpawnPoints(kSpawn, 4);
 
     if (isKiller) {
         player = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', true);
@@ -2463,7 +2715,7 @@ function spawnPlayers() {
 
         // AI survivors - only in singleplayer mode
         if (!isMultiplayer) {
-            const sTex = ['s1', 's2', 's4']; // s4 is the CSS pixel art survivor
+            const sTex = ['s1', 's2', 's3'];
             sTex.forEach((t, i) => {
                 const ai = makePlayer(this, sSpawns[i].x, sSpawns[i].y, t, false);
                 ai.aiDir = { x: 0, y: 0 }; ai.aiTimer = 0;
@@ -2502,10 +2754,8 @@ function makePlayer(scene, x, y, tex, isMe) {
     const hitboxSize = (tex === 'killer') ? { w: 30, h: 35 } : { w: 24, h: 28 };
     sp.body.setSize(hitboxSize.w, hitboxSize.h, true);
     
-    // CSS pixel character (s4) is 72x108, scale up to match 72x120
-    if (tex === 's4') {
-        sp.setScale(1.11, 1.11);
-    }
+    // Reduce all character sizes by 15% for better visibility
+    sp.setScale(0.85, 0.85);
 
     const glow = scene.add.graphics();
     const glowColor = (tex === 'killer') ? 0x333333 : 0x44aaff;
@@ -2558,6 +2808,20 @@ function update(time, dt) {
 
     gameTime += dt;
 
+    // Sync actionPressed and inputVec from Input module (for mobile/touch controls)
+    if (typeof Input !== 'undefined') {
+        actionPressed = actionPressed || Input.isActionPressed();
+        const iv = Input.getVector();
+        if (iv.x !== 0 || iv.y !== 0) {
+            inputVec.x = iv.x;
+            inputVec.y = iv.y;
+        }
+        // Also sync release - if Input action is released, reset actionPressed
+        if (!Input.isActionPressed() && !keys['Space'] && !keys['KeyE']) {
+            actionPressed = false;
+        }
+    }
+
     // Animate generator lights flickering and player glows
     generators.forEach(gen => {
         // Body glow pulse
@@ -2587,6 +2851,104 @@ function update(time, dt) {
             gen.lightSprite.setAlpha(0.3);
         }
     });
+
+    // Animate atmospheric fog layers
+    if (scene.fogLayers) {
+        scene.fogLayers.forEach(layer => {
+            const fog = layer.gfx;
+            fog.clear();
+            
+            // Create fog patches that drift slowly
+            const cam = scene.cameras.main;
+            const offsetX = cam.scrollX;
+            const offsetY = cam.scrollY;
+            
+            for (let i = 0; i < 8; i++) {
+                const x = ((i * 400 + gameTime * layer.speed * 1000 + layer.phase * 100) % (cam.width + 600)) - 100 + offsetX;
+                const y = (200 + i * 250 + Math.sin(gameTime * 0.001 + i) * 50) % (cam.height + 400) - 100 + offsetY;
+                
+                fog.fillStyle(0x1a1a2e, layer.alpha);
+                fog.fillEllipse(x, y, 400, 120);
+                fog.fillStyle(0x252540, layer.alpha * 0.5);
+                fog.fillEllipse(x + 50, y + 20, 300, 80);
+            }
+        });
+    }
+    
+    // Animate dust particles
+    if (scene.dustGfx && scene.dustParticles) {
+        const dust = scene.dustGfx;
+        dust.clear();
+        
+        scene.dustParticles.forEach(p => {
+            // Update position with wobble
+            p.wobble += 0.02;
+            p.x += p.speedX + Math.sin(p.wobble) * 0.2;
+            p.y += p.speedY;
+            
+            // Wrap around map
+            if (p.x < 0) p.x = MAP_W;
+            if (p.x > MAP_W) p.x = 0;
+            if (p.y < 0) p.y = MAP_H;
+            if (p.y > MAP_H) p.y = 0;
+            
+            // Flickering alpha
+            const flickerAlpha = p.alpha + Math.sin(gameTime * 0.005 + p.x * 0.01) * 0.05;
+            
+            dust.fillStyle(0x8a8a7a, flickerAlpha);
+            dust.fillCircle(p.x, p.y, p.size);
+        });
+    }
+    
+    // Animate ash/ember particles
+    if (scene.ashGfx && scene.ashParticles) {
+        const ash = scene.ashGfx;
+        ash.clear();
+        
+        scene.ashParticles.forEach(p => {
+            // Update position
+            p.flicker += 0.03;
+            p.x += p.speedX;
+            p.y += p.speedY;
+            
+            // Reset when off screen or too high
+            if (p.y < -50 || p.x > MAP_W + 50) {
+                p.x = Math.random() * MAP_W * 0.3 + MAP_W * 0.35;
+                p.y = MAP_H + 50;
+            }
+            
+            // Flickering glow
+            const flickerAlpha = p.alpha * (0.7 + Math.sin(p.flicker) * 0.3);
+            const flickerSize = p.size * (0.8 + Math.sin(p.flicker * 2) * 0.2);
+            
+            // Orange glow
+            ash.fillStyle(0xff6622, flickerAlpha * 0.3);
+            ash.fillCircle(p.x, p.y, flickerSize * 3);
+            ash.fillStyle(0xff8844, flickerAlpha * 0.5);
+            ash.fillCircle(p.x, p.y, flickerSize * 1.5);
+            ash.fillStyle(0xffaa66, flickerAlpha);
+            ash.fillCircle(p.x, p.y, flickerSize);
+        });
+    }
+    
+    // Update vignette effect
+    if (scene.vignetteGfx) {
+        const vig = scene.vignetteGfx;
+        vig.clear();
+        
+        const cam = scene.cameras.main;
+        const cx = cam.scrollX + cam.width / 2;
+        const cy = cam.scrollY + cam.height / 2;
+        const radius = Math.max(cam.width, cam.height) * 0.8;
+        
+        // Create radial gradient effect with multiple layers
+        for (let i = 0; i < 10; i++) {
+            const r = radius - i * 30;
+            const alpha = 0.02 + i * 0.015;
+            vig.lineStyle(40, 0x000000, alpha);
+            vig.strokeCircle(cx, cy, r);
+        }
+    }
 
     [player].concat(player.aiPlayers || []).forEach(p => {
         if (p.glowFx) {
