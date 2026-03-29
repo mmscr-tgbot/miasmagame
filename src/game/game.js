@@ -3197,6 +3197,131 @@ function update(time, dt) {
             dust.fillCircle(p.x, p.y, p.size);
         });
     }
+    
+    // Vignette effect
+    const vig = scene.vignetteGfx;
+    vig.clear();
+    
+    const cam = scene.cameras.main;
+    const cx = cam.scrollX + cam.width / 2;
+    const cy = cam.scrollY + cam.height / 2;
+    const radius = Math.max(cam.width, cam.height) * 0.8;
+    
+    for (let i = 0; i < 10; i++) {
+        const r = radius - i * 30;
+        const alpha = 0.02 + i * 0.015;
+        vig.lineStyle(40, 0x000000, alpha);
+        vig.strokeCircle(cx, cy, r);
+    }
+
+    [player].concat(player.aiPlayers || []).forEach(p => {
+        if (p.glowFx) {
+            const pulse = 0.5 + Math.sin(gameTime * 0.004) * 0.2;
+            p.glowFx.setAlpha(pulse * 0.4);
+            p.glowFx.setPosition(p.sprite.x, p.sprite.y);
+        }
+
+        // Update repair animation
+        if (p.isRepairing && p.progressAction && p.progressAction.target) {
+            const gen = p.progressAction.target;
+            const sp = p.sprite;
+
+            // Show repair texture (crouching) - this already has arms built in
+            if (!sp.texture.key.includes('_repair')) {
+                sp.setTexture(getTexWithFallback(p.tex, '_repair'));
+            }
+
+            // Spark particles effect
+            if (p.repairSparks) {
+                p.repairSparks.setVisible(true);
+                p.repairSparks.clear();
+
+                // Generate sparks near generator where hands work
+                const sparkCount = 2 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < sparkCount; i++) {
+                    const sparkAngle = Math.random() * Math.PI * 2;
+                    const sparkDist = 15 + Math.random() * 20;
+                    const sparkX = gen.bx + Math.cos(sparkAngle) * sparkDist;
+                    const sparkY = gen.by - 10 + Math.sin(sparkAngle) * sparkDist;
+                    const sparkSize = 1 + Math.random() * 2;
+
+                    // Yellow-white spark color
+                    const brightness = Math.random();
+                    if (brightness > 0.7) {
+                        p.repairSparks.fillStyle(0xffffff, 0.9);
+                    } else if (brightness > 0.4) {
+                        p.repairSparks.fillStyle(0xffdd44, 0.8);
+                    } else {
+                        p.repairSparks.fillStyle(0xff8800, 0.7);
+                    }
+                    p.repairSparks.fillCircle(sparkX, sparkY, sparkSize);
+                }
+            }
+
+            // Body bobbing animation (leaning into work)
+            p.repairBobPhase += dt * 0.008;
+        } else {
+            // Clear repair animation state
+            p._repairBobOffset = undefined;
+        }
+
+        // Update dying (crawling) texture
+        const sp = p.sprite;
+        if (p.state === 'dying') {
+            // Show dying texture (crawling on ground)
+            if (!sp.texture.key.includes('_dying')) {
+                sp.setTexture(getTexWithFallback(p.tex, '_dying'));
+            }
+            // Keep scale at 1,1 - no distortion
+            sp.setScale(1, 1);
+            // Rotation wobble handled separately
+        } else if (p.carryTarget) {
+            // Update carried texture for the carried survivor
+            const carried = p.carryTarget;
+            const carriedSprite = carried.sprite;
+            
+            // Show carried texture (on killer's shoulder)
+            if (!carriedSprite.texture.key.includes('_carried')) {
+                carriedSprite.setTexture(getTexWithFallback(carried.tex, '_carried'));
+            }
+            
+            // Resistance animation for carried survivor
+            if (!carried._resistancePhase) {
+                carried._resistancePhase = 0;
+            }
+            
+            // Update resistance animation
+            carried._resistancePhase += dt * 0.02; // Speed of resistance animation
+            
+            // Apply subtle shaking effect to simulate resistance
+            const resistanceShake = Math.sin(carried._resistancePhase * 3) * 0.05;
+            carriedSprite.setScale(1 + resistanceShake, 1 - resistanceShake * 0.3);
+        } else if (!p.isRepairing && !p.progressAction) {
+            // Reset to normal texture when not repairing and not dying
+            if (sp.texture.key.includes('_dying') || sp.texture.key.includes('_repair') || sp.texture.key.includes('_carried')) {
+                sp.setTexture(p.tex);
+                // Reset scale if it was modified for resistance animation
+                sp.setScale(1, 1);
+            }
+        }
+    });
+
+    updatePlayer(dt);
+    updateAI(dt);
+    updateHooks(dt);
+    flushFloatBars();
+    updateHUD();
+    checkWinLose();
+
+    // Smooth interpolation for remote players in multiplayer
+    if (isMultiplayer) {
+        interpolateRemotePlayers(dt);
+    }
+
+    // Send position update in multiplayer
+    if (isMultiplayer && roomCode && playerId) {
+        sendPositionUpdate();
+    }
 }
 
 // ═══════ Update Crows AI (Host only) ═══════
@@ -3386,132 +3511,6 @@ function updateCrowsAI(dt, crows) {
         // Update depth based on Y position
         cs.setDepth(150 + cs.y);
     });
-}
-        const vig = scene.vignetteGfx;
-        vig.clear();
-        
-        const cam = scene.cameras.main;
-        const cx = cam.scrollX + cam.width / 2;
-        const cy = cam.scrollY + cam.height / 2;
-        const radius = Math.max(cam.width, cam.height) * 0.8;
-        
-        // Create radial gradient effect with multiple layers
-        for (let i = 0; i < 10; i++) {
-            const r = radius - i * 30;
-            const alpha = 0.02 + i * 0.015;
-            vig.lineStyle(40, 0x000000, alpha);
-            vig.strokeCircle(cx, cy, r);
-        }
-    }
-
-    [player].concat(player.aiPlayers || []).forEach(p => {
-        if (p.glowFx) {
-            const pulse = 0.5 + Math.sin(gameTime * 0.004) * 0.2;
-            p.glowFx.setAlpha(pulse * 0.4);
-            p.glowFx.setPosition(p.sprite.x, p.sprite.y);
-        }
-
-        // Update repair animation
-        if (p.isRepairing && p.progressAction && p.progressAction.target) {
-            const gen = p.progressAction.target;
-            const sp = p.sprite;
-
-            // Show repair texture (crouching) - this already has arms built in
-            if (!sp.texture.key.includes('_repair')) {
-                sp.setTexture(getTexWithFallback(p.tex, '_repair'));
-            }
-
-            // Spark particles effect
-            if (p.repairSparks) {
-                p.repairSparks.setVisible(true);
-                p.repairSparks.clear();
-
-                // Generate sparks near generator where hands work
-                const sparkCount = 2 + Math.floor(Math.random() * 3);
-                for (let i = 0; i < sparkCount; i++) {
-                    const sparkAngle = Math.random() * Math.PI * 2;
-                    const sparkDist = 15 + Math.random() * 20;
-                    const sparkX = gen.bx + Math.cos(sparkAngle) * sparkDist;
-                    const sparkY = gen.by - 10 + Math.sin(sparkAngle) * sparkDist;
-                    const sparkSize = 1 + Math.random() * 2;
-
-                    // Yellow-white spark color
-                    const brightness = Math.random();
-                    if (brightness > 0.7) {
-                        p.repairSparks.fillStyle(0xffffff, 0.9);
-                    } else if (brightness > 0.4) {
-                        p.repairSparks.fillStyle(0xffdd44, 0.8);
-                    } else {
-                        p.repairSparks.fillStyle(0xff8800, 0.7);
-                    }
-                    p.repairSparks.fillCircle(sparkX, sparkY, sparkSize);
-                }
-            }
-
-            // Body bobbing animation (leaning into work)
-            p.repairBobPhase += dt * 0.008;
-        } else {
-            // Clear repair animation state
-            p._repairBobOffset = undefined;
-        }
-
-        // Update dying (crawling) texture
-        const sp = p.sprite;
-        if (p.state === 'dying') {
-            // Show dying texture (crawling on ground)
-            if (!sp.texture.key.includes('_dying')) {
-                sp.setTexture(getTexWithFallback(p.tex, '_dying'));
-            }
-            // Keep scale at 1,1 - no distortion
-            sp.setScale(1, 1);
-            // Rotation wobble handled separately
-        } else if (p.carryTarget) {
-            // Update carried texture for the carried survivor
-            const carried = p.carryTarget;
-            const carriedSprite = carried.sprite;
-            
-            // Show carried texture (on killer's shoulder)
-            if (!carriedSprite.texture.key.includes('_carried')) {
-                carriedSprite.setTexture(getTexWithFallback(carried.tex, '_carried'));
-            }
-            
-            // Resistance animation for carried survivor
-            if (!carried._resistancePhase) {
-                carried._resistancePhase = 0;
-            }
-            
-            // Update resistance animation
-            carried._resistancePhase += dt * 0.02; // Speed of resistance animation
-            
-            // Apply subtle shaking effect to simulate resistance
-            const resistanceShake = Math.sin(carried._resistancePhase * 3) * 0.05;
-            carriedSprite.setScale(1 + resistanceShake, 1 - resistanceShake * 0.3);
-        } else if (!p.isRepairing && !p.progressAction) {
-            // Reset to normal texture when not repairing and not dying
-            if (sp.texture.key.includes('_dying') || sp.texture.key.includes('_repair') || sp.texture.key.includes('_carried')) {
-                sp.setTexture(p.tex);
-                // Reset scale if it was modified for resistance animation
-                sp.setScale(1, 1);
-            }
-        }
-    });
-
-    updatePlayer(dt);
-    updateAI(dt);
-    updateHooks(dt);
-    flushFloatBars();
-    updateHUD();
-    checkWinLose();
-
-    // Smooth interpolation for remote players in multiplayer
-    if (isMultiplayer) {
-        interpolateRemotePlayers(dt);
-    }
-
-    // Send position update in multiplayer
-    if (isMultiplayer && roomCode && playerId) {
-        sendPositionUpdate();
-    }
 }
 
 function updatePlayer(dt) {
