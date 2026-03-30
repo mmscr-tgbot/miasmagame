@@ -80,6 +80,7 @@ let player = null;
 let generators = [];
 let hooks = [];
 let gates = [];
+let pallets = [];
 let hatch = null;
 let staticGroup = null;
 
@@ -617,6 +618,57 @@ function preload() {
     // Crack
     g.fillStyle(0x3a3a3a); g.fillRect(12, 16, 4, 1);
     g.generateTexture('stone5', 28, 28);
+    g.clear();
+
+    // ═══════ PALLETS (Dropable boards like DBD) ═══════
+    // Standing pallet (upright board blocking path)
+    g.fillStyle(0x5a4030);
+    g.fillRect(8, 0, 16, 80);
+    g.fillStyle(0x6a5040);
+    g.fillRect(8, 0, 6, 80);
+    g.fillStyle(0x4a3020);
+    g.fillRect(20, 0, 4, 80);
+    // Wood grain
+    g.fillStyle(0x4a3525, 0.5);
+    g.fillRect(10, 5, 1, 70);
+    g.fillRect(14, 10, 1, 60);
+    g.fillRect(18, 3, 1, 75);
+    // Nails
+    g.fillStyle(0x3a3a3a);
+    g.fillCircle(12, 10, 2);
+    g.fillCircle(12, 40, 2);
+    g.fillCircle(12, 70, 2);
+    g.generateTexture('pallet', 32, 80);
+    g.clear();
+
+    // Falling pallet (mid-drop animation)
+    g.fillStyle(0x5a4030);
+    g.fillRect(4, 10, 50, 16);
+    g.fillStyle(0x6a5040);
+    g.fillRect(4, 10, 15, 16);
+    g.fillStyle(0x4a3020);
+    g.fillRect(45, 10, 9, 16);
+    // Wood grain
+    g.fillStyle(0x4a3525, 0.5);
+    g.fillRect(15, 14, 30, 2);
+    g.fillRect(10, 20, 35, 2);
+    g.generateTexture('pallet_falling', 58, 36);
+    g.clear();
+
+    // Broken pallet (debris)
+    g.fillStyle(0x5a4030);
+    g.fillRect(0, 12, 20, 8);
+    g.fillRect(25, 8, 18, 6);
+    g.fillRect(45, 15, 12, 7);
+    g.fillStyle(0x4a3020);
+    g.fillRect(5, 10, 8, 4);
+    g.fillRect(35, 14, 10, 5);
+    // Splinters
+    g.fillStyle(0x6a5040);
+    g.fillRect(12, 6, 4, 6);
+    g.fillRect(38, 4, 5, 5);
+    g.fillRect(50, 8, 3, 4);
+    g.generateTexture('pallet_broken', 60, 22);
     g.clear();
 
     // ═══════ LARGE TREES (3 variations) ═══════
@@ -2515,6 +2567,30 @@ function create() {
             hooks.push(sp);
         }, this);
 
+    // Pallets (dropable boards that stun killer)
+    [{ x: 350, y: 350 }, { x: 950, y: 400 }, { x: 1550, y: 350 }, { x: 2050, y: 400 },
+     { x: 300, y: 800 }, { x: 700, y: 750 }, { x: 1100, y: 800 }, { x: 1500, y: 750 }, { x: 1900, y: 800 },
+     { x: 400, y: 1250 }, { x: 900, y: 1200 }, { x: 1400, y: 1250 }, { x: 1800, y: 1200 }, { x: 2100, y: 1300 },
+     { x: 1200, y: 650 }, { x: 1200, y: 1100 }]
+        .forEach((p, i) => {
+            const sp = this.add.sprite(p.x, p.y, 'pallet').setDepth(p.y + 2).setScale(1.2);
+            sp.palletId = i;
+            sp.state = 'standing'; // standing, dropping, fallen, broken
+            sp.dropTimer = 0;
+            sp.breakTimer = 0;
+            sp.canDrop = true;
+            sp.dropCooldown = 0;
+            sp.stunTimer = 0;
+            sp.bx = p.x;
+            sp.by = p.y;
+            // Shadow
+            sp.shadow = this.add.graphics();
+            sp.shadow.fillStyle(0x000000, 0.3);
+            sp.shadow.fillEllipse(p.x, p.y + 35, 30, 12);
+            sp.shadow.setDepth(p.y);
+            pallets.push(sp);
+        }, this);
+
     // Gates
     [{ x: 30, y: 900 }, { x: MAP_W - 30, y: 900 }]
         .forEach(p => {
@@ -3309,6 +3385,7 @@ function update(time, dt) {
     updatePlayer(dt);
     updateAI(dt);
     updateHooks(dt);
+    updatePallets(dt);
     flushFloatBars();
     updateHUD();
     checkWinLose();
@@ -3511,6 +3588,235 @@ function updateCrowsAI(dt, crows) {
         // Update depth based on Y position
         cs.setDepth(150 + cs.y);
     });
+}
+
+function updatePallets(dt) {
+    pallets.forEach(pallet => {
+        // Update drop cooldown
+        if (pallet.dropCooldown > 0) {
+            pallet.dropCooldown -= dt / 1000;
+        }
+        
+        // Update stun timer (for killer hit effect)
+        if (pallet.stunTimer > 0) {
+            pallet.stunTimer -= dt / 1000;
+        }
+        
+        // Handle falling animation
+        if (pallet.state === 'dropping') {
+            pallet.dropTimer += dt / 1000;
+            const fallProgress = pallet.dropTimer / 0.3; // 0.3 seconds to fall
+            
+            if (fallProgress >= 1) {
+                // Pallet has fallen - check if killer is nearby to stun
+                pallet.state = 'fallen';
+                pallet.sprite.setTexture('pallet_falling');
+                pallet.sprite.setScale(1, 1);
+                
+                // Check if killer is in range (within ~50px of pallet)
+                let killerHit = false;
+                
+                // Check local killer
+                if (isKiller && player && player.sprite) {
+                    const dist = Math.sqrt(
+                        Math.pow(player.sprite.x - pallet.bx, 2) + 
+                        Math.pow(player.sprite.y - pallet.by, 2)
+                    );
+                    if (dist < 60) {
+                        killerHit = true;
+                        killerStun = CONFIG.STUN_TIME;
+                        UI.showToast('💥 Убийца оглушён!', 1500);
+                    }
+                }
+                
+                // Check remote killers in multiplayer
+                if (isMultiplayer && !killerHit) {
+                    Object.values(remotePlayers).forEach(rp => {
+                        if (rp.role === 'killer' && rp.sprite && !killerHit) {
+                            const dist = Math.sqrt(
+                                Math.pow(rp.sprite.x - pallet.bx, 2) + 
+                                Math.pow(rp.sprite.y - pallet.by, 2)
+                            );
+                            if (dist < 60) {
+                                killerHit = true;
+                                // Notify server about stun
+                                if (isMultiplayer && roomCode && playerId) {
+                                    stunRemoteKiller(roomCode);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                if (killerHit) {
+                    pallet.stunTimer = 0.5;
+                    // Show hit effect
+                    pallet.hitFx = scene.add.graphics();
+                    pallet.hitFx.fillStyle(0xffff00, 0.5);
+                    pallet.hitFx.fillCircle(pallet.bx, pallet.by - 20, 40);
+                    pallet.hitFx.setDepth(500);
+                    setTimeout(() => {
+                        if (pallet.hitFx) pallet.hitFx.destroy();
+                    }, 300);
+                }
+                
+                // Start break timer after falling (auto-breaks after 15 seconds)
+                pallet.breakTimer = 15;
+                
+                // Sync pallet state in multiplayer
+                if (isMultiplayer && roomCode && playerId) {
+                    updatePalletState(roomCode, pallet.palletId, 'fallen', pallet.bx, pallet.by);
+                }
+            } else {
+                // Animate falling
+                const angle = fallProgress * Math.PI / 2;
+                pallet.sprite.setScale(1.2, 1 - fallProgress * 0.3);
+                pallet.sprite.setRotation(angle);
+            }
+        }
+        
+        // Handle broken state (fade out and remove)
+        if (pallet.state === 'broken') {
+            pallet.breakTimer -= dt / 1000;
+            pallet.sprite.setAlpha(pallet.breakTimer / 2);
+            
+            if (pallet.breakTimer <= 0) {
+                pallet.sprite.setVisible(false);
+                pallet.shadow.setVisible(false);
+            }
+        }
+        
+        // Break timer countdown for fallen pallets
+        if (pallet.state === 'fallen' && pallet.breakTimer > 0) {
+            pallet.breakTimer -= dt / 1000;
+        }
+        
+        // Update shadow position
+        if (pallet.shadow && pallet.sprite.visible) {
+            pallet.shadow.clear();
+            if (pallet.state === 'standing') {
+                pallet.shadow.fillStyle(0x000000, 0.3);
+                pallet.shadow.fillEllipse(pallet.bx, pallet.by + 35, 30, 12);
+            } else if (pallet.state === 'fallen' || pallet.state === 'broken') {
+                pallet.shadow.fillStyle(0x000000, 0.3);
+                pallet.shadow.fillEllipse(pallet.bx, pallet.by + 15, 50, 15);
+            }
+        }
+        
+        // Show interaction hint
+        if (!isKiller && pallet.state === 'standing' && !pallet.progressAction) {
+            // Check if killer is nearby (within 150px) for survivor to drop pallet
+            let killerNearby = false;
+            
+            if (player && player.sprite) {
+                const dist = Math.sqrt(
+                    Math.pow(player.sprite.x - pallet.bx, 2) + 
+                    Math.pow(player.sprite.y - pallet.by, 2)
+                );
+                killerNearby = dist < 150;
+            }
+            
+            if (killerNearby && pallet.dropCooldown <= 0) {
+                pallet.interactHint = pallet.interactHint || scene.add.text(0, 0, '[E] Сбросить доску', {
+                    fontFamily: 'Arial',
+                    fontSize: '14px',
+                    color: '#ffdd00',
+                    stroke: '#000000',
+                    strokeThickness: 3
+                }).setOrigin(0.5).setDepth(1000);
+                pallet.interactHint.setPosition(pallet.bx, pallet.by - 60);
+                pallet.interactHint.setVisible(true);
+            } else if (pallet.interactHint) {
+                pallet.interactHint.setVisible(false);
+            }
+        } else if (isKiller && pallet.state === 'standing' && !pallet.progressAction) {
+            // Killer can break standing pallets
+            if (player && player.sprite) {
+                const dist = Math.sqrt(
+                    Math.pow(player.sprite.x - pallet.bx, 2) + 
+                    Math.pow(player.sprite.y - pallet.by, 2)
+                );
+                if (dist < 50) {
+                    pallet.interactHint = pallet.interactHint || scene.add.text(0, 0, '[E] Сломать', {
+                        fontFamily: 'Arial',
+                        fontSize: '14px',
+                        color: '#ff6600',
+                        stroke: '#000000',
+                        strokeThickness: 3
+                    }).setOrigin(0.5).setDepth(1000);
+                    pallet.interactHint.setPosition(pallet.bx, pallet.by - 60);
+                    pallet.interactHint.setVisible(true);
+                } else if (pallet.interactHint) {
+                    pallet.interactHint.setVisible(false);
+                }
+            }
+        } else if (pallet.interactHint) {
+            pallet.interactHint.setVisible(false);
+        }
+    });
+    
+    // Handle pallet interactions
+    if (actionPressed) {
+        if (!isKiller) {
+            // Survivor can drop pallets to stun killer
+            pallets.forEach(pallet => {
+                if (pallet.state === 'standing' && pallet.dropCooldown <= 0 && player && player.sprite) {
+                    const dist = Math.sqrt(
+                        Math.pow(player.sprite.x - pallet.bx, 2) + 
+                        Math.pow(player.sprite.y - pallet.by, 2)
+                    );
+                    if (dist < 50) {
+                        dropPallet(pallet);
+                    }
+                }
+            });
+        } else {
+            // Killer can break pallets
+            pallets.forEach(pallet => {
+                if (pallet.state === 'standing' && player && player.sprite) {
+                    const dist = Math.sqrt(
+                        Math.pow(player.sprite.x - pallet.bx, 2) + 
+                        Math.pow(player.sprite.y - pallet.by, 2)
+                    );
+                    if (dist < 50) {
+                        breakPallet(pallet);
+                    }
+                }
+            });
+        }
+    }
+}
+
+function dropPallet(pallet) {
+    if (pallet.state !== 'standing') return;
+    
+    pallet.state = 'dropping';
+    pallet.dropTimer = 0;
+    pallet.sprite.setTexture('pallet');
+    pallet.sprite.setScale(1.2, 1);
+    pallet.sprite.setRotation(0);
+    pallet.dropCooldown = 0.5;
+    
+    if (pallet.interactHint) pallet.interactHint.setVisible(false);
+    
+    UI.showToast('💨 Доска падает!', 800);
+}
+
+function breakPallet(pallet) {
+    if (pallet.state !== 'standing') return;
+    
+    pallet.state = 'broken';
+    pallet.breakTimer = 2;
+    pallet.sprite.setTexture('pallet_broken');
+    pallet.sprite.setScale(1.2, 1);
+    
+    // Break sound effect placeholder
+    UI.showToast('💪 Убийца ломает доску!', 1000);
+    
+    // Sync in multiplayer
+    if (isMultiplayer && roomCode && playerId) {
+        updatePalletState(roomCode, pallet.palletId, 'broken', pallet.bx, pallet.by);
+    }
 }
 
 function updatePlayer(dt) {
@@ -4848,6 +5154,15 @@ function initMultiplayerSync() {
                 }
             }
         },
+        onKillerStun: () => {
+            if (!isKiller) {
+                killerStun = CONFIG.STUN_TIME;
+                UI.showToast('💥 Убийца оглушён доской!', 1500);
+            }
+        },
+        onPalletsUpdate: (palletsData) => {
+            updatePalletsFromServer(palletsData);
+        },
         onStatusUpdate: (status) => {
             if (status === 'finished') {
                 // Game over handled by onGameResult
@@ -4919,6 +5234,30 @@ function updateCrowsFromServer(crowsData) {
             localCrow.sprite.setTexture('crow_sitting');
         } else if (serverCrow.state === 'flying' && localCrow.sprite.texture.key.includes('sitting')) {
             localCrow.sprite.setTexture('crow');
+        }
+    });
+}
+
+function updatePalletsFromServer(palletsData) {
+    if (!scene || !pallets) return;
+    
+    Object.keys(palletsData).forEach(palletId => {
+        const serverPallet = palletsData[palletId];
+        const localPallet = pallets.find(p => p.palletId === parseInt(palletId));
+        
+        if (!localPallet) return;
+        
+        // Update pallet state
+        if (serverPallet.state !== localPallet.state) {
+            if (serverPallet.state === 'fallen') {
+                localPallet.state = 'fallen';
+                localPallet.sprite.setTexture('pallet_falling');
+                localPallet.breakTimer = 15;
+            } else if (serverPallet.state === 'broken') {
+                localPallet.state = 'broken';
+                localPallet.sprite.setTexture('pallet_broken');
+                localPallet.breakTimer = 2;
+            }
         }
     });
 }

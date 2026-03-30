@@ -466,8 +466,11 @@ function subscribeToGameSession(roomCode, callbacks) {
     var data = snapshot.val();
     if (callbacks.onPlayersUpdate) callbacks.onPlayersUpdate(data.players || {});
     if (callbacks.onGeneratorsUpdate) callbacks.onGeneratorsUpdate(data.generators || {});
+    if (callbacks.onCrowsUpdate && data.crows) callbacks.onCrowsUpdate(data.crows);
+    if (callbacks.onPalletsUpdate && data.pallets) callbacks.onPalletsUpdate(data.pallets);
     if (callbacks.onGateUpdate && data.gate) callbacks.onGateUpdate(data.gate);
     if (callbacks.onHatchUpdate && data.hatch) callbacks.onHatchUpdate(data.hatch);
+    if (callbacks.onKillerStun) callbacks.onKillerStun();
     if (callbacks.onGameResult && data.status === 'finished') {
       callbacks.onGameResult(data.winner, data.resultMessage);
     }
@@ -766,8 +769,41 @@ function initializeGenerators(roomCode) {
   db.ref('gameSessions/' + roomCode).child('generators').set(generators).catch(() => {});
 }
 
+function initializeCrows(roomCode, count) {
+  if (!isFirebaseReady() || !db) return;
+  // Crows are initialized locally in game.js, this just notifies server
+  // The actual crow data is synced via updateCrows function
+}
+
+function updateCrows(roomCode, crows) {
+  if (!isFirebaseReady() || !db) return;
+  const crowsData = {};
+  crows.forEach((crow, i) => {
+    crowsData[i] = {
+      state: crow.state,
+      x: crow.sprite.x,
+      y: crow.sprite.y,
+      targetX: crow.targetX,
+      targetY: crow.targetY,
+      flipX: crow.sprite.flipX,
+      landingX: crow.landingSpot ? crow.landingSpot.x : null,
+      landingY: crow.landingSpot ? crow.landingSpot.y : null
+    };
+  });
+  db.ref('gameSessions/' + roomCode).child('crows').set(crowsData).catch(() => {});
+}
+
+function updatePalletsFromServer(palletsData) {
+  // Pallets are handled locally in game.js via updatePallets
+  // This function exists for compatibility but does nothing
+  // as pallets are server-authoritative only on the host
+}
+
 /* ═══════ EXPORT FOR GAME.JS ═══════ */
 window.initializeGenerators = initializeGenerators;
+window.initializeCrows = initializeCrows;
+window.updateCrows = updateCrows;
+window.updatePalletsFromServer = updatePalletsFromServer;
 window.hookSurvivor = hookSurvivor;
 window.unhookSurvivor = unhookSurvivor;
 window.setPlayerDead = setPlayerDead;

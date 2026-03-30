@@ -323,6 +323,14 @@ function subscribeToGameSession(roomCode, callbacks) {
             callbacks.onCrowsUpdate(data.crows);
         }
 
+        if (callbacks.onKillerStun && data.killerStun) {
+            callbacks.onKillerStun();
+        }
+
+        if (callbacks.onPalletsUpdate && data.pallets) {
+            callbacks.onPalletsUpdate(data.pallets);
+        }
+
         if (callbacks.onStatusUpdate) {
             callbacks.onStatusUpdate(data.status || 'waiting');
         }
@@ -404,6 +412,28 @@ function updateCrows(roomCode, crowsData) {
 
     db.ref('gameSessions/' + roomCode).child('crows').update(crows)
         .catch(() => {});
+}
+
+// Обновить состояние доски
+function updatePalletState(roomCode, palletId, state, x, y) {
+    if (!firebaseReady || !db) return;
+    
+    db.ref('gameSessions/' + roomCode).child('pallets').child(palletId).update({
+        state: state,
+        x: x,
+        y: y,
+        lastUpdate: Date.now()
+    }).catch(() => {});
+}
+
+// Оглушить удалённого убийцу
+function stunRemoteKiller(roomCode) {
+    if (!firebaseReady || !db) return;
+    
+    db.ref('gameSessions/' + roomCode).update({
+        killerStun: true,
+        killerStunTime: Date.now()
+    }).catch(() => {});
 }
 
 // Очистить сессию
@@ -500,4 +530,6 @@ window.leaveGameSession = leaveGameSession;
 window.initializeGenerators = initializeGenerators;
 window.checkAllGeneratorsRepaired = checkAllGeneratorsRepaired;
 window.initializeCrows = initializeCrows;
+window.updatePalletState = updatePalletState;
+window.stunRemoteKiller = stunRemoteKiller;
 window.updateCrows = updateCrows;
