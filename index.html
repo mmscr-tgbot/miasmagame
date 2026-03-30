@@ -444,6 +444,20 @@ function closeHatch(roomCode) {
   }).catch(function() {});
 }
 
+function updatePalletState(roomCode, palletId, state, x, y) {
+  if (!firebaseReady || !db) return;
+  db.ref('gameSessions/' + roomCode).child('pallets').child(palletId).update({
+    state: state, x: x, y: y, lastUpdate: Date.now()
+  }).catch(function() {});
+}
+
+function stunRemoteKiller(roomCode) {
+  if (!firebaseReady || !db) return;
+  db.ref('gameSessions/' + roomCode).update({
+    killerStun: Date.now()
+  }).catch(function() {});
+}
+
 function setGameResult(roomCode, winner, message) {
   if (!firebaseReady || !db) return;
   db.ref('gameSessions/' + roomCode).update({
@@ -815,6 +829,8 @@ window.setGateOpened = setGateOpened;
 window.setHatchSpawned = setHatchSpawned;
 window.closeHatch = closeHatch;
 window.setGameResult = setGameResult;
+window.updatePalletState = updatePalletState;
+window.stunRemoteKiller = stunRemoteKiller;
 window.subscribeToGameSession = subscribeToGameSession;
 window.leaveGameSession = leaveGameSession;
 window.sendPlayerPosition = sendPlayerPosition;

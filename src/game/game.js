@@ -2371,6 +2371,7 @@ function createCarriedTextures(g, name, shirtColor, hairColor) {
 // ═══════ CREATE SCENE ═══════
 
 function create() {
+    console.log('[CREATE] start, isMultiplayer:', isMultiplayer, 'roomCode:', roomCode, 'playerId:', playerId);
     scene = this;
 
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
@@ -2750,10 +2751,14 @@ function create() {
     // Controls
     createControls();
 
+    console.log('[CREATE] calling initMultiplayerSync, isMultiplayer:', isMultiplayer);
     // Initialize multiplayer if enabled
     if (isMultiplayer && roomCode && playerId) {
         initMultiplayerSync.call(this);
+    } else {
+        console.log('[CREATE] Skipping multiplayer init, isMultiplayer:', isMultiplayer, 'roomCode:', roomCode, 'playerId:', playerId);
     }
+    console.log('[CREATE] done');
 }
 
 function buildFence(W, H) {
@@ -3679,10 +3684,10 @@ function updatePallets(dt) {
         if (pallet.state === 'broken') {
             pallet.breakTimer -= dt / 1000;
             pallet.sprite.setAlpha(pallet.breakTimer / 2);
-            
+
             if (pallet.breakTimer <= 0) {
                 pallet.sprite.setVisible(false);
-                pallet.shadow.setVisible(false);
+                if (pallet.shadow) pallet.shadow.setVisible(false);
             }
         }
         
@@ -3692,7 +3697,7 @@ function updatePallets(dt) {
         }
         
         // Update shadow position
-        if (pallet.shadow && pallet.sprite.visible) {
+        if (pallet.shadow && pallet.sprite && pallet.sprite.visible) {
             pallet.shadow.clear();
             if (pallet.state === 'standing') {
                 pallet.shadow.fillStyle(0x000000, 0.3);
@@ -5095,89 +5100,113 @@ function doEndGame(won, msg) {
 // ═══════ MULTIPLAYER SYNC ═══════
 
 function initMultiplayerSync() {
-    if (!roomCode || !playerId) return;
+    console.log('[MP] initMultiplayerSync started');
+    if (!roomCode || !playerId) {
+        console.log('[MP] ABORT: no roomCode or playerId', roomCode, playerId);
+        return;
+    }
 
-    // Set initial player state
-    const initialData = {
-        x: player.sprite.x,
-        y: player.sprite.y,
-        role: player.role,
-        state: player.state,
-        health: player.health
-    };
+    try {
+        // Set initial player state
+        const initialData = {
+            x: player.sprite.x,
+            y: player.sprite.y,
+            role: player.role,
+            state: player.state,
+            health: player.health
+        };
+        console.log('[MP] initialData:', initialData);
 
-    // Initialize generators in DB
-    initializeGenerators(roomCode);
-    
-    // Initialize crows in DB (only if not already initialized)
-    initializeCrows(roomCode, scene.crows ? scene.crows.length : 8);
+        // Initialize generators in DB
+        console.log('[MP] calling initializeGenerators...');
+        initializeGenerators(roomCode);
+        console.log('[MP] initializeGenerators done');
 
-    // Subscribe to game session
-    subscribeToGameSession(roomCode, {
-        onPlayersUpdate: (players) => {
-            updateRemotePlayers(players);
-        },
-        onGeneratorsUpdate: (gens) => {
-            updateGeneratorsFromServer(gens);
-        },
-        onCrowsUpdate: (crowsData) => {
-            updateCrowsFromServer(crowsData);
-        },
-        onGateUpdate: (gate) => {
-            if (gate.opened && !exitOpen) {
-                exitOpen = true;
-                UI.showToast('⚡ Ворота открыты!', 2000);
-            }
-        },
-        onHatchUpdate: (hatchData) => {
-            if (hatchData.spawned && !hatch) {
-                const glow = scene.add.graphics();
-                glow.fillStyle(0xffaa00, 0.2);
-                glow.fillCircle(hatchData.x, hatchData.y, 60);
-                glow.setDepth(hatchData.y);
+        // Initialize crows in DB (only if not already initialized)
+        console.log('[MP] calling initializeCrows...');
+        initializeCrows(roomCode, scene.crows ? scene.crows.length : 8);
+        console.log('[MP] initializeCrows done');
 
-                hatch = scene.add.sprite(hatchData.x, hatchData.y, 'hatch').setDepth(hatchData.y + 1).setScale(1.5);
-                hatch.setTint(0xffaa00);
-                hatchOpen = !hatchData.closedByKiller;
-                hatchClosed = hatchData.closedByKiller;
-                hatch.glowGfx = glow;
-            } else if (hatchData.closedByKiller && !hatchClosed) {
-                hatchClosed = true;
-                hatchOpen = false;
-                if (hatch) {
-                    hatch.setTint(0xff4444);
-                    if (hatch.glowGfx) {
-                        hatch.glowGfx.clear();
-                        hatch.glowGfx.fillStyle(0xff0000, 0.3);
-                        hatch.glowGfx.fillCircle(hatch.x, hatch.y, 60);
+        // Subscribe to game session
+        console.log('[MP] calling subscribeToGameSession...');
+        subscribeToGameSession(roomCode, {
+            onPlayersUpdate: (players) => {
+                console.log('[MP] onPlayersUpdate', Object.keys(players));
+                updateRemotePlayers(players);
+            },
+            onGeneratorsUpdate: (gens) => {
+                console.log('[MP] onGeneratorsUpdate', gens);
+                updateGeneratorsFromServer(gens);
+            },
+            onCrowsUpdate: (crowsData) => {
+                console.log('[MP] onCrowsUpdate');
+                updateCrowsFromServer(crowsData);
+            },
+            onGateUpdate: (gate) => {
+                console.log('[MP] onGateUpdate', gate);
+                if (gate.opened && !exitOpen) {
+                    exitOpen = true;
+                    UI.showToast('⚡ Ворота открыты!', 2000);
+                }
+            },
+            onHatchUpdate: (hatchData) => {
+                console.log('[MP] onHatchUpdate', hatchData);
+                if (hatchData.spawned && !hatch) {
+                    const glow = scene.add.graphics();
+                    glow.fillStyle(0xffaa00, 0.2);
+                    glow.fillCircle(hatchData.x, hatchData.y, 60);
+                    glow.setDepth(hatchData.y);
+
+                    hatch = scene.add.sprite(hatchData.x, hatchData.y, 'hatch').setDepth(hatchData.y + 1).setScale(1.5);
+                    hatch.setTint(0xffaa00);
+                    hatchOpen = !hatchData.closedByKiller;
+                    hatchClosed = hatchData.closedByKiller;
+                    hatch.glowGfx = glow;
+                } else if (hatchData.closedByKiller && !hatchClosed) {
+                    hatchClosed = true;
+                    hatchOpen = false;
+                    if (hatch) {
+                        hatch.setTint(0xff4444);
+                        if (hatch.glowGfx) {
+                            hatch.glowGfx.clear();
+                            hatch.glowGfx.fillStyle(0xff0000, 0.3);
+                            hatch.glowGfx.fillCircle(hatch.x, hatch.y, 60);
+                        }
                     }
                 }
+            },
+            onKillerStun: () => {
+                console.log('[MP] onKillerStun');
+                if (!isKiller) {
+                    killerStun = CONFIG.STUN_TIME;
+                    UI.showToast('💥 Убийца оглушён доской!', 1500);
+                }
+            },
+            onPalletsUpdate: (palletsData) => {
+                console.log('[MP] onPalletsUpdate');
+                updatePalletsFromServer(palletsData);
+            },
+            onStatusUpdate: (status) => {
+                console.log('[MP] onStatusUpdate', status);
+                if (status === 'finished') {
+                    // Game over handled by onGameResult
+                }
+            },
+            onGameResult: (winner, message) => {
+                console.log('[MP] onGameResult', winner, message);
+                const won = (winner === (isKiller ? 'killer' : 'survivors'));
+                doEndGame(won, message);
+            },
+            onError: (error) => {
+                console.error('[MP] Game session error:', error);
             }
-        },
-        onKillerStun: () => {
-            if (!isKiller) {
-                killerStun = CONFIG.STUN_TIME;
-                UI.showToast('💥 Убийца оглушён доской!', 1500);
-            }
-        },
-        onPalletsUpdate: (palletsData) => {
-            updatePalletsFromServer(palletsData);
-        },
-        onStatusUpdate: (status) => {
-            if (status === 'finished') {
-                // Game over handled by onGameResult
-            }
-        },
-        onGameResult: (winner, message) => {
-            const won = (winner === (isKiller ? 'killer' : 'survivors'));
-            doEndGame(won, message);
-        },
-        onError: (error) => {
-            console.error('Game session error:', error);
-        }
-    });
+        });
+        console.log('[MP] subscribeToGameSession done');
 
-    console.log('Multiplayer sync initialized for room:', roomCode);
+        console.log('[MP] Multiplayer sync initialized for room:', roomCode);
+    } catch (e) {
+        console.error('[MP] ERROR in initMultiplayerSync:', e);
+    }
 }
 
 function sendPositionUpdate() {
