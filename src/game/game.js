@@ -184,7 +184,7 @@ function initThreeJS() {
         threeCanvas.width = canvasSize;
         threeCanvas.height = canvasHeight;
         document.body.appendChild(threeCanvas);
-        threeCanvas.setAttribute('style', 'position:fixed!important;top:0!important;left:0!important;z-index:20!important;pointer-events:none!important;display:none!important;width:' + canvasSize + 'px!important;height:' + canvasHeight + 'px!important;border:3px solid red!important;');
+        threeCanvas.setAttribute('style', 'position:fixed!important;top:0!important;left:0!important;z-index:20!important;pointer-events:none!important;display:none!important;width:' + canvasSize + 'px!important;height:' + canvasHeight + 'px!important;');
 
         threeRenderer = new THREE.WebGLRenderer({
             canvas: threeCanvas,
