@@ -144,6 +144,245 @@ let lastPosUpdate = 0;
 const POS_UPDATE_INTERVAL = 50;
 const POS_LERP_SPEED = 0.15; // Smooth interpolation factor (0.1-0.2 is good)
 
+// ═══════ THREE.JS 3D MODEL STATE ═══════
+let threeRenderer = null;
+let threeScene = null;
+let threeCamera = null;
+let killerModel = null;
+let killerMixer = null;
+let killerAnimations = {};
+let currentKillerAction = null;
+let isKillerMoving = false;
+let threeLoaded = false;
+let threeError = false;
+
+// ═══════ THREE.JS INITIALIZATION ═══════
+
+function initThreeJS() {
+    if (threeLoaded || threeError) return;
+    if (typeof THREE === 'undefined') {
+        console.warn('[3D] Three.js not loaded');
+        threeError = true;
+        return;
+    }
+
+    const container = document.getElementById('game-container');
+    if (!container) {
+        console.warn('[3D] No game-container found');
+        threeError = true;
+        return;
+    }
+
+    try {
+        // Create canvas renderer
+        threeRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        threeRenderer.setSize(window.innerWidth, window.innerHeight);
+        threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        threeRenderer.setClearColor(0x000000, 0);
+        threeRenderer.outputEncoding = THREE.sRGBEncoding;
+        threeRenderer.shadowMap.enabled = true;
+        threeRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        threeRenderer.domElement.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:11;pointer-events:none;';
+        container.appendChild(threeRenderer.domElement);
+
+        // Handle window resize
+        window.addEventListener('resize', function () {
+            if (!threeRenderer || !threeCamera) return;
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            threeRenderer.setSize(w, h);
+            threeCamera.aspect = w / h;
+            threeCamera.updateProjectionMatrix();
+        });
+
+        // Create scene
+        threeScene = new THREE.Scene();
+
+        // Create camera - orthographic for top-down-ish view
+        const aspect = window.innerWidth / window.innerHeight;
+        const frustumSize = 12;
+        threeCamera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100);
+        threeCamera.position.set(0, 10, 8);
+        threeCamera.lookAt(0, 0, 0);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+        threeScene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffeedd, 1.0);
+        dirLight.position.set(5, 10, 5);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 512;
+        dirLight.shadow.mapSize.height = 512;
+        dirLight.shadow.camera.near = 0.1;
+        dirLight.shadow.camera.far = 30;
+        dirLight.shadow.camera.left = -8;
+        dirLight.shadow.camera.right = 8;
+        dirLight.shadow.camera.top = 8;
+        dirLight.shadow.camera.bottom = -8;
+        threeScene.add(dirLight);
+
+        // Red rim light for horror atmosphere
+        const rimLight = new THREE.PointLight(0xff2200, 0.4, 15);
+        rimLight.position.set(-3, 4, -3);
+        threeScene.add(rimLight);
+
+        // Load model
+        loadKillerModel();
+
+        threeLoaded = true;
+        console.log('[3D] Three.js initialized successfully');
+    } catch (e) {
+        console.error('[3D] Three.js init error:', e);
+        threeError = true;
+    }
+}
+
+function loadKillerModel() {
+    if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
+        console.warn('[3D] GLTFLoader not available');
+        threeError = true;
+        return;
+    }
+
+    const loader = new THREE.GLTFLoader();
+    const modelPath = 'src/models/killers/scare/ScareKiller_Walking.glb';
+
+    console.log('[3D] Loading model from:', modelPath);
+
+    loader.load(
+        modelPath,
+        function (gltf) {
+            killerModel = gltf.scene;
+            killerModel.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+
+            // Scale and position the model
+            killerModel.scale.set(1.2, 1.2, 1.2);
+            killerModel.visible = false;
+            threeScene.add(killerModel);
+
+            // Setup animations
+            if (gltf.animations && gltf.animations.length > 0) {
+                killerMixer = new THREE.AnimationMixer(killerModel);
+                console.log('[3D] Found', gltf.animations.length, 'animation(s)');
+
+                gltf.animations.forEach(function (clip, index) {
+                    console.log('[3D] Animation', index, ':', clip.name);
+                    killerAnimations[clip.name.toLowerCase()] = killerMixer.clipAction(clip);
+                });
+
+                // Play first animation by default (walking)
+                const firstAnim = Object.values(killerAnimations)[0];
+                if (firstAnim) {
+                    firstAnim.play();
+                    currentKillerAction = firstAnim;
+                }
+            } else {
+                console.warn('[3D] No animations found in model');
+            }
+
+            console.log('[3D] Killer model loaded successfully');
+        },
+        function (progress) {
+            console.log('[3D] Loading progress:', (progress.loaded / progress.total * 100).toFixed(0) + '%');
+        },
+        function (error) {
+            console.error('[3D] Model load error:', error);
+            threeError = true;
+        }
+    );
+}
+
+function updateKillerModelPosition(worldX, worldY, dt) {
+    if (!killerModel || !killerModel.visible) return;
+
+    // Convert Phaser world coordinates to Three.js coordinates
+    // Phaser: origin at top-left, Three.js: origin at center
+    const cam = scene.cameras.main;
+    if (!cam) return;
+
+    const screenX = (worldX - cam.scrollX) - cam.width / 2;
+    const screenY = -(worldY - cam.scrollY) + cam.height / 2;
+
+    // Scale from Phaser pixels to Three.js units
+    const scale = 0.015;
+    killerModel.position.set(screenX * scale, 0, screenY * scale);
+
+    // Update camera to follow the model
+    threeCamera.position.set(screenX * scale, 10, screenY * scale + 8);
+    threeCamera.lookAt(screenX * scale, 0, screenY * scale);
+}
+
+function updateKillerAnimation(moving) {
+    if (!killerMixer || !killerModel || !killerModel.visible) return;
+
+    if (moving && !isKillerMoving) {
+        // Start walking animation
+        isKillerMoving = true;
+        const walkAction = Object.values(killerAnimations)[0];
+        if (walkAction && walkAction !== currentKillerAction) {
+            if (currentKillerAction) {
+                currentKillerAction.fadeOut(0.2);
+            }
+            walkAction.reset().fadeIn(0.2).play();
+            currentKillerAction = walkAction;
+        }
+    } else if (!moving && isKillerMoving) {
+        // Stop walking animation
+        isKillerMoving = false;
+        if (currentKillerAction) {
+            currentKillerAction.fadeOut(0.3);
+            currentKillerAction = null;
+        }
+    }
+}
+
+function renderThreeJS() {
+    if (!threeRenderer || !threeScene || !threeCamera) return;
+    threeRenderer.render(threeScene, threeCamera);
+}
+
+function cleanupThreeJS() {
+    if (killerModel) {
+        threeScene.remove(killerModel);
+        killerModel.traverse(function (child) {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(function (m) { m.dispose(); });
+                } else {
+                    child.material.dispose();
+                }
+            }
+        });
+        killerModel = null;
+    }
+    if (killerMixer) {
+        killerMixer.stopAllAction();
+        killerMixer = null;
+    }
+    killerAnimations = {};
+    currentKillerAction = null;
+    if (threeRenderer && threeRenderer.domElement && threeRenderer.domElement.parentNode) {
+        threeRenderer.domElement.parentNode.removeChild(threeRenderer.domElement);
+    }
+    threeRenderer = null;
+    threeScene = null;
+    threeCamera = null;
+    threeLoaded = false;
+}
+
+function setKillerModelVisible(visible) {
+    if (killerModel) {
+        killerModel.visible = visible;
+    }
+}
+
 // ═══════ GAME FUNCTIONS ═══════
 
 function startGame(killerMode, multiplayer = false, code = null, pid = null) {
@@ -205,12 +444,18 @@ function stopGame() {
     if (isMultiplayer && roomCode) {
         leaveGameSession(roomCode, playerId);
     }
+
+    // Cleanup Three.js
+    cleanupThreeJS();
 }
 
 function initGame() {
     console.log('initGame called');
     document.getElementById('game-container').innerHTML = '';
-    
+
+    // Initialize Three.js for 3D killer model
+    initThreeJS();
+
     try {
         console.log('Creating Phaser.Game...');
         game = new Phaser.Game({
@@ -3035,6 +3280,12 @@ function spawnPlayers() {
         player = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', true);
         this.physics.add.collider(player.sprite, staticGroup);
 
+        // Hide 2D killer sprite if 3D model is loaded
+        if (threeLoaded && killerModel) {
+            player.sprite.setVisible(false);
+            setKillerModelVisible(true);
+        }
+
         // AI survivors - only in singleplayer mode
         if (!isMultiplayer) {
             const sTex = ['s1', 's2', 's4'];
@@ -3134,6 +3385,14 @@ function update(time, dt) {
     if (!scene || !player || gameEnded) return;
 
     gameTime += dt;
+
+    // Render Three.js 3D scene (killer model)
+    if (threeLoaded && isKiller && player && player.sprite) {
+        updateKillerModelPosition(player.sprite.x, player.sprite.y, dt);
+        const moving = (inputVec.x !== 0 || inputVec.y !== 0);
+        updateKillerAnimation(moving);
+    }
+    renderThreeJS();
 
     // Sync actionPressed and inputVec from Input module (for mobile/touch controls)
     if (typeof Input !== 'undefined') {
@@ -3939,8 +4198,17 @@ function updatePlayer(dt) {
             if (!sp.texture.key.includes('killer_strike')) {
                 sp.setTexture('killer_strike');
             }
+            // Show 2D sprite during strike animation for visual feedback
+            if (threeLoaded && killerModel && killerModel.visible) {
+                sp.setVisible(true);
+                sp.setAlpha(0.7);
+            }
             if (killerStrikeTimer <= 0) {
                 sp.setTexture('killer');
+                // Hide 2D sprite again after strike
+                if (threeLoaded && killerModel && killerModel.visible) {
+                    sp.setVisible(false);
+                }
                 if (isMultiplayer && roomCode && playerId) {
                     setKillerStrikeAnimation(roomCode, playerId, false);
                 }
