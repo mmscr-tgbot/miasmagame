@@ -120,6 +120,7 @@ function hashCode(str) {
 }
 let killerAttackCooldown = 0;
 let actionPressed = false;
+let palletPressed = false;
 let inputVec = { x: 0, y: 0 };
 let isCarryingNearHook = false;
 let isNearHatch = false;
@@ -186,7 +187,7 @@ function initThreeJS() {
             threeRenderer.shadowMap.enabled = true;
             threeRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
         }
-        threeRenderer.domElement.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:11;pointer-events:none;';
+        threeRenderer.domElement.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:15;pointer-events:none;';
         container.appendChild(threeRenderer.domElement);
 
         // Create scene
@@ -270,7 +271,7 @@ function loadKillerModel() {
 
             // Scale and position the model
             killerModel.scale.set(1.2, 1.2, 1.2);
-            killerModel.visible = false;
+            killerModel.visible = true;
             threeScene.add(killerModel);
 
             // Setup animations
@@ -313,20 +314,27 @@ function updateKillerModelPosition(worldX, worldY, dt) {
         killerModel.visible = true;
     }
 
-    // Convert Phaser world coordinates to Three.js coordinates
+    // Convert Phaser world coordinates to Three.js world coordinates
+    // Phaser: (0,0) is top-left, Y goes down
+    // Three.js: (0,0,0) is center, Y goes up
     const cam = scene.cameras.main;
     if (!cam) return;
 
-    const screenX = (worldX - cam.scrollX) - cam.width / 2;
-    const screenY = -(worldY - cam.scrollY) + cam.height / 2;
+    // Get the screen center in world coordinates
+    const worldCenterX = cam.scrollX + cam.width / 2;
+    const worldCenterY = cam.scrollY + cam.height / 2;
+
+    // Offset from world center
+    const offsetX = worldX - worldCenterX;
+    const offsetY = worldY - worldCenterY;
 
     // Scale from Phaser pixels to Three.js units
     const scale = 0.015;
-    killerModel.position.set(screenX * scale, 0, screenY * scale);
+    killerModel.position.set(offsetX * scale, 0, -offsetY * scale);
 
-    // Update camera to follow the model
-    threeCamera.position.set(screenX * scale, 10, screenY * scale + 8);
-    threeCamera.lookAt(screenX * scale, 0, screenY * scale);
+    // Camera follows the model
+    threeCamera.position.set(offsetX * scale, 8, -offsetY * scale + 6);
+    threeCamera.lookAt(offsetX * scale, 0, -offsetY * scale);
 }
 
 function updateKillerAnimation(moving) {
@@ -469,18 +477,8 @@ function initGame() {
     var pixelRatio = window.isLowEndDevice ? 1 : Math.min(window.devicePixelRatio, 2);
 
     // Initialize Three.js for 3D killer model (only if not low-end)
-    if (!window.isLowEndDevice) {
-        // Load Three.js first if not already loaded, then init
-        if (typeof window.loadThreeJS === 'function') {
-            window.loadThreeJS().then(function() {
-                initThreeJS();
-            }).catch(function(e) {
-                console.warn('[3D] Failed to load Three.js:', e);
-                threeError = true;
-            });
-        } else {
-            initThreeJS();
-        }
+    if (!window.isLowEndDevice && typeof THREE !== 'undefined') {
+        initThreeJS();
     }
 
     try {
@@ -3318,8 +3316,10 @@ function spawnPlayers() {
         player = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', true);
         this.physics.add.collider(player.sprite, staticGroup);
 
-        // Always hide 2D killer sprite - 3D model will show when loaded, or stay hidden
-        player.sprite.setVisible(false);
+        // Hide 2D killer sprite when 3D model is available
+        if (threeLoaded && killerModel) {
+            player.sprite.setVisible(false);
+        }
 
         // AI survivors - only in singleplayer mode
         if (!isMultiplayer) {
@@ -3904,6 +3904,7 @@ function updateCrowsAI(dt, crows) {
 }
 
 function updatePallets(dt) {
+    let nearPallet = false;
     pallets.forEach(pallet => {
         // Update drop cooldown
         if (pallet.dropCooldown > 0) {
@@ -4016,60 +4017,39 @@ function updatePallets(dt) {
             }
         }
         
-        // Show interaction hint
-        if (!isKiller && pallet.state === 'standing' && !pallet.progressAction) {
-            // Check if killer is nearby (within 150px) for survivor to drop pallet
-            let killerNearby = false;
-            
-            if (player && player.sprite) {
-                const dist = Math.sqrt(
-                    Math.pow(player.sprite.x - pallet.bx, 2) + 
-                    Math.pow(player.sprite.y - pallet.by, 2)
-                );
-                killerNearby = dist < 150;
+        // Show/hide pallet button based on proximity and state
+        if (!isKiller && pallet.state === 'standing' && pallet.dropCooldown <= 0 && player && player.sprite) {
+            const d = Math.sqrt(
+                Math.pow(player.sprite.x - pallet.bx, 2) + 
+                Math.pow(player.sprite.y - pallet.by, 2)
+            );
+            if (d < 50) {
+                nearPallet = true;
             }
-            
-            if (killerNearby && pallet.dropCooldown <= 0) {
-                pallet.interactHint = pallet.interactHint || scene.add.text(0, 0, '[E] Сбросить доску', {
-                    fontFamily: 'Arial',
-                    fontSize: '14px',
-                    color: '#ffdd00',
-                    stroke: '#000000',
-                    strokeThickness: 3
-                }).setOrigin(0.5).setDepth(1000);
-                pallet.interactHint.setPosition(pallet.bx, pallet.by - 60);
-                pallet.interactHint.setVisible(true);
-            } else if (pallet.interactHint) {
-                pallet.interactHint.setVisible(false);
+        } else if (isKiller && pallet.state === 'standing' && player && player.sprite) {
+            const d = Math.sqrt(
+                Math.pow(player.sprite.x - pallet.bx, 2) + 
+                Math.pow(player.sprite.y - pallet.by, 2)
+            );
+            if (d < 50) {
+                nearPallet = true;
             }
-        } else if (isKiller && pallet.state === 'standing' && !pallet.progressAction) {
-            // Killer can break standing pallets
-            if (player && player.sprite) {
-                const dist = Math.sqrt(
-                    Math.pow(player.sprite.x - pallet.bx, 2) + 
-                    Math.pow(player.sprite.y - pallet.by, 2)
-                );
-                if (dist < 50) {
-                    pallet.interactHint = pallet.interactHint || scene.add.text(0, 0, '[E] Сломать', {
-                        fontFamily: 'Arial',
-                        fontSize: '14px',
-                        color: '#ff6600',
-                        stroke: '#000000',
-                        strokeThickness: 3
-                    }).setOrigin(0.5).setDepth(1000);
-                    pallet.interactHint.setPosition(pallet.bx, pallet.by - 60);
-                    pallet.interactHint.setVisible(true);
-                } else if (pallet.interactHint) {
-                    pallet.interactHint.setVisible(false);
-                }
-            }
-        } else if (pallet.interactHint) {
-            pallet.interactHint.setVisible(false);
         }
     });
     
-    // Handle pallet interactions
-    if (actionPressed) {
+    // Show/hide pallet button
+    const pbtn = document.getElementById('pallet-btn');
+    if (pbtn) {
+        if (nearPallet) {
+            pbtn.style.display = 'flex';
+            pbtn.textContent = isKiller ? '🔨' : '🪵';
+        } else {
+            pbtn.style.display = 'none';
+        }
+    }
+    
+    // Handle pallet interactions (pallet button press)
+    if (palletPressed) {
         if (!isKiller) {
             // Survivor can drop pallets to stun killer
             pallets.forEach(pallet => {
@@ -4080,6 +4060,7 @@ function updatePallets(dt) {
                     );
                     if (dist < 50) {
                         dropPallet(pallet);
+                        palletPressed = false; // Reset after use
                     }
                 }
             });
@@ -4093,6 +4074,7 @@ function updatePallets(dt) {
                     );
                     if (dist < 50) {
                         breakPallet(pallet);
+                        palletPressed = false; // Reset after use
                     }
                 }
             });
@@ -4109,10 +4091,16 @@ function dropPallet(pallet) {
     pallet.sprite.setScale(1.2, 1);
     pallet.sprite.setRotation(0);
     pallet.dropCooldown = 0.5;
+    pallet.breakTimer = 15; // Auto-break after 15 seconds
     
     if (pallet.interactHint) pallet.interactHint.setVisible(false);
     
     UI.showToast('💨 Доска падает!', 800);
+    
+    // Sync pallet drop in multiplayer
+    if (isMultiplayer && roomCode && playerId) {
+        updatePalletState(roomCode, pallet.palletId, 'dropping', pallet.bx, pallet.by);
+    }
 }
 
 function breakPallet(pallet) {
@@ -6154,6 +6142,13 @@ function createControls() {
     ab.style.cssText = 'position:fixed;bottom:48px;right:28px;width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#cc2200);border:3px solid rgba(255,255,255,0.4);color:#fff;font-size:30px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:99999;touch-action:none;box-shadow:0 0 16px rgba(255,80,0,0.5);';
     document.body.appendChild(ab);
 
+    // Pallet button (smaller, above action button)
+    const pb = document.createElement('div');
+    pb.id = 'pallet-btn';
+    pb.textContent = '🪵';
+    pb.style.cssText = 'position:fixed;bottom:140px;right:43px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#8B4513,#654321);border:2px solid rgba(255,255,255,0.3);color:#fff;font-size:22px;display:none;align-items:center;justify-content:center;z-index:99999;touch-action:none;box-shadow:0 0 12px rgba(139,69,19,0.6);';
+    document.body.appendChild(pb);
+
     const jbase = document.getElementById('joy-base');
     const knob = document.getElementById('joy-knob');
     const maxD = 44;
@@ -6238,6 +6233,34 @@ function createControls() {
         ab.style.transform = 'scale(1)';
     });
 
+    // Pallet button handlers
+    pb.addEventListener('touchstart', function (e) {
+        e.preventDefault();
+        palletPressed = true;
+        pb.style.transform = 'scale(0.9)';
+    }, { passive: false });
+
+    pb.addEventListener('touchend', function (e) {
+        e.preventDefault();
+        palletPressed = false;
+        pb.style.transform = 'scale(1)';
+    });
+
+    pb.addEventListener('touchcancel', function () {
+        palletPressed = false;
+        pb.style.transform = 'scale(1)';
+    });
+
+    pb.addEventListener('mousedown', function () {
+        palletPressed = true;
+        pb.style.transform = 'scale(0.9)';
+    });
+
+    pb.addEventListener('mouseup', function () {
+        palletPressed = false;
+        pb.style.transform = 'scale(1)';
+    });
+
     document.addEventListener('keydown', onKey);
     document.addEventListener('keyup', onKey);
 }
@@ -6252,6 +6275,7 @@ function onKey(e) {
         inputVec.y /= len;
     }
     if (e.code === 'Space' || e.code === 'KeyE') actionPressed = (e.type === 'keydown');
+    if (e.code === 'KeyQ') palletPressed = (e.type === 'keydown');
 }
 
 function updateActionButton(forHook = false) {
@@ -6296,6 +6320,8 @@ function removeControls() {
     if (j) j.remove();
     const a = document.getElementById('action-btn');
     if (a) a.remove();
+    const p = document.getElementById('pallet-btn');
+    if (p) p.remove();
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('keyup', onKey);
 }
