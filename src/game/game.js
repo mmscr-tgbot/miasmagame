@@ -246,6 +246,14 @@ function loadKillerModel() {
             killerModel.visible = true;
             threeScene.add(killerModel);
 
+            // Hide 2D sprite and show 3D sprite
+            if (player && player.sprite) {
+                player.sprite.setVisible(false);
+            }
+            if (killer3DSprite) {
+                killer3DSprite.visible = true;
+            }
+
             // Animations
             if (gltf.animations && gltf.animations.length > 0) {
                 killerMixer = new THREE.AnimationMixer(killerModel);
@@ -273,6 +281,14 @@ function loadKillerModel() {
         },
         function (error) {
             console.error('[3D] Model load error:', error);
+            // Fallback: keep 2D sprite visible
+            if (player && player.sprite) {
+                player.sprite.setVisible(true);
+            }
+            if (killer3DSprite) {
+                killer3DSprite.destroy();
+                killer3DSprite = null;
+            }
             threeError = true;
         }
     );
@@ -3331,10 +3347,10 @@ function spawnPlayers() {
         player = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', true);
         this.physics.add.collider(player.sprite, staticGroup);
 
-        // Hide 2D killer sprite, use 3D model instead
+        // 3D model - will hide 2D sprite when model is actually loaded
         if (threeLoaded && !threeError) {
-            player.sprite.setVisible(false);
             killer3DSprite = createKiller3DSprite(this, kSpawn.x, kSpawn.y);
+            // Don't hide 2D sprite yet - wait for model to load
         }
 
         // AI survivors - only in singleplayer mode
@@ -4106,10 +4122,10 @@ function updatePallets(dt) {
                 pallet.sprite.setTexture('pallet_falling');
                 pallet.sprite.setScale(1, 1);
                 
-                // Check if killer is in range (within ~50px of pallet)
+                // Check if killer is in range (within ~60px of pallet)
                 let killerHit = false;
                 
-                // Check local killer
+                // Check local killer (solo mode - player IS the killer)
                 if (isKiller && player && player.sprite) {
                     const dist = Math.sqrt(
                         Math.pow(player.sprite.x - pallet.bx, 2) + 
@@ -4120,6 +4136,24 @@ function updatePallets(dt) {
                         killerStun = CONFIG.STUN_TIME;
                         UI.showToast('💥 Убийца оглушён!', 1500);
                     }
+                }
+                
+                // Check AI killer (survivor player in solo mode)
+                if (!killerHit && !isKiller && !isMultiplayer && player && player.aiPlayers) {
+                    player.aiPlayers.forEach(ai => {
+                        if (ai.isAIKiller && ai.sprite && !killerHit) {
+                            const dist = Math.sqrt(
+                                Math.pow(ai.sprite.x - pallet.bx, 2) + 
+                                Math.pow(ai.sprite.y - pallet.by, 2)
+                            );
+                            if (dist < 60) {
+                                killerHit = true;
+                                killerStun = CONFIG.STUN_TIME;
+                                ai.slowdownTimer = CONFIG.STUN_TIME;
+                                UI.showToast('💥 Убийца оглушён!', 1500);
+                            }
+                        }
+                    });
                 }
                 
                 // Check remote killers in multiplayer
@@ -4136,6 +4170,7 @@ function updatePallets(dt) {
                                 if (isMultiplayer && roomCode && playerId) {
                                     stunRemoteKiller(roomCode);
                                 }
+                                UI.showToast('💥 Убийца оглушён!', 1500);
                             }
                         }
                     });
@@ -4227,8 +4262,10 @@ function updatePallets(dt) {
         }
     }
     
-    // Handle pallet interactions (pallet button press)
+    // Handle pallet interactions (pallet button press) - one-shot trigger
     if (palletPressed) {
+        palletPressed = false; // Always reset immediately
+        
         if (!isKiller) {
             // Survivor can drop pallets to stun killer
             pallets.forEach(pallet => {
@@ -4239,7 +4276,6 @@ function updatePallets(dt) {
                     );
                     if (dist < 50) {
                         dropPallet(pallet);
-                        palletPressed = false; // Reset after use
                     }
                 }
             });
@@ -4253,7 +4289,6 @@ function updatePallets(dt) {
                     );
                     if (dist < 50) {
                         breakPallet(pallet);
-                        palletPressed = false; // Reset after use
                     }
                 }
             });
