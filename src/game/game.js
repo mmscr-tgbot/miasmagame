@@ -193,37 +193,45 @@ function initThreeJS() {
         // Create scene
         threeScene = new THREE.Scene();
 
-        // Create camera - orthographic for top-down-ish view
-        var aspect = window.innerWidth / window.innerHeight;
-        threeCamera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100);
-        threeCamera.position.set(0, 10, 8);
-        threeCamera.lookAt(0, 0, 0);
+        // Camera - fixed position looking at origin where model will be
+        threeCamera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 100);
+        threeCamera.position.set(0, 2.5, 4);
+        threeCamera.lookAt(0, 1, 0);
 
         // Lighting
-        var ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+        var ambientLight = new THREE.AmbientLight(0x606080, 0.8);
         threeScene.add(ambientLight);
 
-        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.0);
-        dirLight.position.set(5, 10, 5);
+        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+        dirLight.position.set(3, 5, 3);
         if (!lowEnd) {
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 512;
             dirLight.shadow.mapSize.height = 512;
             dirLight.shadow.camera.near = 0.1;
-            dirLight.shadow.camera.far = 30;
-            dirLight.shadow.camera.left = -8;
-            dirLight.shadow.camera.right = 8;
-            dirLight.shadow.camera.top = 8;
-            dirLight.shadow.camera.bottom = -8;
+            dirLight.shadow.camera.far = 20;
+            dirLight.shadow.camera.left = -5;
+            dirLight.shadow.camera.right = 5;
+            dirLight.shadow.camera.top = 5;
+            dirLight.shadow.camera.bottom = -5;
         }
         threeScene.add(dirLight);
 
         // Red rim light for horror atmosphere
         if (!lowEnd) {
-            var rimLight = new THREE.PointLight(0xff2200, 0.4, 15);
-            rimLight.position.set(-3, 4, -3);
+            var rimLight = new THREE.PointLight(0xff2200, 0.5, 10);
+            rimLight.position.set(-2, 3, -2);
             threeScene.add(rimLight);
         }
+
+        // Ground plane (dark)
+        var groundGeo = new THREE.PlaneGeometry(20, 20);
+        var groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 1 });
+        var groundMesh = new THREE.Mesh(groundGeo, groundMat);
+        groundMesh.rotation.x = -Math.PI / 2;
+        groundMesh.position.y = -0.01;
+        groundMesh.receiveShadow = !lowEnd;
+        threeScene.add(groundMesh);
 
         // Handle window resize
         window.addEventListener('resize', function () {
@@ -262,15 +270,20 @@ function loadKillerModel() {
         modelPath,
         function (gltf) {
             killerModel = gltf.scene;
-            killerModel.traverse(function (child) {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-
-            // Scale and position the model
-            killerModel.scale.set(1.2, 1.2, 1.2);
+            
+            // Compute bounding box to determine proper scale
+            var box = new THREE.Box3().setFromObject(killerModel);
+            var size = box.getSize(new THREE.Vector3());
+            var height = size.y || 1;
+            
+            // Scale model to be ~2 units tall (good for our camera setup)
+            var targetScale = 2.0 / height;
+            killerModel.scale.set(targetScale, targetScale, targetScale);
+            
+            // Center the model
+            var center = box.getCenter(new THREE.Vector3());
+            killerModel.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
+            
             killerModel.visible = true;
             threeScene.add(killerModel);
 
@@ -285,7 +298,7 @@ function loadKillerModel() {
                 });
 
                 // Play first animation by default (walking)
-                const firstAnim = Object.values(killerAnimations)[0];
+                var firstAnim = Object.values(killerAnimations)[0];
                 if (firstAnim) {
                     firstAnim.play();
                     currentKillerAction = firstAnim;
@@ -294,7 +307,7 @@ function loadKillerModel() {
                 console.warn('[3D] No animations found in model');
             }
 
-            console.log('[3D] Killer model loaded successfully');
+            console.log('[3D] Killer model loaded. Height:', height.toFixed(2), 'Scale:', targetScale.toFixed(2));
         },
         function (progress) {
             console.log('[3D] Loading progress:', (progress.loaded / progress.total * 100).toFixed(0) + '%');
@@ -314,38 +327,25 @@ function updateKillerModelPosition(worldX, worldY, dt) {
         killerModel.visible = true;
     }
 
-    // Convert Phaser world coordinates to Three.js world coordinates
-    // Phaser: (0,0) is top-left, Y goes down
-    // Three.js: (0,0,0) is center, Y goes up
-    const cam = scene.cameras.main;
-    if (!cam) return;
-
-    // Get the screen center in world coordinates
-    const worldCenterX = cam.scrollX + cam.width / 2;
-    const worldCenterY = cam.scrollY + cam.height / 2;
-
-    // Offset from world center
-    const offsetX = worldX - worldCenterX;
-    const offsetY = worldY - worldCenterY;
-
-    // Scale from Phaser pixels to Three.js units
-    const scale = 0.015;
-    killerModel.position.set(offsetX * scale, 0, -offsetY * scale);
-
-    // Camera follows the model
-    threeCamera.position.set(offsetX * scale, 8, -offsetY * scale + 6);
-    threeCamera.lookAt(offsetX * scale, 0, -offsetY * scale);
+    // Model stays at origin (0, 0, 0) in Three.js space
+    // Camera is fixed looking at it
+    // Only rotate the model based on movement direction
+    const moving = (inputVec.x !== 0 || inputVec.y !== 0);
+    if (moving) {
+        const targetAngle = Math.atan2(inputVec.x, inputVec.y);
+        killerModel.rotation.y += (targetAngle - killerModel.rotation.y) * 0.15;
+    }
 }
 
 function updateKillerAnimation(moving) {
-    if (!killerMixer || !killerModel || !killerModel.visible) return;
+    if (!killerMixer || !killerModel) return;
 
     if (moving && !isKillerMoving) {
         // Start walking animation
         isKillerMoving = true;
-        const walkAction = Object.values(killerAnimations)[0];
-        if (walkAction && walkAction !== currentKillerAction) {
-            if (currentKillerAction) {
+        var walkAction = Object.values(killerAnimations)[0];
+        if (walkAction) {
+            if (currentKillerAction && currentKillerAction !== walkAction) {
                 currentKillerAction.fadeOut(0.2);
             }
             walkAction.reset().fadeIn(0.2).play();
@@ -363,6 +363,12 @@ function updateKillerAnimation(moving) {
 
 function renderThreeJS() {
     if (!threeRenderer || !threeScene || !threeCamera) return;
+    
+    // Update animation mixer
+    if (killerMixer) {
+        killerMixer.update(0.016);
+    }
+    
     threeRenderer.render(threeScene, threeCamera);
 }
 
@@ -2894,6 +2900,52 @@ function create() {
     this.cameras.main.startFollow(player.sprite, true, 0.1, 0.1);
     this.cameras.main.setBackgroundColor('#030303');
 
+    // ═══════ DYNAMIC ATMOSPHERE SYSTEM ═══════
+    this.atmosphere = {
+        vignetteGfx: null,
+        bloodSplatters: [],
+        bloodGfx: null,
+        heartbeatIntensity: 0,
+        heartbeatGfx: null,
+        filmGrainGfx: null,
+        killerAuraGfx: null,
+        screenShakeAmount: 0,
+        colorGradeGfx: null,
+        ambientParticles: [],
+        ambientGfx: null,
+        breathPhase: 0
+    };
+
+    // Vignette (dark edges)
+    this.atmosphere.vignetteGfx = this.add.graphics().setDepth(9999);
+
+    // Blood splatter layer
+    this.atmosphere.bloodGfx = this.add.graphics().setDepth(9995);
+
+    // Heartbeat effect (red pulse when killer is near)
+    this.atmosphere.heartbeatGfx = this.add.graphics().setDepth(9998);
+
+    // Screen space blood splatter
+    this.atmosphere.bloodSplatters = [];
+
+    // Killer proximity aura (red glow)
+    this.atmosphere.killerAuraGfx = this.add.graphics().setDepth(9997);
+
+    // Ambient floating particles (embers/dust)
+    this.atmosphere.ambientGfx = this.add.graphics().setDepth(9996);
+    for (let i = 0; i < 40; i++) {
+        this.atmosphere.ambientParticles.push({
+            x: Math.random() * window.innerWidth,
+            y: Math.random() * window.innerHeight,
+            size: 0.5 + Math.random() * 2,
+            alpha: 0.1 + Math.random() * 0.3,
+            speedX: (Math.random() - 0.5) * 0.3,
+            speedY: -0.1 - Math.random() * 0.4,
+            flicker: Math.random() * Math.PI * 2,
+            color: Math.random() > 0.7 ? 0xff6622 : 0x886644
+        });
+    }
+
     // Silent Hill Style Fog System - Dense, slow, atmospheric
     this.fogPatches = [];
     const fogColors = [
@@ -3412,6 +3464,188 @@ function getTexWithFallback(baseTex, suffix) {
     return 's3' + suffix;
 }
 
+// ═══════ DYNAMIC ATMOSPHERE SYSTEM ═══════
+function updateAtmosphere(dt) {
+    if (!scene || !scene.atmosphere || window.isLowEndDevice) return;
+    
+    const atmo = scene.atmosphere;
+    const cam = scene.cameras.main;
+    if (!cam) return;
+    
+    // ─── Vignette (dark edges) ───
+    if (atmo.vignetteGfx) {
+        atmo.vignetteGfx.clear();
+        const w = cam.width;
+        const h = cam.height;
+        
+        // Dark corners
+        atmo.vignetteGfx.fillStyle(0x000000, 0.3);
+        atmo.vignetteGfx.fillCircle(0, 0, w * 0.4);
+        atmo.vignetteGfx.fillCircle(w, 0, w * 0.4);
+        atmo.vignetteGfx.fillCircle(0, h, w * 0.4);
+        atmo.vignetteGfx.fillCircle(w, h, w * 0.4);
+        
+        // Edge darkness
+        atmo.vignetteGfx.fillStyle(0x000000, 0.15);
+        atmo.vignetteGfx.fillRect(0, 0, w * 0.15, h);
+        atmo.vignetteGfx.fillRect(w * 0.85, 0, w * 0.15, h);
+        atmo.vignetteGfx.fillRect(0, 0, w, h * 0.1);
+        atmo.vignetteGfx.fillRect(0, h * 0.9, w, h * 0.1);
+    }
+    
+    // ─── Heartbeat effect (red pulse when killer is near survivors) ───
+    if (atmo.heartbeatGfx && !isKiller && player && player.sprite) {
+        atmo.heartbeatGfx.clear();
+        
+        // Find nearest killer
+        let nearestKillerDist = 9999;
+        if (isMultiplayer) {
+            Object.values(remotePlayers).forEach(rp => {
+                if (rp.role === 'killer') {
+                    const d = dist(player.sprite, rp.sprite);
+                    if (d < nearestKillerDist) nearestKillerDist = d;
+                }
+            });
+        } else {
+            (player.aiPlayers || []).forEach(ai => {
+                if (ai.isAIKiller) {
+                    const d = dist(player.sprite, ai.sprite);
+                    if (d < nearestKillerDist) nearestKillerDist = d;
+                }
+            });
+        }
+        
+        // Intensity based on distance
+        const maxDist = 300;
+        const intensity = Math.max(0, 1 - nearestKillerDist / maxDist);
+        atmo.heartbeatIntensity += (intensity - atmo.heartbeatIntensity) * 0.1;
+        
+        if (atmo.heartbeatIntensity > 0.1) {
+            atmo.breathPhase += dt * 0.003 * atmo.heartbeatIntensity;
+            const pulse = Math.pow(Math.sin(atmo.breathPhase), 2) * atmo.heartbeatIntensity;
+            
+            // Red screen tint
+            atmo.heartbeatGfx.fillStyle(0x880000, pulse * 0.08);
+            atmo.heartbeatGfx.fillRect(0, 0, cam.width, cam.height);
+            
+            // Edge glow
+            atmo.heartbeatGfx.fillStyle(0xff0000, pulse * 0.15);
+            atmo.heartbeatGfx.fillRect(0, 0, cam.width, 8);
+            atmo.heartbeatGfx.fillRect(0, cam.height - 8, cam.width, 8);
+            atmo.heartbeatGfx.fillRect(0, 0, 8, cam.height);
+            atmo.heartbeatGfx.fillRect(cam.width - 8, 0, 8, cam.height);
+        }
+    }
+    
+    // ─── Killer aura (red glow around killer) ───
+    if (atmo.killerAuraGfx && isKiller && player && player.sprite) {
+        atmo.killerAuraGfx.clear();
+        const px = player.sprite.x - cam.scrollX;
+        const py = player.sprite.y - cam.scrollY;
+        
+        // Pulsing red aura
+        const auraPulse = 0.5 + Math.sin(gameTime * 0.004) * 0.3;
+        atmo.killerAuraGfx.fillStyle(0xff2200, auraPulse * 0.06);
+        atmo.killerAuraGfx.fillCircle(px, py, 80);
+        atmo.killerAuraGfx.fillStyle(0xff4400, auraPulse * 0.03);
+        atmo.killerAuraGfx.fillCircle(px, py, 120);
+    }
+    
+    // ─── Ambient floating particles ───
+    if (atmo.ambientGfx && atmo.ambientParticles) {
+        atmo.ambientGfx.clear();
+        
+        atmo.ambientParticles.forEach(p => {
+            p.flicker += dt * 0.005;
+            p.x += p.speedX + Math.sin(p.flicker) * 0.15;
+            p.y += p.speedY;
+            
+            // Wrap around screen
+            if (p.x < -10) p.x = cam.width + 10;
+            if (p.x > cam.width + 10) p.x = -10;
+            if (p.y < -10) p.y = cam.height + 10;
+            if (p.y > cam.height + 10) p.y = -10;
+            
+            const flickerAlpha = p.alpha * (0.7 + Math.sin(p.flicker * 2) * 0.3);
+            
+            // Warm glow
+            atmo.ambientGfx.fillStyle(p.color, flickerAlpha * 0.5);
+            atmo.ambientGfx.fillCircle(p.x, p.y, p.size + 1);
+            atmo.ambientGfx.fillStyle(p.color, flickerAlpha);
+            atmo.ambientGfx.fillCircle(p.x, p.y, p.size);
+        });
+    }
+    
+    // ─── Screen shake (when killer hits or pallet drops) ───
+    if (atmo.screenShakeAmount > 0.5) {
+        cam.shake(50, atmo.screenShakeAmount * 0.003);
+        atmo.screenShakeAmount *= 0.9;
+    }
+    
+    // ─── Blood splatters ───
+    if (atmo.bloodGfx && atmo.bloodSplatters.length > 0) {
+        atmo.bloodGfx.clear();
+        const cam = scene.cameras.main;
+        if (cam) {
+            atmo.bloodSplatters.forEach(b => {
+                const sx = b.x - cam.scrollX;
+                const sy = b.y - cam.scrollY;
+                atmo.bloodGfx.fillStyle(0x880000, b.alpha * 0.8);
+                atmo.bloodGfx.fillCircle(sx, sy, b.size);
+                atmo.bloodGfx.fillStyle(0xaa0000, b.alpha * 0.4);
+                atmo.bloodGfx.fillCircle(sx, sy, b.size * 1.5);
+            });
+        }
+    } else if (atmo.bloodGfx) {
+        atmo.bloodGfx.clear();
+    }
+}
+
+function triggerScreenShake(amount) {
+    if (!scene || !scene.atmosphere) return;
+    scene.atmosphere.screenShakeAmount = Math.max(scene.atmosphere.screenShakeAmount, amount);
+}
+
+function addBloodSplatter(x, y) {
+    if (!scene || !scene.atmosphere) return;
+    const atmo = scene.atmosphere;
+    
+    // Add blood particles
+    for (let i = 0; i < 8; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1 + Math.random() * 3;
+        atmo.bloodSplatters.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 1,
+            size: 2 + Math.random() * 4,
+            alpha: 0.8,
+            life: 0.5 + Math.random() * 0.5
+        });
+    }
+    
+    triggerScreenShake(5);
+}
+
+function updateBloodSplatters(dt) {
+    if (!scene || !scene.atmosphere) return;
+    const atmo = scene.atmosphere;
+    
+    for (let i = atmo.bloodSplatters.length - 1; i >= 0; i--) {
+        const b = atmo.bloodSplatters[i];
+        b.x += b.vx;
+        b.y += b.vy;
+        b.vy += 0.1; // gravity
+        b.life -= dt / 1000;
+        b.alpha = Math.max(0, b.life * 1.5);
+        
+        if (b.life <= 0) {
+            atmo.bloodSplatters.splice(i, 1);
+        }
+    }
+}
+
 // ═══════ MAIN UPDATE ═══════
 
 let gameTime = 0;
@@ -3420,6 +3654,9 @@ function update(time, dt) {
     if (!scene || !player || gameEnded) return;
 
     gameTime += dt;
+
+    // Update blood splatters
+    updateBloodSplatters(dt);
 
     // Render Three.js 3D scene (killer model) - skip on low-end
     if (threeLoaded && isKiller && player && player.sprite && !window.isLowEndDevice) {
@@ -3518,6 +3755,9 @@ function update(time, dt) {
             fg.fillEllipse(patch.x + Math.sin(patch.wobblePhase) * 20, patch.y, patch.width * 0.4, patch.height * 0.5);
         });
     }
+    
+    // ═══════ DYNAMIC ATMOSPHERE SYSTEM ═══════
+    updateAtmosphere(dt);
     
     // ═══════ Update Crows ═══════
     // In multiplayer: only host (killer) controls crow AI, others receive updates
@@ -4429,6 +4669,8 @@ function killerAction(dt) {
             if (t.isMe) {
                 boostTimer = 1.0;
                 survivorSpeedBoost = 1.0;
+                // Blood splatter and screen shake
+                addBloodSplatter(t.sprite.x, t.sprite.y);
             }
             UI.showToast('💥 Выживший ранен!', 2000);
 
@@ -4453,6 +4695,9 @@ function killerAction(dt) {
             // Killer slows down for 1 second after downing
             killerSlowdown = 1.0;
             killerAttackCooldown = 1.0;
+            // Blood splatter and screen shake
+            addBloodSplatter(t.sprite.x, t.sprite.y);
+            triggerScreenShake(8);
             UI.showToast('⬇️ Выживший упал на землю!', 2000);
 
             if (isMultiplayer && roomCode && playerId) {
@@ -5119,6 +5364,7 @@ function updateAI(dt) {
                         ai.slowdownTimer = 2.0;
                         ai.aiAttackCooldown = 1.5;
                         ai.aiAttackInterval = 1.5 + Math.random() * 0.5;
+                        addBloodSplatter(p2.sprite.x, p2.sprite.y);
                         UI.showToast('💥 Ты ранен!', 2000);
                     } else if (p2.state === 'injured') {
                         // Second hit - survivor falls to ground (dying state)
@@ -5130,13 +5376,12 @@ function updateAI(dt) {
                         if (p2.repairSparks) p2.repairSparks.setVisible(false);
                         p2.sprite.setScale(1, 1);
                         p2.sprite.setAlpha(1);
-                        if (p2.sprite.texture.key.includes('_repair')) {
-                            p2.sprite.setTexture(p2.tex);
-                        }
                         // AI killer slows down for 1 second
                         ai.slowdownTimer = 1.0;
                         ai.aiAttackCooldown = 1.0;
                         ai.aiAttackInterval = 1.0 + Math.random() * 0.3;
+                        addBloodSplatter(p2.sprite.x, p2.sprite.y);
+                        triggerScreenShake(8);
                         UI.showToast('⬇️ Ты упал на землю!', 2000);
                     } else if (p2.state === 'dying') {
                         // Pick up dying survivor
