@@ -68,6 +68,7 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
     <div>⚙️ <span id="gen-count">0/5</span></div>
     <div>🚪 <span id="exit-state">закрыт</span></div>
     <div id="alive-count">🏃 4</div>
+    <div id="remote-players-count" style="color:#ff0;font-size:10px">RP: 0</div>
   </div>
 </div>
 
@@ -319,6 +320,7 @@ let gameSessionCallback = null;
 
 // FIX #4: initGameSession больше не перезаписывает генераторы для выживших
 function initGameSession(roomCode, playerId, isKiller) {
+  console.log('[FB] initGameSession called:', roomCode, playerId, isKiller, 'firebaseReady:', firebaseReady);
   if (!firebaseReady) return Promise.reject(new Error('Firebase не готова'));
 
   gameSessionRef = db.ref('gameSessions/' + roomCode);
@@ -353,10 +355,14 @@ function initGameSession(roomCode, playerId, isKiller) {
 }
 
 function sendPlayerPosition(roomCode, playerId, x, y) {
-  if (!firebaseReady || !db) return;
+  if (!firebaseReady || !db) {
+    console.log('[FB] sendPlayerPosition skipped: firebaseReady:', firebaseReady);
+    return;
+  }
+  console.log('[FB] Sending position:', playerId, x, y);
   db.ref('gameSessions/' + roomCode).child('players/' + playerId).update({
     x: x, y: y, lastUpdate: Date.now()
-  }).catch(function() {});
+  }).catch(function(e) { console.error('[FB] sendPlayerPosition error:', e); });
 }
 
 function updatePlayerState(roomCode, playerId, state) {
@@ -467,17 +473,25 @@ function setGameResult(roomCode, winner, message) {
 
 // FIX #3: Исправлен subscribeToGameSession — используем .off(callback) для отписки
 function subscribeToGameSession(roomCode, callbacks) {
-  if (!firebaseReady || !db) return null;
+  if (!firebaseReady || !db) {
+    console.log('[FB] subscribeToGameSession aborted: firebaseReady:', firebaseReady, 'db:', !!db);
+    return null;
+  }
 
   // Отписываемся от предыдущей подписки корректно
   if (gameSessionListenerRef && gameSessionCallback) {
     gameSessionListenerRef.off('value', gameSessionCallback);
   }
 
+  console.log('[FB] Subscribing to gameSessions/' + roomCode);
   gameSessionListenerRef = db.ref('gameSessions/' + roomCode);
   gameSessionCallback = function(snapshot) {
-    if (!snapshot.exists()) return;
+    if (!snapshot.exists()) {
+      console.log('[FB] Snapshot does not exist');
+      return;
+    }
     var data = snapshot.val();
+    console.log('[FB] Received data, players:', data.players ? Object.keys(data.players) : 'none');
     if (callbacks.onPlayersUpdate) callbacks.onPlayersUpdate(data.players || {});
     if (callbacks.onGeneratorsUpdate) callbacks.onGeneratorsUpdate(data.generators || {});
     if (callbacks.onCrowsUpdate && data.crows) callbacks.onCrowsUpdate(data.crows);
@@ -491,6 +505,7 @@ function subscribeToGameSession(roomCode, callbacks) {
   };
 
   gameSessionListenerRef.on('value', gameSessionCallback, function(error) {
+    console.error('[FB] Subscribe error:', error);
     if (callbacks.onError) callbacks.onError(error);
   });
 

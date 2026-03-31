@@ -3395,6 +3395,14 @@ function update(time, dt) {
     updateHUD();
     checkWinLose();
 
+    // Debug: update remote players count display
+    if (isMultiplayer) {
+        const debugEl = document.getElementById('remote-players-count');
+        if (debugEl) {
+            debugEl.textContent = 'RP: ' + Object.keys(remotePlayers).length;
+        }
+    }
+
     // Smooth interpolation for remote players in multiplayer
     if (isMultiplayer) {
         interpolateRemotePlayers(dt);
@@ -5210,12 +5218,16 @@ function initMultiplayerSync() {
 }
 
 function sendPositionUpdate() {
-    if (!roomCode || !playerId || !player) return;
+    if (!roomCode || !playerId || !player) {
+        console.log('[MP] sendPositionUpdate skipped: roomCode:', roomCode, 'playerId:', playerId, 'player:', !!player);
+        return;
+    }
 
     const now = Date.now();
     if (now - lastPosUpdate < POS_UPDATE_INTERVAL) return;
     lastPosUpdate = now;
 
+    console.log('[MP] Sending position update:', player.sprite.x, player.sprite.y);
     sendPlayerPosition(roomCode, playerId, player.sprite.x, player.sprite.y);
 
     // Also update state
@@ -5309,10 +5321,14 @@ function sendCrowUpdate() {
 function updateRemotePlayers(players) {
     if (!scene) return;
 
+    console.log('[MP] updateRemotePlayers called, player count:', Object.keys(players).length, 'my playerId:', playerId);
+    console.log('[MP] players:', JSON.stringify(Object.keys(players)));
+
     Object.keys(players).forEach(pid => {
         if (pid === playerId) return; // Skip self
 
         const pdata = players[pid];
+        console.log('[MP] processing player:', pid, 'pdata:', pdata);
 
         if (remotePlayers[pid]) {
             // Update existing - store target position for interpolation
@@ -5483,6 +5499,7 @@ function updateRemotePlayers(players) {
             }
         } else {
             // Create new remote player
+            console.log('[MP] Creating remote player:', pid, 'role:', pdata.role, 'pos:', pdata.x, pdata.y);
             let tex = pdata.role === 'killer' ? 'killer' : 's1';
             let initialState = pdata.state || 'alive';
             
