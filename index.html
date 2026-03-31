@@ -592,9 +592,11 @@ function findAndJoinLobby() {
   roomsQuery.on('child_added', function(snapshot) {
     if (foundLobby) return;
     var room = snapshot.val();
+    console.log('[FB] Found room:', snapshot.key, 'status:', room.status);
     var playerCount = Object.keys(room.players || {}).length;
     if (playerCount < 4 && room.hostId !== gMyId) {
       foundLobby = true;
+      console.log('[FB] Joining room:', snapshot.key);
       roomsQuery.off();
       joinRoom(snapshot.key, gMyId, sName).then(function(result) {
         if (result.success) {
@@ -603,6 +605,7 @@ function findAndJoinLobby() {
           showScreen('lobby-create');
           document.getElementById('display-room-code').textContent = result.roomId;
           document.getElementById('lobby-status').textContent = 'Вы присоединились!';
+          console.log('[FB] Joined room, calling subscribeToLobby:', gRoomId);
           subscribeToLobby(gRoomId);
           showToast('Подключился к лобби!');
         } else {
@@ -631,16 +634,19 @@ function findAndJoinLobby() {
 
 // FIX #3: Переписан subscribeToLobby для корректной отписки
 function subscribeToLobby(roomCode) {
+  console.log('[FB] subscribeToLobby called:', roomCode);
   unsubscribeFromLobby();
 
   gRoomRef = db.ref('rooms/' + roomCode);
   gRoomCallback = function(snapshot) {
+    console.log('[FB] Lobby callback, exists:', snapshot.exists());
     if (!snapshot.exists()) {
       showToast('Лобби закрыто!');
       showScreen('main-menu');
       return;
     }
     var room = snapshot.val();
+    console.log('[FB] Lobby status:', room.status, 'players:', Object.keys(room.players || {}));
     if (room.status === 'closed') {
       showToast('Лобби закрыто!', 3000);
       showScreen('main-menu');
@@ -693,22 +699,23 @@ function subscribeToLobby(roomCode) {
     }
 
     if (room.status === 'playing') {
+      console.log('[FB] Game starting! status=playing detected');
       unsubscribeFromLobby();
       var isKiller = (gMyRole === 'killer');
       gGameSessionId = roomCode;
       initGameSession(roomCode, gMyId, isKiller).then(function() {
-        console.log('Game session initialized');
+        console.log('[FB] Game session initialized, starting game...');
         if (typeof Game !== 'undefined') {
           Game.start(isKiller, true, roomCode, gMyId);
         }
       }).catch(function(e) {
-        console.error('Game session error:', e);
+        console.error('[FB] Game session error:', e);
       });
     }
   };
 
   gRoomRef.on('value', gRoomCallback, function(error) {
-    console.error('Lobby listen error:', error);
+    console.error('[FB] Lobby listen error:', error);
   });
 }
 
@@ -766,26 +773,27 @@ function setupButtons() {
     showScreen('main-menu');
   });
   on('btn-start-game', function() {
-    console.log('btn-start-game clicked, gRoomId:', gRoomId, 'gIsHost:', gIsHost);
+    console.log('[FB] btn-start-game clicked, gRoomId:', gRoomId, 'gIsHost:', gIsHost);
     if (!gRoomId || !gIsHost) {
-      console.log('Blocked: gRoomId=', gRoomId, 'gIsHost=', gIsHost);
+      console.log('[FB] Blocked: gRoomId=', gRoomId, 'gIsHost=', gIsHost);
       return;
     }
     showToast('Начинаем игру...');
     startGame(gRoomId).then(function(result) {
-      console.log('startGame result:', result);
+      console.log('[FB] startGame result:', result);
       if (result.success) {
         showToast('Игра начинается...');
         // Запускаем саму игру
         var isKiller = (gMyRole === 'killer');
         if (typeof Game !== 'undefined') {
+          console.log('[FB] Starting Game.start for killer:', isKiller);
           Game.start(isKiller, true, gRoomId, gMyId);
         }
       } else {
         showToast('Ошибка: ' + result.error);
       }
     }).catch(function(e) {
-      console.error('Start game error:', e);
+      console.error('[FB] Start game error:', e);
       showToast('Ошибка запуска игры: ' + e.message);
     });
   });
