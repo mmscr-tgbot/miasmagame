@@ -150,8 +150,8 @@ function updateProgressBar() {
   
   if (loadBar) loadBar.style.width = pct + '%';
   
-  // Change text at 95%
-  if (pct >= 95 && loadStatus) {
+  // Change text at 80%
+  if (pct >= 80 && loadStatus) {
     loadStatus.textContent = 'Игровой движок готов';
   } else if (loadStatus) {
     loadStatus.textContent = 'Игровой движок загружается';

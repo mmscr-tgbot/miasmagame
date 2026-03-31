@@ -149,15 +149,20 @@ const POS_LERP_SPEED = 0.15; // Smooth interpolation factor (0.1-0.2 is good)
 let threeRenderer = null;
 let threeScene = null;
 let threeCamera = null;
+let killerModelIdle = null;
+let killerModelWalking = null;
 let killerModel = null;
-let killerMixer = null;
-let killerAnimations = {};
-let currentKillerAction = null;
+let killerMixerIdle = null;
+let killerMixerWalking = null;
+let killerAnimationsIdle = {};
+let killerAnimationsWalking = {};
 let isKillerMoving = false;
 let threeLoaded = false;
 let threeError = false;
 let threeCanvas = null;
-let killer3DSprite = null;
+let modelsLoaded = 0;
+let totalModels = 2;
+let killerRotation = 0;
 
 // ═══════ THREE.JS INITIALIZATION ═══════
 
@@ -179,8 +184,8 @@ function initThreeJS() {
         }
 
         threeCanvas = document.createElement('canvas');
-        var canvasSize = 90;
-        var canvasHeight = 135;
+        var canvasSize = 110;
+        var canvasHeight = 155;
         threeCanvas.width = canvasSize;
         threeCanvas.height = canvasHeight;
         document.body.appendChild(threeCanvas);
@@ -219,7 +224,8 @@ function initThreeJS() {
         rimLight.position.set(-1.5, 2, -1.5);
         threeScene.add(rimLight);
 
-        loadKillerModel();
+        loadKillerModel('idle', 'src/models/killers/scare/ScareKiller_Idle.glb');
+        loadKillerModel('walking', 'src/models/killers/scare/ScareKiller_Walking.glb');
 
         threeLoaded = true;
         console.log('[3D] Three.js initialized');
@@ -229,7 +235,7 @@ function initThreeJS() {
     }
 }
 
-function loadKillerModel() {
+function loadKillerModel(type, modelPath) {
     if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
         console.warn('[3D] GLTFLoader not available');
         threeError = true;
@@ -237,17 +243,15 @@ function loadKillerModel() {
     }
 
     var loader = new THREE.GLTFLoader();
-    var modelPath = 'src/models/killers/scare/ScareKiller_Walking.glb';
-
-    console.log('[3D] Loading model from:', modelPath);
+    console.log('[3D] Loading ' + type + ' model from:', modelPath);
 
     loader.load(
         modelPath,
         function (gltf) {
-            killerModel = gltf.scene;
+            var model = gltf.scene;
 
             // Fix materials
-            killerModel.traverse(function (child) {
+            model.traverse(function (child) {
                 if (child.isMesh) {
                     child.castShadow = false;
                     child.receiveShadow = false;
@@ -261,70 +265,82 @@ function loadKillerModel() {
             });
 
             // Compute bounding box
-            var box = new THREE.Box3().setFromObject(killerModel);
+            var box = new THREE.Box3().setFromObject(model);
             var size = box.getSize(new THREE.Vector3());
             var height = size.y || 1;
 
-            // Model already properly scaled in Blender - use fixed scale
+            // Fixed scale
             var targetScale = 1.0;
-            killerModel.scale.set(targetScale, targetScale, targetScale);
+            model.scale.set(targetScale, targetScale, targetScale);
 
             // Center at origin
             var center = box.getCenter(new THREE.Vector3());
-            killerModel.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
+            model.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
 
-            killerModel.visible = true;
-            threeScene.add(killerModel);
-
-            // Hide 2D sprite
-            if (player && player.sprite) {
-                player.sprite.setVisible(false);
-            }
-
-            // Show 3D canvas
-            if (threeCanvas) {
-                threeCanvas.style.display = 'block';
-            }
+            model.visible = false;
+            threeScene.add(model);
 
             // Animations
+            var mixer = null;
             if (gltf.animations && gltf.animations.length > 0) {
-                killerMixer = new THREE.AnimationMixer(killerModel);
-                console.log('[3D] Found', gltf.animations.length, 'animation(s)');
+                mixer = new THREE.AnimationMixer(model);
+                console.log('[3D] Found', gltf.animations.length, 'animation(s) for', type);
 
                 gltf.animations.forEach(function (clip, index) {
                     console.log('[3D] Animation', index, ':', clip.name);
-                    killerAnimations[clip.name.toLowerCase()] = killerMixer.clipAction(clip);
+                    var action = mixer.clipAction(clip);
+                    if (type === 'idle') {
+                        killerAnimationsIdle[clip.name.toLowerCase()] = action;
+                    } else {
+                        killerAnimationsWalking[clip.name.toLowerCase()] = action;
+                    }
                 });
 
-                var firstAnim = Object.values(killerAnimations)[0];
+                // Play first animation
+                var firstAnim = Object.values(type === 'idle' ? killerAnimationsIdle : killerAnimationsWalking)[0];
                 if (firstAnim) {
                     firstAnim.play();
-                    currentKillerAction = firstAnim;
                 }
             } else {
-                console.warn('[3D] No animations found in model');
+                console.warn('[3D] No animations found in', type, 'model');
             }
 
-            console.log('[3D] Killer model loaded. Height:', height.toFixed(2), 'Scale:', targetScale.toFixed(2));
+            if (type === 'idle') {
+                killerModelIdle = model;
+                killerMixerIdle = mixer;
+            } else {
+                killerModelWalking = model;
+                killerMixerWalking = mixer;
+            }
+
+            modelsLoaded++;
+            if (modelsLoaded >= totalModels) {
+                // Both models loaded - start with idle
+                killerModel = killerModelIdle;
+                killerModel.visible = true;
+
+                if (player && player.sprite) {
+                    player.sprite.setVisible(false);
+                }
+                if (threeCanvas) {
+                    threeCanvas.style.display = 'block';
+                }
+                threeLoaded = true;
+                console.log('[3D] Both models loaded');
+            }
         },
         function (progress) {
-            console.log('[3D] Loading:', Math.round(progress.loaded / progress.total * 100) + '%');
+            console.log('[3D] Loading ' + type + ':', Math.round(progress.loaded / progress.total * 100) + '%');
         },
         function (error) {
-            console.error('[3D] Model load error:', error);
-            if (player && player.sprite) {
-                player.sprite.setVisible(true);
-            }
-            if (threeCanvas) {
-                threeCanvas.style.display = 'none';
-            }
+            console.error('[3D] Model load error (' + type + '):', error);
             threeError = true;
         }
     );
 }
 
 function updateKiller3DSprite(dt) {
-    if (!killerModel || !threeCanvas || !threeRenderer) return;
+    if (!threeCanvas || !threeRenderer || !threeLoaded) return;
     if (!player || !player.sprite) return;
 
     var cam = scene.cameras.main;
@@ -341,20 +357,43 @@ function updateKiller3DSprite(dt) {
     threeCanvas.style.top = (screenY - h / 2) + 'px';
     threeCanvas.style.display = 'block';
 
-    // Rotate model
+    // Check if moving
     var moving = (inputVec.x !== 0 || inputVec.y !== 0);
+
+    // Rotate model
     if (moving) {
         var targetAngle = Math.atan2(inputVec.x, inputVec.y);
-        var currentAngle = killerModel.rotation.y;
-        var diff = targetAngle - currentAngle;
+        var diff = targetAngle - killerRotation;
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
-        killerModel.rotation.y += diff * 0.15;
+        killerRotation += diff * 0.15;
     }
 
-    // Update animation
-    if (killerMixer) {
-        killerMixer.update(dt / 1000);
+    // Apply rotation to both models
+    if (killerModelIdle) killerModelIdle.rotation.y = killerRotation;
+    if (killerModelWalking) killerModelWalking.rotation.y = killerRotation;
+
+    // Switch models based on movement
+    if (moving && killerModel !== killerModelWalking) {
+        if (killerModelIdle) killerModelIdle.visible = false;
+        if (killerModelWalking) {
+            killerModelWalking.visible = true;
+            killerModel = killerModelWalking;
+        }
+    } else if (!moving && killerModel !== killerModelIdle) {
+        if (killerModelWalking) killerModelWalking.visible = false;
+        if (killerModelIdle) {
+            killerModelIdle.visible = true;
+            killerModel = killerModelIdle;
+        }
+    }
+
+    // Update animation mixers
+    if (killerMixerWalking) {
+        killerMixerWalking.update(dt / 1000);
+    }
+    if (killerMixerIdle) {
+        killerMixerIdle.update(dt / 1000);
     }
 
     // Render
@@ -362,16 +401,26 @@ function updateKiller3DSprite(dt) {
 }
 
 function cleanupThreeJS() {
-    if (killerModel) {
-        threeScene.remove(killerModel);
-        killerModel = null;
+    if (killerModelIdle) {
+        threeScene.remove(killerModelIdle);
+        killerModelIdle = null;
     }
-    if (killerMixer) {
-        killerMixer.stopAllAction();
-        killerMixer = null;
+    if (killerModelWalking) {
+        threeScene.remove(killerModelWalking);
+        killerModelWalking = null;
     }
-    killerAnimations = {};
-    currentKillerAction = null;
+    if (killerMixerIdle) {
+        killerMixerIdle.stopAllAction();
+        killerMixerIdle = null;
+    }
+    if (killerMixerWalking) {
+        killerMixerWalking.stopAllAction();
+        killerMixerWalking = null;
+    }
+    killerAnimationsIdle = {};
+    killerAnimationsWalking = {};
+    killerModel = null;
+    killerRotation = 0;
     if (threeCanvas && threeCanvas.parentNode) {
         threeCanvas.parentNode.removeChild(threeCanvas);
     }
