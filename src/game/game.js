@@ -179,13 +179,12 @@ function initThreeJS() {
         }
 
         threeCanvas = document.createElement('canvas');
-        threeCanvas.width = 256;
-        threeCanvas.height = 384;
-        var dpr = Math.min(window.devicePixelRatio || 1, 2);
-        var canvasSize = Math.round(200 * dpr);
-        var canvasHeight = Math.round(300 * dpr);
-        threeCanvas.style.cssText = 'position:fixed;z-index:20;pointer-events:none;display:none;image-rendering:auto;width:' + canvasSize + 'px;height:' + canvasHeight + 'px;';
+        var canvasSize = 90;
+        var canvasHeight = 135;
+        threeCanvas.width = canvasSize;
+        threeCanvas.height = canvasHeight;
         document.body.appendChild(threeCanvas);
+        threeCanvas.setAttribute('style', 'position:fixed!important;top:0!important;left:0!important;z-index:20!important;pointer-events:none!important;display:none!important;width:' + canvasSize + 'px!important;height:' + canvasHeight + 'px!important;border:3px solid red!important;');
 
         threeRenderer = new THREE.WebGLRenderer({
             canvas: threeCanvas,
@@ -193,7 +192,7 @@ function initThreeJS() {
             antialias: true,
             preserveDrawingBuffer: true
         });
-        threeRenderer.setSize(256, 384);
+        threeRenderer.setSize(canvasSize, canvasHeight);
         threeRenderer.setPixelRatio(1);
         threeRenderer.setClearColor(0x000000, 0);
         threeRenderer.outputEncoding = THREE.sRGBEncoding;
@@ -201,7 +200,7 @@ function initThreeJS() {
         threeScene = new THREE.Scene();
 
         // Camera - very close so model fills canvas completely, centered vertically
-        threeCamera = new THREE.PerspectiveCamera(60, 256 / 384, 0.01, 50);
+        threeCamera = new THREE.PerspectiveCamera(60, canvasSize / canvasHeight, 0.01, 50);
         threeCamera.position.set(0, 0.08, 0.15);
         threeCamera.lookAt(0, 0.05, 0);
 
@@ -3357,13 +3356,7 @@ function spawnPlayers() {
         this.physics.add.collider(player.sprite, staticGroup);
 
         // 3D model loads async - keep 2D visible for now
-        // When model loads, callback will hide 2D and create 3D sprite
-        if (threeLoaded && !threeError && killerModel) {
-            // Model already loaded (rare case)
-            player.sprite.setVisible(false);
-            killer3DSprite = createKiller3DSprite(this, kSpawn.x, kSpawn.y);
-            killer3DSprite.visible = true;
-        }
+        // When model loads, callback will hide 2D and show 3D canvas
 
         // AI survivors - only in singleplayer mode
         if (!isMultiplayer) {
@@ -3786,6 +3779,7 @@ function update(time, dt) {
     
     // Vignette effect
     const vig = scene.vignetteGfx;
+    if (!vig) return;
     vig.clear();
     
     const cam = scene.cameras.main;

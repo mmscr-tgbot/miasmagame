@@ -46,7 +46,7 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 @keyframes pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.1);opacity:1}}
 .loader-title{font-size:24px;font-weight:700;color:#ff3333;text-shadow:0 0 30px rgba(255,51,51,.6);letter-spacing:2px}
 .loader-bar-wrap{width:220px;height:6px;background:#222;border-radius:3px;overflow:hidden}
-.loader-bar{height:100%;width:0%;background:linear-gradient(90deg,#ff3333,#ff6600);border-radius:3px;transition:width .3s ease}
+.loader-bar{height:100%;width:0%;background:linear-gradient(90deg,#ff3333,#ff6600);border-radius:3px}
 .loader-status{font-size:13px;color:#888;min-height:18px;text-align:center}
 .loader-tips{font-size:11px;color:#555;margin-top:10px;max-width:260px;text-align:center;line-height:1.5}
 </style>
@@ -129,14 +129,65 @@ if (tipEl) tipEl.textContent = tips[Math.floor(Math.random() * tips.length)];
 /* ═══════ PROGRESS BAR ═══════ */
 var loadBar = document.getElementById('load-bar');
 var loadStatus = document.getElementById('load-status');
-var loadSteps = 0;
-var loadTotal = 5;
+var loadTip = document.getElementById('load-tip');
+var animProgress = 0;
+var animStartTime = Date.now();
+var MIN_LOAD_TIME = 3000; // 3 seconds minimum
+var loadComplete = false;
+var allReady = false;
 
 function setProgress(step, msg) {
-  loadSteps = step;
-  var pct = Math.round((step / loadTotal) * 100);
+  // Don't override the dynamic loading text
+  if (msg && !msg.includes('готов') && !msg.includes('загружается')) {
+    if (loadStatus) loadStatus.textContent = msg;
+  }
+}
+
+function updateProgressBar() {
+  var elapsed = Date.now() - animStartTime;
+  var pct = Math.min(100, (elapsed / MIN_LOAD_TIME) * 100);
+  animProgress = pct;
+  
   if (loadBar) loadBar.style.width = pct + '%';
-  if (loadStatus) loadStatus.textContent = msg;
+  
+  // Change text at 95%
+  if (pct >= 95 && loadStatus) {
+    loadStatus.textContent = 'Игровой движок готов';
+  } else if (loadStatus) {
+    loadStatus.textContent = 'Игровой движок загружается';
+  }
+  
+  if (pct >= 100 && allReady && !loadComplete) {
+    loadComplete = true;
+    showMenuButtons();
+    return;
+  }
+  
+  if (!loadComplete) {
+    setTimeout(updateProgressBar, 50);
+  }
+}
+
+function showMenuButtons() {
+  // Hide progress bar and status text
+  var loadBarWrap = document.querySelector('.loader-bar-wrap');
+  if (loadBarWrap) loadBarWrap.style.display = 'none';
+  if (loadStatus) loadStatus.style.display = 'none';
+  
+  // Show menu buttons
+  var menuBtns = document.getElementById('menu-buttons');
+  if (menuBtns) menuBtns.style.display = 'flex';
+  
+  setupButtons();
+  console.log('App ready. Low-end device:', isLowEndDevice);
+}
+
+function markReady() {
+  allReady = true;
+  if (animProgress >= 100 && !loadComplete) {
+    loadComplete = true;
+    showMenuButtons();
+  }
 }
 
 /* ═══════ FIREBASE CONFIG ═══════ */
@@ -927,7 +978,10 @@ window.isLowEndDevice = isLowEndDevice;
 /* ═══════ APP INIT ═══════ */
 setProgress(1, 'Загрузка ядра...');
 
-// Firebase loads in background while user sees menu
+// Start animated progress bar
+updateProgressBar();
+
+// Firebase loads in background
 loadFirebase().then(function() {
   setProgress(2, 'Firebase подключён');
   initFirebaseDB().catch(function(e) { console.error('Firebase DB error:', e); });
@@ -944,27 +998,13 @@ document.head.appendChild(gameScript);
 
 setProgress(4, 'Подготовка...');
 
-// Wait for Phaser + game.js, then show menu
+// Wait for Phaser + game.js, then mark ready
 var _initTries = 0;
 function tryInit() {
   if (typeof Phaser !== 'undefined' && typeof Phaser.Game !== 'undefined') {
     initUser(function(user) {
       setProgress(5, 'Готово!');
-      setTimeout(function() {
-        // Hide loading bar and status, show menu buttons
-        var loadBarWrap = document.querySelector('.loader-bar-wrap');
-        var loadStatusEl = document.getElementById('load-status');
-        var loadTipEl = document.getElementById('load-tip');
-        if (loadBarWrap) loadBarWrap.style.display = 'none';
-        if (loadStatusEl) loadStatusEl.style.display = 'none';
-        if (loadTipEl) loadTipEl.style.display = 'none';
-        
-        var menuBtns = document.getElementById('menu-buttons');
-        if (menuBtns) menuBtns.style.display = 'flex';
-        
-        setupButtons();
-        console.log('App ready. User:', user, 'Low-end device:', isLowEndDevice);
-      }, 300);
+      markReady();
     });
     return;
   }
