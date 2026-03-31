@@ -156,6 +156,10 @@ let currentKillerAction = null;
 let isKillerMoving = false;
 let threeLoaded = false;
 let threeError = false;
+let killerSprite3D = null;
+let threeRenderTarget = null;
+let threeCanvas = null;
+let threeCtx = null;
 
 // ═══════ THREE.JS INITIALIZATION ═══════
 
@@ -167,87 +171,255 @@ function initThreeJS() {
         return;
     }
 
-    var container = document.getElementById('game-container');
-    if (!container) {
-        console.warn('[3D] No game-container found');
-        threeError = true;
-        return;
-    }
-
     try {
-        var lowEnd = window.isLowEndDevice || false;
-
-        // Create canvas renderer
-        threeRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: !lowEnd });
-        threeRenderer.setSize(window.innerWidth, window.innerHeight);
-        threeRenderer.setPixelRatio(lowEnd ? 1 : Math.min(window.devicePixelRatio, 2));
-        threeRenderer.setClearColor(0x000000, 0);
-        if (!lowEnd) {
-            threeRenderer.outputEncoding = THREE.sRGBEncoding;
-            threeRenderer.shadowMap.enabled = true;
-            threeRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        // Create canvas and add to game-container
+        var container = document.getElementById('game-container');
+        if (!container) {
+            console.warn('[3D] No game-container found');
+            threeError = true;
+            return;
         }
-        threeRenderer.domElement.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:15;pointer-events:none;';
-        container.appendChild(threeRenderer.domElement);
+
+        threeCanvas = document.createElement('canvas');
+        threeCanvas.width = 256;
+        threeCanvas.height = 256;
+        threeCanvas.style.cssText = 'position:absolute;top:0;left:0;width:256px;height:256px;z-index:20;pointer-events:none;display:none;';
+        container.appendChild(threeCanvas);
+
+        // Create renderer
+        threeRenderer = new THREE.WebGLRenderer({
+            canvas: threeCanvas,
+            alpha: true,
+            antialias: false,
+            preserveDrawingBuffer: true
+        });
+        threeRenderer.setSize(256, 256);
+        threeRenderer.setPixelRatio(1);
+        threeRenderer.setClearColor(0x000000, 0);
 
         // Create scene
         threeScene = new THREE.Scene();
 
-        // Camera - fixed position looking at origin where model will be
-        threeCamera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 100);
-        threeCamera.position.set(0, 2.5, 4);
-        threeCamera.lookAt(0, 1, 0);
+        // Camera
+        threeCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
+        threeCamera.position.set(0, 1.2, 2.5);
+        threeCamera.lookAt(0, 0.8, 0);
 
         // Lighting
-        var ambientLight = new THREE.AmbientLight(0x606080, 0.8);
-        threeScene.add(ambientLight);
-
-        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.2);
-        dirLight.position.set(3, 5, 3);
-        if (!lowEnd) {
-            dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 512;
-            dirLight.shadow.mapSize.height = 512;
-            dirLight.shadow.camera.near = 0.1;
-            dirLight.shadow.camera.far = 20;
-            dirLight.shadow.camera.left = -5;
-            dirLight.shadow.camera.right = 5;
-            dirLight.shadow.camera.top = 5;
-            dirLight.shadow.camera.bottom = -5;
-        }
+        threeScene.add(new THREE.AmbientLight(0x808090, 1.0));
+        
+        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+        dirLight.position.set(2, 4, 2);
         threeScene.add(dirLight);
 
-        // Red rim light for horror atmosphere
-        if (!lowEnd) {
-            var rimLight = new THREE.PointLight(0xff2200, 0.5, 10);
-            rimLight.position.set(-2, 3, -2);
-            threeScene.add(rimLight);
-        }
-
-        // Ground plane (dark)
-        var groundGeo = new THREE.PlaneGeometry(20, 20);
-        var groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 1 });
-        var groundMesh = new THREE.Mesh(groundGeo, groundMat);
-        groundMesh.rotation.x = -Math.PI / 2;
-        groundMesh.position.y = -0.01;
-        groundMesh.receiveShadow = !lowEnd;
-        threeScene.add(groundMesh);
-
-        // Handle window resize
-        window.addEventListener('resize', function () {
-            if (!threeRenderer || !threeCamera) return;
-            var w = window.innerWidth;
-            var h = window.innerHeight;
-            threeRenderer.setSize(w, h);
-            threeCamera.aspect = w / h;
-            threeCamera.updateProjectionMatrix();
-        });
+        var rimLight = new THREE.PointLight(0xff3300, 0.6, 8);
+        rimLight.position.set(-1.5, 2, -1.5);
+        threeScene.add(rimLight);
 
         // Load model
         loadKillerModel();
 
         threeLoaded = true;
-        console.log('[3D] Three.js initialized successfully');
+        console.log('[3D] Three.js initialized');
+    } catch (e) {
+        console.error('[3D] Three.js init error:', e);
+        threeError = true;
+    }
+}
+
+    try {
+        // Create offscreen canvas (NOT attached to DOM)
+        threeCanvas = document.createElement('canvas');
+        threeCanvas.width = 256;
+        threeCanvas.height = 256;
+
+        // Create renderer with offscreen canvas
+        threeRenderer = new THREE.WebGLRenderer({
+            canvas: threeCanvas,
+            alpha: true,
+            antialias: false
+        });
+        threeRenderer.setSize(256, 256);
+        threeRenderer.setPixelRatio(1);
+        threeRenderer.setClearColor(0x000000, 0);
+
+        // Create scene
+        threeScene = new THREE.Scene();
+
+        // Camera - close-up on model
+        threeCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
+        threeCamera.position.set(0, 1.2, 2.5);
+        threeCamera.lookAt(0, 0.8, 0);
+
+        // Lighting
+        var ambientLight = new THREE.AmbientLight(0x808090, 1.0);
+        threeScene.add(ambientLight);
+
+        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+        dirLight.position.set(2, 4, 2);
+        threeScene.add(dirLight);
+
+        var rimLight = new THREE.PointLight(0xff3300, 0.6, 8);
+        rimLight.position.set(-1.5, 2, -1.5);
+        threeScene.add(rimLight);
+
+        // Load model
+        loadKillerModel();
+
+        threeLoaded = true;
+        console.log('[3D] Three.js initialized (offscreen mode)');
+    } catch (e) {
+        console.error('[3D] Three.js init error:', e);
+        threeError = true;
+    }
+}
+
+    try {
+        // Create offscreen canvas (not attached to DOM)
+        threeCanvas = document.createElement('canvas');
+        threeCanvas.width = 256;
+        threeCanvas.height = 256;
+        threeCtx = threeCanvas.getContext('2d');
+
+        // Create renderer with offscreen canvas
+        threeRenderer = new THREE.WebGLRenderer({
+            canvas: threeCanvas,
+            alpha: true,
+            antialias: false
+        });
+        threeRenderer.setSize(256, 256);
+        threeRenderer.setPixelRatio(1);
+        threeRenderer.setClearColor(0x000000, 0);
+
+        // Create scene
+        threeScene = new THREE.Scene();
+
+        // Camera - close-up on model
+        threeCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
+        threeCamera.position.set(0, 1.2, 2.5);
+        threeCamera.lookAt(0, 0.8, 0);
+
+        // Lighting
+        var ambientLight = new THREE.AmbientLight(0x808090, 1.0);
+        threeScene.add(ambientLight);
+
+        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+        dirLight.position.set(2, 4, 2);
+        threeScene.add(dirLight);
+
+        var rimLight = new THREE.PointLight(0xff3300, 0.6, 8);
+        rimLight.position.set(-1.5, 2, -1.5);
+        threeScene.add(rimLight);
+
+        // Load model
+        loadKillerModel();
+
+        threeLoaded = true;
+        console.log('[3D] Three.js initialized (offscreen mode)');
+    } catch (e) {
+        console.error('[3D] Three.js init error:', e);
+        threeError = true;
+    }
+}
+
+    try {
+        // Create offscreen canvas (not attached to DOM)
+        threeCanvas = document.createElement('canvas');
+        threeCanvas.width = 256;
+        threeCanvas.height = 256;
+        threeCtx = threeCanvas.getContext('2d');
+
+        // Create renderer with offscreen canvas
+        threeRenderer = new THREE.WebGLRenderer({
+            canvas: threeCanvas,
+            alpha: true,
+            antialias: false
+        });
+        threeRenderer.setSize(256, 256);
+        threeRenderer.setPixelRatio(1);
+        threeRenderer.setClearColor(0x000000, 0);
+
+        // Create scene
+        threeScene = new THREE.Scene();
+
+        // Camera - close-up on model
+        threeCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
+        threeCamera.position.set(0, 1.2, 2.5);
+        threeCamera.lookAt(0, 0.8, 0);
+
+        // Lighting
+        var ambientLight = new THREE.AmbientLight(0x808090, 1.0);
+        threeScene.add(ambientLight);
+
+        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+        dirLight.position.set(2, 4, 2);
+        threeScene.add(dirLight);
+
+        var rimLight = new THREE.PointLight(0xff3300, 0.6, 8);
+        rimLight.position.set(-1.5, 2, -1.5);
+        threeScene.add(rimLight);
+
+        // Load model
+        loadKillerModel();
+
+        threeLoaded = true;
+        console.log('[3D] Three.js initialized (offscreen mode)');
+    } catch (e) {
+        console.error('[3D] Three.js init error:', e);
+        threeError = true;
+    }
+}
+
+    try {
+        var lowEnd = window.isLowEndDevice || false;
+
+        // Create offscreen canvas for 3D rendering
+        threeOffscreenCanvas = document.createElement('canvas');
+        threeOffscreenCanvas.width = 256;
+        threeOffscreenCanvas.height = 256;
+        threeOffscreenCtx = threeOffscreenCanvas.getContext('2d');
+
+        // Create renderer with offscreen canvas
+        threeRenderer = new THREE.WebGLRenderer({
+            canvas: threeOffscreenCanvas,
+            alpha: true,
+            antialias: !lowEnd
+        });
+        threeRenderer.setSize(256, 256);
+        threeRenderer.setPixelRatio(1);
+        threeRenderer.setClearColor(0x000000, 0);
+        if (!lowEnd) {
+            threeRenderer.outputEncoding = THREE.sRGBEncoding;
+        }
+
+        // Create scene
+        threeScene = new THREE.Scene();
+
+        // Camera - close-up on model
+        threeCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
+        threeCamera.position.set(0, 1.2, 2.5);
+        threeCamera.lookAt(0, 0.8, 0);
+
+        // Lighting
+        var ambientLight = new THREE.AmbientLight(0x808090, 1.0);
+        threeScene.add(ambientLight);
+
+        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+        dirLight.position.set(2, 4, 2);
+        threeScene.add(dirLight);
+
+        // Red rim light for horror atmosphere
+        if (!lowEnd) {
+            var rimLight = new THREE.PointLight(0xff3300, 0.6, 8);
+            rimLight.position.set(-1.5, 2, -1.5);
+            threeScene.add(rimLight);
+        }
+
+        // Load model
+        loadKillerModel();
+
+        threeLoaded = true;
+        console.log('[3D] Three.js initialized (offscreen mode)');
     } catch (e) {
         console.error('[3D] Three.js init error:', e);
         threeError = true;
@@ -276,11 +448,11 @@ function loadKillerModel() {
             var size = box.getSize(new THREE.Vector3());
             var height = size.y || 1;
             
-            // Scale model to be ~2 units tall (good for our camera setup)
-            var targetScale = 2.0 / height;
+            // Scale model to fit nicely in 256x256 render
+            var targetScale = 1.8 / height;
             killerModel.scale.set(targetScale, targetScale, targetScale);
             
-            // Center the model
+            // Center the model at origin
             var center = box.getCenter(new THREE.Vector3());
             killerModel.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
             
@@ -320,12 +492,32 @@ function loadKillerModel() {
 }
 
 function updateKillerModelPosition(worldX, worldY, dt) {
-    if (!killerModel) return;
+    if (!killerModel || !threeCanvas) return;
 
-    // Make model visible once we have a player position
+    // Make model visible
     if (!killerModel.visible) {
         killerModel.visible = true;
     }
+
+    // Position the 3D canvas over the killer sprite
+    var cam = scene.cameras.main;
+    if (!cam) return;
+
+    var screenX = worldX - cam.scrollX;
+    var screenY = worldY - cam.scrollY;
+    
+    // Position canvas centered on killer
+    threeCanvas.style.left = (screenX - 128) + 'px';
+    threeCanvas.style.top = (screenY - 128) + 'px';
+    threeCanvas.style.display = 'block';
+
+    // Rotate model based on movement direction
+    var moving = (inputVec.x !== 0 || inputVec.y !== 0);
+    if (moving) {
+        var targetAngle = Math.atan2(inputVec.x, inputVec.y);
+        killerModel.rotation.y += (targetAngle - killerModel.rotation.y) * 0.15;
+    }
+}
 
     // Model stays at origin (0, 0, 0) in Three.js space
     // Camera is fixed looking at it
@@ -362,7 +554,7 @@ function updateKillerAnimation(moving) {
 }
 
 function renderThreeJS() {
-    if (!threeRenderer || !threeScene || !threeCamera) return;
+    if (!threeRenderer || !threeScene || !threeCamera || !killerModel) return;
     
     // Update animation mixer
     if (killerMixer) {
@@ -375,16 +567,6 @@ function renderThreeJS() {
 function cleanupThreeJS() {
     if (killerModel) {
         threeScene.remove(killerModel);
-        killerModel.traverse(function (child) {
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) {
-                if (Array.isArray(child.material)) {
-                    child.material.forEach(function (m) { m.dispose(); });
-                } else {
-                    child.material.dispose();
-                }
-            }
-        });
         killerModel = null;
     }
     if (killerMixer) {
@@ -393,12 +575,13 @@ function cleanupThreeJS() {
     }
     killerAnimations = {};
     currentKillerAction = null;
-    if (threeRenderer && threeRenderer.domElement && threeRenderer.domElement.parentNode) {
-        threeRenderer.domElement.parentNode.removeChild(threeRenderer.domElement);
+    if (threeCanvas && threeCanvas.parentNode) {
+        threeCanvas.parentNode.removeChild(threeCanvas);
     }
     threeRenderer = null;
     threeScene = null;
     threeCamera = null;
+    threeCanvas = null;
     threeLoaded = false;
 }
 
@@ -2902,22 +3085,16 @@ function create() {
 
     // ═══════ DYNAMIC ATMOSPHERE SYSTEM ═══════
     this.atmosphere = {
-        vignetteGfx: null,
         bloodSplatters: [],
         bloodGfx: null,
         heartbeatIntensity: 0,
         heartbeatGfx: null,
-        filmGrainGfx: null,
         killerAuraGfx: null,
         screenShakeAmount: 0,
-        colorGradeGfx: null,
         ambientParticles: [],
         ambientGfx: null,
         breathPhase: 0
     };
-
-    // Vignette (dark edges)
-    this.atmosphere.vignetteGfx = this.add.graphics().setDepth(9999);
 
     // Blood splatter layer
     this.atmosphere.bloodGfx = this.add.graphics().setDepth(9995);
@@ -3468,30 +3645,9 @@ function getTexWithFallback(baseTex, suffix) {
 function updateAtmosphere(dt) {
     if (!scene || !scene.atmosphere || window.isLowEndDevice) return;
     
-    const atmo = scene.atmosphere;
-    const cam = scene.cameras.main;
+    var atmo = scene.atmosphere;
+    var cam = scene.cameras.main;
     if (!cam) return;
-    
-    // ─── Vignette (dark edges) ───
-    if (atmo.vignetteGfx) {
-        atmo.vignetteGfx.clear();
-        const w = cam.width;
-        const h = cam.height;
-        
-        // Dark corners
-        atmo.vignetteGfx.fillStyle(0x000000, 0.3);
-        atmo.vignetteGfx.fillCircle(0, 0, w * 0.4);
-        atmo.vignetteGfx.fillCircle(w, 0, w * 0.4);
-        atmo.vignetteGfx.fillCircle(0, h, w * 0.4);
-        atmo.vignetteGfx.fillCircle(w, h, w * 0.4);
-        
-        // Edge darkness
-        atmo.vignetteGfx.fillStyle(0x000000, 0.15);
-        atmo.vignetteGfx.fillRect(0, 0, w * 0.15, h);
-        atmo.vignetteGfx.fillRect(w * 0.85, 0, w * 0.15, h);
-        atmo.vignetteGfx.fillRect(0, 0, w, h * 0.1);
-        atmo.vignetteGfx.fillRect(0, h * 0.9, w, h * 0.1);
-    }
     
     // ─── Heartbeat effect (red pulse when killer is near survivors) ───
     if (atmo.heartbeatGfx && !isKiller && player && player.sprite) {
