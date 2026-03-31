@@ -179,9 +179,12 @@ function initThreeJS() {
         }
 
         threeCanvas = document.createElement('canvas');
-        threeCanvas.width = 128;
-        threeCanvas.height = 192;
-        threeCanvas.style.cssText = 'position:fixed;z-index:20;pointer-events:none;display:none;image-rendering:auto;width:80px;height:120px;';
+        threeCanvas.width = 256;
+        threeCanvas.height = 384;
+        var dpr = Math.min(window.devicePixelRatio || 1, 2);
+        var canvasSize = Math.round(80 * dpr);
+        var canvasHeight = Math.round(120 * dpr);
+        threeCanvas.style.cssText = 'position:fixed;z-index:20;pointer-events:none;display:none;image-rendering:auto;width:' + canvasSize + 'px;height:' + canvasHeight + 'px;';
         document.body.appendChild(threeCanvas);
 
         threeRenderer = new THREE.WebGLRenderer({
@@ -190,7 +193,7 @@ function initThreeJS() {
             antialias: true,
             preserveDrawingBuffer: true
         });
-        threeRenderer.setSize(128, 192);
+        threeRenderer.setSize(256, 384);
         threeRenderer.setPixelRatio(1);
         threeRenderer.setClearColor(0x000000, 0);
         threeRenderer.outputEncoding = THREE.sRGBEncoding;
@@ -198,7 +201,7 @@ function initThreeJS() {
         threeScene = new THREE.Scene();
 
         // Camera - closer to see model
-        threeCamera = new THREE.PerspectiveCamera(35, 128 / 192, 0.01, 50);
+        threeCamera = new THREE.PerspectiveCamera(35, 256 / 384, 0.01, 50);
         threeCamera.position.set(0, 0.5, 2.5);
         threeCamera.lookAt(0, 0.5, 0);
 
@@ -332,8 +335,11 @@ function updateKiller3DSprite(dt) {
     var screenX = player.sprite.x - cam.scrollX;
     var screenY = player.sprite.y - cam.scrollY;
     
-    threeCanvas.style.left = (screenX - 40) + 'px';
-    threeCanvas.style.top = (screenY - 60) + 'px';
+    var w = parseInt(threeCanvas.style.width) || 80;
+    var h = parseInt(threeCanvas.style.height) || 120;
+    
+    threeCanvas.style.left = (screenX - w / 2) + 'px';
+    threeCanvas.style.top = (screenY - h / 2) + 'px';
     threeCanvas.style.display = 'block';
 
     // Rotate model
