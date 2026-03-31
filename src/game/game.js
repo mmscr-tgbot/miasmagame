@@ -156,10 +156,10 @@ let currentKillerAction = null;
 let isKillerMoving = false;
 let threeLoaded = false;
 let threeError = false;
-let killerSprite3D = null;
-let threeRenderTarget = null;
 let threeCanvas = null;
-let threeCtx = null;
+let killer3DOverlay = null;
+let killer3DTexture = null;
+let killer3DSprite = null;
 
 // ═══════ THREE.JS INITIALIZATION ═══════
 
@@ -172,254 +172,41 @@ function initThreeJS() {
     }
 
     try {
-        // Create canvas and add to game-container
-        var container = document.getElementById('game-container');
-        if (!container) {
-            console.warn('[3D] No game-container found');
-            threeError = true;
-            return;
-        }
-
+        // Offscreen canvas for 3D rendering
         threeCanvas = document.createElement('canvas');
-        threeCanvas.width = 256;
-        threeCanvas.height = 256;
-        threeCanvas.style.cssText = 'position:absolute;top:0;left:0;width:256px;height:256px;z-index:20;pointer-events:none;display:none;';
-        container.appendChild(threeCanvas);
+        threeCanvas.width = 128;
+        threeCanvas.height = 192;
 
-        // Create renderer
         threeRenderer = new THREE.WebGLRenderer({
             canvas: threeCanvas,
             alpha: true,
             antialias: false,
             preserveDrawingBuffer: true
         });
-        threeRenderer.setSize(256, 256);
+        threeRenderer.setSize(128, 192);
         threeRenderer.setPixelRatio(1);
         threeRenderer.setClearColor(0x000000, 0);
 
-        // Create scene
         threeScene = new THREE.Scene();
 
-        // Camera
-        threeCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
-        threeCamera.position.set(0, 1.2, 2.5);
+        // Camera - portrait view of character
+        threeCamera = new THREE.PerspectiveCamera(35, 128 / 192, 0.01, 50);
+        threeCamera.position.set(0, 0.8, 2.2);
         threeCamera.lookAt(0, 0.8, 0);
 
         // Lighting
-        threeScene.add(new THREE.AmbientLight(0x808090, 1.0));
-        
-        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+        threeScene.add(new THREE.AmbientLight(0x909090, 1.2));
+        var dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
         dirLight.position.set(2, 4, 2);
         threeScene.add(dirLight);
-
-        var rimLight = new THREE.PointLight(0xff3300, 0.6, 8);
+        var rimLight = new THREE.PointLight(0xff3300, 0.5, 8);
         rimLight.position.set(-1.5, 2, -1.5);
         threeScene.add(rimLight);
 
-        // Load model
         loadKillerModel();
 
         threeLoaded = true;
         console.log('[3D] Three.js initialized');
-    } catch (e) {
-        console.error('[3D] Three.js init error:', e);
-        threeError = true;
-    }
-}
-
-    try {
-        // Create offscreen canvas (NOT attached to DOM)
-        threeCanvas = document.createElement('canvas');
-        threeCanvas.width = 256;
-        threeCanvas.height = 256;
-
-        // Create renderer with offscreen canvas
-        threeRenderer = new THREE.WebGLRenderer({
-            canvas: threeCanvas,
-            alpha: true,
-            antialias: false
-        });
-        threeRenderer.setSize(256, 256);
-        threeRenderer.setPixelRatio(1);
-        threeRenderer.setClearColor(0x000000, 0);
-
-        // Create scene
-        threeScene = new THREE.Scene();
-
-        // Camera - close-up on model
-        threeCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
-        threeCamera.position.set(0, 1.2, 2.5);
-        threeCamera.lookAt(0, 0.8, 0);
-
-        // Lighting
-        var ambientLight = new THREE.AmbientLight(0x808090, 1.0);
-        threeScene.add(ambientLight);
-
-        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
-        dirLight.position.set(2, 4, 2);
-        threeScene.add(dirLight);
-
-        var rimLight = new THREE.PointLight(0xff3300, 0.6, 8);
-        rimLight.position.set(-1.5, 2, -1.5);
-        threeScene.add(rimLight);
-
-        // Load model
-        loadKillerModel();
-
-        threeLoaded = true;
-        console.log('[3D] Three.js initialized (offscreen mode)');
-    } catch (e) {
-        console.error('[3D] Three.js init error:', e);
-        threeError = true;
-    }
-}
-
-    try {
-        // Create offscreen canvas (not attached to DOM)
-        threeCanvas = document.createElement('canvas');
-        threeCanvas.width = 256;
-        threeCanvas.height = 256;
-        threeCtx = threeCanvas.getContext('2d');
-
-        // Create renderer with offscreen canvas
-        threeRenderer = new THREE.WebGLRenderer({
-            canvas: threeCanvas,
-            alpha: true,
-            antialias: false
-        });
-        threeRenderer.setSize(256, 256);
-        threeRenderer.setPixelRatio(1);
-        threeRenderer.setClearColor(0x000000, 0);
-
-        // Create scene
-        threeScene = new THREE.Scene();
-
-        // Camera - close-up on model
-        threeCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
-        threeCamera.position.set(0, 1.2, 2.5);
-        threeCamera.lookAt(0, 0.8, 0);
-
-        // Lighting
-        var ambientLight = new THREE.AmbientLight(0x808090, 1.0);
-        threeScene.add(ambientLight);
-
-        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
-        dirLight.position.set(2, 4, 2);
-        threeScene.add(dirLight);
-
-        var rimLight = new THREE.PointLight(0xff3300, 0.6, 8);
-        rimLight.position.set(-1.5, 2, -1.5);
-        threeScene.add(rimLight);
-
-        // Load model
-        loadKillerModel();
-
-        threeLoaded = true;
-        console.log('[3D] Three.js initialized (offscreen mode)');
-    } catch (e) {
-        console.error('[3D] Three.js init error:', e);
-        threeError = true;
-    }
-}
-
-    try {
-        // Create offscreen canvas (not attached to DOM)
-        threeCanvas = document.createElement('canvas');
-        threeCanvas.width = 256;
-        threeCanvas.height = 256;
-        threeCtx = threeCanvas.getContext('2d');
-
-        // Create renderer with offscreen canvas
-        threeRenderer = new THREE.WebGLRenderer({
-            canvas: threeCanvas,
-            alpha: true,
-            antialias: false
-        });
-        threeRenderer.setSize(256, 256);
-        threeRenderer.setPixelRatio(1);
-        threeRenderer.setClearColor(0x000000, 0);
-
-        // Create scene
-        threeScene = new THREE.Scene();
-
-        // Camera - close-up on model
-        threeCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
-        threeCamera.position.set(0, 1.2, 2.5);
-        threeCamera.lookAt(0, 0.8, 0);
-
-        // Lighting
-        var ambientLight = new THREE.AmbientLight(0x808090, 1.0);
-        threeScene.add(ambientLight);
-
-        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
-        dirLight.position.set(2, 4, 2);
-        threeScene.add(dirLight);
-
-        var rimLight = new THREE.PointLight(0xff3300, 0.6, 8);
-        rimLight.position.set(-1.5, 2, -1.5);
-        threeScene.add(rimLight);
-
-        // Load model
-        loadKillerModel();
-
-        threeLoaded = true;
-        console.log('[3D] Three.js initialized (offscreen mode)');
-    } catch (e) {
-        console.error('[3D] Three.js init error:', e);
-        threeError = true;
-    }
-}
-
-    try {
-        var lowEnd = window.isLowEndDevice || false;
-
-        // Create offscreen canvas for 3D rendering
-        threeOffscreenCanvas = document.createElement('canvas');
-        threeOffscreenCanvas.width = 256;
-        threeOffscreenCanvas.height = 256;
-        threeOffscreenCtx = threeOffscreenCanvas.getContext('2d');
-
-        // Create renderer with offscreen canvas
-        threeRenderer = new THREE.WebGLRenderer({
-            canvas: threeOffscreenCanvas,
-            alpha: true,
-            antialias: !lowEnd
-        });
-        threeRenderer.setSize(256, 256);
-        threeRenderer.setPixelRatio(1);
-        threeRenderer.setClearColor(0x000000, 0);
-        if (!lowEnd) {
-            threeRenderer.outputEncoding = THREE.sRGBEncoding;
-        }
-
-        // Create scene
-        threeScene = new THREE.Scene();
-
-        // Camera - close-up on model
-        threeCamera = new THREE.PerspectiveCamera(40, 1, 0.01, 50);
-        threeCamera.position.set(0, 1.2, 2.5);
-        threeCamera.lookAt(0, 0.8, 0);
-
-        // Lighting
-        var ambientLight = new THREE.AmbientLight(0x808090, 1.0);
-        threeScene.add(ambientLight);
-
-        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
-        dirLight.position.set(2, 4, 2);
-        threeScene.add(dirLight);
-
-        // Red rim light for horror atmosphere
-        if (!lowEnd) {
-            var rimLight = new THREE.PointLight(0xff3300, 0.6, 8);
-            rimLight.position.set(-1.5, 2, -1.5);
-            threeScene.add(rimLight);
-        }
-
-        // Load model
-        loadKillerModel();
-
-        threeLoaded = true;
-        console.log('[3D] Three.js initialized (offscreen mode)');
     } catch (e) {
         console.error('[3D] Three.js init error:', e);
         threeError = true;
@@ -433,8 +220,8 @@ function loadKillerModel() {
         return;
     }
 
-    const loader = new THREE.GLTFLoader();
-    const modelPath = 'src/models/killers/scare/ScareKiller_Walking.glb';
+    var loader = new THREE.GLTFLoader();
+    var modelPath = 'src/models/killers/scare/ScareKiller_Walking.glb';
 
     console.log('[3D] Loading model from:', modelPath);
 
@@ -442,24 +229,24 @@ function loadKillerModel() {
         modelPath,
         function (gltf) {
             killerModel = gltf.scene;
-            
-            // Compute bounding box to determine proper scale
+
+            // Compute bounding box
             var box = new THREE.Box3().setFromObject(killerModel);
             var size = box.getSize(new THREE.Vector3());
             var height = size.y || 1;
-            
-            // Scale model to fit nicely in 256x256 render
+
+            // Scale to ~1.8 units tall
             var targetScale = 1.8 / height;
             killerModel.scale.set(targetScale, targetScale, targetScale);
-            
-            // Center the model at origin
+
+            // Center at origin
             var center = box.getCenter(new THREE.Vector3());
             killerModel.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
-            
+
             killerModel.visible = true;
             threeScene.add(killerModel);
 
-            // Setup animations
+            // Animations
             if (gltf.animations && gltf.animations.length > 0) {
                 killerMixer = new THREE.AnimationMixer(killerModel);
                 console.log('[3D] Found', gltf.animations.length, 'animation(s)');
@@ -469,7 +256,7 @@ function loadKillerModel() {
                     killerAnimations[clip.name.toLowerCase()] = killerMixer.clipAction(clip);
                 });
 
-                // Play first animation by default (walking)
+                // Play walking animation
                 var firstAnim = Object.values(killerAnimations)[0];
                 if (firstAnim) {
                     firstAnim.play();
@@ -482,7 +269,7 @@ function loadKillerModel() {
             console.log('[3D] Killer model loaded. Height:', height.toFixed(2), 'Scale:', targetScale.toFixed(2));
         },
         function (progress) {
-            console.log('[3D] Loading progress:', (progress.loaded / progress.total * 100).toFixed(0) + '%');
+            console.log('[3D] Loading:', Math.round(progress.loaded / progress.total * 100) + '%');
         },
         function (error) {
             console.error('[3D] Model load error:', error);
@@ -491,77 +278,62 @@ function loadKillerModel() {
     );
 }
 
-function updateKillerModelPosition(worldX, worldY, dt) {
-    if (!killerModel || !threeCanvas) return;
-
-    // Make model visible
-    if (!killerModel.visible) {
-        killerModel.visible = true;
-    }
-
-    // Position the 3D canvas over the killer sprite
-    var cam = scene.cameras.main;
-    if (!cam) return;
-
-    var screenX = worldX - cam.scrollX;
-    var screenY = worldY - cam.scrollY;
+function createKiller3DSprite(sceneObj, x, y) {
+    if (!threeLoaded || !threeCanvas) return null;
     
-    // Position canvas centered on killer
-    threeCanvas.style.left = (screenX - 128) + 'px';
-    threeCanvas.style.top = (screenY - 128) + 'px';
-    threeCanvas.style.display = 'block';
-
-    // Rotate model based on movement direction
-    var moving = (inputVec.x !== 0 || inputVec.y !== 0);
-    if (moving) {
-        var targetAngle = Math.atan2(inputVec.x, inputVec.y);
-        killerModel.rotation.y += (targetAngle - killerModel.rotation.y) * 0.15;
-    }
-}
-
-    // Model stays at origin (0, 0, 0) in Three.js space
-    // Camera is fixed looking at it
-    // Only rotate the model based on movement direction
-    const moving = (inputVec.x !== 0 || inputVec.y !== 0);
-    if (moving) {
-        const targetAngle = Math.atan2(inputVec.x, inputVec.y);
-        killerModel.rotation.y += (targetAngle - killerModel.rotation.y) * 0.15;
-    }
-}
-
-function updateKillerAnimation(moving) {
-    if (!killerMixer || !killerModel) return;
-
-    if (moving && !isKillerMoving) {
-        // Start walking animation
-        isKillerMoving = true;
-        var walkAction = Object.values(killerAnimations)[0];
-        if (walkAction) {
-            if (currentKillerAction && currentKillerAction !== walkAction) {
-                currentKillerAction.fadeOut(0.2);
-            }
-            walkAction.reset().fadeIn(0.2).play();
-            currentKillerAction = walkAction;
-        }
-    } else if (!moving && isKillerMoving) {
-        // Stop walking animation
-        isKillerMoving = false;
-        if (currentKillerAction) {
-            currentKillerAction.fadeOut(0.3);
-            currentKillerAction = null;
-        }
-    }
-}
-
-function renderThreeJS() {
-    if (!threeRenderer || !threeScene || !threeCamera || !killerModel) return;
-    
-    // Update animation mixer
-    if (killerMixer) {
-        killerMixer.update(0.016);
-    }
-    
+    // Initial render
     threeRenderer.render(threeScene, threeCamera);
+    
+    var texKey = 'killer3d_tex';
+    if (sceneObj.textures.exists(texKey)) {
+        sceneObj.textures.remove(texKey);
+    }
+    sceneObj.textures.addBase64(texKey, threeCanvas.toDataURL());
+    
+    var sprite = sceneObj.add.sprite(x, y, texKey).setDepth(y + 2);
+    sprite.setScale(1.2, 1.2);
+    
+    return sprite;
+}
+
+function updateKiller3DSprite(dt) {
+    if (!killer3DSprite || !killer3DSprite.visible) return;
+    if (!player || !player.sprite) return;
+    
+    // Update position to match 2D sprite
+    killer3DSprite.setPosition(player.sprite.x, player.sprite.y);
+    killer3DSprite.setDepth(player.sprite.y + 2);
+    
+    // Update 3D model rotation based on movement
+    if (killerModel) {
+        var moving = (inputVec.x !== 0 || inputVec.y !== 0);
+        if (moving) {
+            var targetAngle = Math.atan2(inputVec.x, inputVec.y);
+            var currentAngle = killerModel.rotation.y;
+            var diff = targetAngle - currentAngle;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            killerModel.rotation.y += diff * 0.15;
+        }
+        
+        // Update animation mixer
+        if (killerMixer) {
+            killerMixer.update(dt / 1000);
+        }
+        
+        // Re-render texture
+        threeRenderer.render(threeScene, threeCamera);
+        
+        // Update Phaser texture
+        var texKey = 'killer3d_tex';
+        if (scene && scene.textures) {
+            if (scene.textures.exists(texKey)) {
+                scene.textures.remove(texKey);
+            }
+            scene.textures.addBase64(texKey, threeCanvas.toDataURL());
+            killer3DSprite.setTexture(texKey);
+        }
+    }
 }
 
 function cleanupThreeJS() {
@@ -575,20 +347,15 @@ function cleanupThreeJS() {
     }
     killerAnimations = {};
     currentKillerAction = null;
-    if (threeCanvas && threeCanvas.parentNode) {
-        threeCanvas.parentNode.removeChild(threeCanvas);
+    if (killer3DSprite) {
+        killer3DSprite.destroy();
+        killer3DSprite = null;
     }
     threeRenderer = null;
     threeScene = null;
     threeCamera = null;
     threeCanvas = null;
     threeLoaded = false;
-}
-
-function setKillerModelVisible(visible) {
-    if (killerModel) {
-        killerModel.visible = visible;
-    }
 }
 
 // ═══════ GAME FUNCTIONS ═══════
@@ -3026,15 +2793,23 @@ function create() {
         generators.push(sp);
     }, this);
 
-    // Hooks
+    // Hooks with glow effects
     [{ x: 500, y: 450 }, { x: 1900, y: 450 }, { x: 500, y: 1350 }, { x: 1900, y: 1350 },
     { x: 1200, y: 500 }, { x: 1200, y: 1300 }, { x: 800, y: 900 }, { x: 1600, y: 900 }]
         .forEach((p, i) => {
-            const sp = this.add.sprite(p.x, p.y, 'hook').setDepth(p.y + 1).setScale(1.3);
+            // Hook glow (red ominous glow)
+            var hookGlow = this.add.graphics();
+            hookGlow.fillStyle(0xff2200, 0.08);
+            hookGlow.fillCircle(p.x, p.y, 35);
+            hookGlow.setDepth(p.y);
+            
+            var sp = this.add.sprite(p.x, p.y, 'hook').setDepth(p.y + 1).setScale(1.3);
             sp.hookId = i;
             sp.occupied = false;
             sp.hookedSurvivor = null;
             sp.hookTimer = 0;
+            sp.hookGlow = hookGlow;
+            sp.glowPhase = Math.random() * Math.PI * 2;
             hooks.push(sp);
         }, this);
 
@@ -3062,16 +2837,24 @@ function create() {
             pallets.push(sp);
         }, this);
 
-    // Gates
+    // Gates with glow effects
     [{ x: 30, y: 900 }, { x: MAP_W - 30, y: 900 }]
         .forEach(p => {
-            const sp = this.add.sprite(p.x, p.y, 'gate').setDepth(p.y + 1).setScale(1.8);
+            // Gate glow (green when closed, brighter when opened)
+            var gateGlow = this.add.graphics();
+            gateGlow.fillStyle(0x00ff44, 0.06);
+            gateGlow.fillCircle(p.x, p.y, 45);
+            gateGlow.setDepth(p.y);
+            
+            var sp = this.add.sprite(p.x, p.y, 'gate').setDepth(p.y + 1).setScale(1.8);
             sp.progress = 0;
             sp.opened = false;
             sp.isOpening = false;
             sp.barGfx = this.add.graphics().setDepth(p.y + 2);
             sp.bx = p.x;
             sp.by = p.y;
+            sp.gateGlow = gateGlow;
+            sp.glowPhase = Math.random() * Math.PI * 2;
             gates.push(sp);
         }, this);
 
@@ -3133,8 +2916,9 @@ function create() {
         { r: 35, g: 40, b: 45 },  // Dark blue gray
     ];
     
-    // Create many fog patches for density
-    for (let i = 0; i < 60; i++) {
+    // Create fog patches - reduced for performance
+    var fogCount = window.isLowEndDevice ? 30 : 50;
+    for (let i = 0; i < fogCount; i++) {
         this.fogPatches.push({
             x: Math.random() * MAP_W,
             y: Math.random() * MAP_H,
@@ -3160,30 +2944,32 @@ function create() {
     
     // Dust particles system
     this.dustParticles = [];
-    for (let i = 0; i < 50; i++) {
+    for (var i = 0; i < 35; i++) {
         this.dustParticles.push({
             x: Math.random() * MAP_W,
             y: Math.random() * MAP_H,
-            size: 1 + Math.random() * 2,
-            alpha: 0.1 + Math.random() * 0.15,
-            speedX: (Math.random() - 0.5) * 0.4,
-            speedY: (Math.random() - 0.5) * 0.3 - 0.15,
-            wobble: Math.random() * Math.PI * 2
+            size: 1 + Math.random() * 2.5,
+            alpha: 0.08 + Math.random() * 0.12,
+            speedX: (Math.random() - 0.5) * 0.3,
+            speedY: (Math.random() - 0.5) * 0.2 - 0.1,
+            wobble: Math.random() * Math.PI * 2,
+            color: Math.random() > 0.6 ? 0xffaa66 : 0x888877
         });
     }
     this.dustGfx = this.add.graphics().setDepth(150);
     
     // Ash/ember particles (orange glowing)
     this.ashParticles = [];
-    for (let i = 0; i < 25; i++) {
+    for (var i = 0; i < 20; i++) {
         this.ashParticles.push({
             x: Math.random() * MAP_W,
             y: Math.random() * MAP_H,
-            size: 1 + Math.random() * 1.5,
-            alpha: 0.2 + Math.random() * 0.3,
-            speedX: 0.1 + Math.random() * 0.2,
-            speedY: -0.3 - Math.random() * 0.3,
-            flicker: Math.random() * Math.PI * 2
+            size: 1 + Math.random() * 2,
+            alpha: 0.15 + Math.random() * 0.25,
+            speedX: 0.05 + Math.random() * 0.15,
+            speedY: -0.2 - Math.random() * 0.3,
+            flicker: Math.random() * Math.PI * 2,
+            glowSize: 2 + Math.random() * 3
         });
     }
     this.ashGfx = this.add.graphics().setDepth(149);
@@ -3545,9 +3331,10 @@ function spawnPlayers() {
         player = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', true);
         this.physics.add.collider(player.sprite, staticGroup);
 
-        // Hide 2D killer sprite when 3D model is available
-        if (threeLoaded && killerModel) {
+        // Hide 2D killer sprite, use 3D model instead
+        if (threeLoaded && !threeError) {
             player.sprite.setVisible(false);
+            killer3DSprite = createKiller3DSprite(this, kSpawn.x, kSpawn.y);
         }
 
         // AI survivors - only in singleplayer mode
@@ -3764,12 +3551,17 @@ function triggerScreenShake(amount) {
 
 function addBloodSplatter(x, y) {
     if (!scene || !scene.atmosphere) return;
-    const atmo = scene.atmosphere;
+    var atmo = scene.atmosphere;
+    
+    // Limit max blood particles to prevent memory issues
+    if (atmo.bloodSplatters.length > 50) {
+        atmo.bloodSplatters.splice(0, atmo.bloodSplatters.length - 50);
+    }
     
     // Add blood particles
-    for (let i = 0; i < 8; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 1 + Math.random() * 3;
+    for (var i = 0; i < 8; i++) {
+        var angle = Math.random() * Math.PI * 2;
+        var speed = 1 + Math.random() * 3;
         atmo.bloodSplatters.push({
             x: x,
             y: y,
@@ -3786,14 +3578,15 @@ function addBloodSplatter(x, y) {
 
 function updateBloodSplatters(dt) {
     if (!scene || !scene.atmosphere) return;
-    const atmo = scene.atmosphere;
+    var atmo = scene.atmosphere;
+    var dtSec = dt / 1000;
     
-    for (let i = atmo.bloodSplatters.length - 1; i >= 0; i--) {
-        const b = atmo.bloodSplatters[i];
+    for (var i = atmo.bloodSplatters.length - 1; i >= 0; i--) {
+        var b = atmo.bloodSplatters[i];
         b.x += b.vx;
         b.y += b.vy;
-        b.vy += 0.1; // gravity
-        b.life -= dt / 1000;
+        b.vy += 0.15; // gravity
+        b.life -= dtSec;
         b.alpha = Math.max(0, b.life * 1.5);
         
         if (b.life <= 0) {
@@ -3814,18 +3607,12 @@ function update(time, dt) {
     // Update blood splatters
     updateBloodSplatters(dt);
 
-    // Render Three.js 3D scene (killer model) - skip on low-end
+    // Update 3D killer model
     if (threeLoaded && isKiller && player && player.sprite && !window.isLowEndDevice) {
-        // Hide 2D sprite once 3D system is ready
         if (player.sprite.visible) {
             player.sprite.setVisible(false);
         }
-        updateKillerModelPosition(player.sprite.x, player.sprite.y, dt);
-        const moving = (inputVec.x !== 0 || inputVec.y !== 0);
-        updateKillerAnimation(moving);
-    }
-    if (threeLoaded && !window.isLowEndDevice) {
-        renderThreeJS();
+        updateKiller3DSprite(dt);
     }
 
     // Sync actionPressed and inputVec from Input module (for mobile/touch controls)
@@ -3850,19 +3637,13 @@ function update(time, dt) {
             gen.glowGfx.setAlpha(pulse * 0.15);
         }
 
-        // Flickering light effect (slow, smooth pulsing like a dying fluorescent light)
+        // Flickering light effect - optimized with fewer calculations
         if (gen.lightGlowGfx && !gen.repaired) {
-            // Slow sine wave flicker
-            const slowFlicker = 0.4 + Math.sin(gameTime * 0.001 + gen.lightFlickerPhase) * 0.35;
-            // Occasional stronger flicker
-            const fastFlicker = Math.sin(gameTime * 0.008 + gen.lightFlickerPhase * 2) * 0.15;
-            // Random intensity variation
-            const randomFlicker = Math.sin(gameTime * 0.02 + gen.lightFlickerPhase * 3) * 0.1;
-            const totalIntensity = Math.max(0.15, slowFlicker + fastFlicker + randomFlicker);
-
-            gen.lightGlowGfx.setAlpha(totalIntensity);
-            gen.lightGlowInnerGfx.setAlpha(totalIntensity * 1.5);
-            gen.lightSprite.setAlpha(0.7 + totalIntensity * 0.5);
+            // Simplified flicker - just slow sine wave
+            const flicker = 0.5 + Math.sin(gameTime * 0.002 + gen.lightFlickerPhase) * 0.3;
+            gen.lightGlowGfx.setAlpha(flicker);
+            gen.lightGlowInnerGfx.setAlpha(flicker * 1.3);
+            gen.lightSprite.setAlpha(0.7 + flicker * 0.3);
         }
         // When repaired, turn off light
         if (gen.repaired && gen.lightGlowGfx) {
@@ -4087,6 +3868,8 @@ function update(time, dt) {
     updateAI(dt);
     updateHooks(dt);
     updatePallets(dt);
+    updateGateGlow(dt);
+    updateDustAndAsh(dt);
     flushFloatBars();
     updateHUD();
     checkWinLose();
@@ -5372,8 +5155,95 @@ function closeHatchByKiller() {
     }
 }
 
+function updateGateGlow(dt) {
+    gates.forEach(gate => {
+        if (gate.gateGlow) {
+            gate.glowPhase += dt * 0.002;
+            var pulse = 0.04 + Math.sin(gate.glowPhase) * 0.02;
+            var glowColor = gate.opened ? 0x00ff44 : 0xff6600;
+            gate.gateGlow.clear();
+            gate.gateGlow.fillStyle(glowColor, pulse);
+            gate.gateGlow.fillCircle(gate.bx, gate.by, gate.opened ? 55 : 45);
+            gate.gateGlow.setDepth(gate.by);
+        }
+    });
+}
+
+function updateDustAndAsh(dt) {
+    if (!scene || window.isLowEndDevice) return;
+    
+    // Dust particles
+    if (scene.dustGfx && scene.dustParticles) {
+        scene.dustGfx.clear();
+        var cam = scene.cameras.main;
+        if (!cam) return;
+        
+        scene.dustParticles.forEach(p => {
+            p.wobble += 0.015;
+            p.x += p.speedX + Math.sin(p.wobble) * 0.15;
+            p.y += p.speedY;
+            
+            if (p.x < 0) p.x = MAP_W;
+            if (p.x > MAP_W) p.x = 0;
+            if (p.y < 0) p.y = MAP_H;
+            if (p.y > MAP_H) p.y = 0;
+            
+            var sx = p.x - cam.scrollX;
+            var sy = p.y - cam.scrollY;
+            
+            // Only render if on screen
+            if (sx > -20 && sx < cam.width + 20 && sy > -20 && sy < cam.height + 20) {
+                scene.dustGfx.fillStyle(p.color, p.alpha);
+                scene.dustGfx.fillCircle(sx, sy, p.size);
+            }
+        });
+    }
+    
+    // Ash/ember particles
+    if (scene.ashGfx && scene.ashParticles) {
+        scene.ashGfx.clear();
+        var cam2 = scene.cameras.main;
+        if (!cam2) return;
+        
+        scene.ashParticles.forEach(p => {
+            p.flicker += 0.03;
+            p.x += p.speedX + Math.sin(p.flicker) * 0.1;
+            p.y += p.speedY;
+            
+            if (p.y < -20) {
+                p.y = MAP_H + 20;
+                p.x = Math.random() * MAP_W;
+            }
+            if (p.x < 0) p.x = MAP_W;
+            if (p.x > MAP_W) p.x = 0;
+            
+            var sx = p.x - cam2.scrollX;
+            var sy = p.y - cam2.scrollY;
+            
+            if (sx > -20 && sx < cam2.width + 20 && sy > -20 && sy < cam2.height + 20) {
+                var flickerAlpha = p.alpha * (0.6 + Math.sin(p.flicker * 2) * 0.4);
+                scene.ashGfx.fillStyle(0xff6622, flickerAlpha * 0.3);
+                scene.ashGfx.fillCircle(sx, sy, p.glowSize);
+                scene.ashGfx.fillStyle(0xff8844, flickerAlpha);
+                scene.ashGfx.fillCircle(sx, sy, p.size);
+            }
+        });
+    }
+}
+
 function updateHooks(dt) {
     hooks.forEach(hook => {
+        // Animate hook glow
+        if (hook.hookGlow) {
+            hook.glowPhase += dt * 0.003;
+            var pulse = 0.06 + Math.sin(hook.glowPhase) * 0.03;
+            var glowColor = hook.occupied ? 0xff0000 : 0xff2200;
+            hook.hookGlow.clear();
+            hook.hookGlow.fillStyle(glowColor, pulse);
+            hook.hookGlow.fillCircle(hook.x, hook.y, hook.occupied ? 40 : 35);
+            hook.hookGlow.setDepth(hook.y);
+        }
+        
         if (!hook.occupied || !hook.hookedSurvivor) return;
 
         const p = hook.hookedSurvivor;
@@ -6530,24 +6400,24 @@ function createControls() {
     removeControls();
 
     // Joystick
-    const joy = document.createElement('div');
+    var joy = document.createElement('div');
     joy.id = 'joystick-zone';
-    joy.style.cssText = 'position:fixed;bottom:28px;left:28px;width:114px;height:114px;z-index:99999;touch-action:none;';
-    joy.innerHTML = '<div id="joy-base" style="width:100%;height:100%;background:rgba(255,255,255,0.12);border:3px solid rgba(255,255,255,0.3);border-radius:50%;position:relative;"><div id="joy-knob" style="width:46px;height:46px;background:rgba(220,50,50,0.88);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 10px rgba(220,50,50,0.5);"></div></div>';
+    joy.style.cssText = 'position:fixed;bottom:20px;left:20px;width:130px;height:130px;z-index:99999;touch-action:none;';
+    joy.innerHTML = '<div id="joy-base" style="width:100%;height:100%;background:rgba(255,255,255,0.1);border:3px solid rgba(255,255,255,0.25);border-radius:50%;position:relative;"><div id="joy-knob" style="width:50px;height:50px;background:rgba(220,50,50,0.85);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 12px rgba(220,50,50,0.4);"></div></div>';
     document.body.appendChild(joy);
 
     // Action button
-    const ab = document.createElement('div');
+    var ab = document.createElement('div');
     ab.id = 'action-btn';
-    ab.textContent = '⚡';
-    ab.style.cssText = 'position:fixed;bottom:48px;right:28px;width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#cc2200);border:3px solid rgba(255,255,255,0.4);color:#fff;font-size:30px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:99999;touch-action:none;box-shadow:0 0 16px rgba(255,80,0,0.5);';
+    ab.textContent = '\u26a1';
+    ab.style.cssText = 'position:fixed;bottom:30px;right:20px;width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#cc2200);border:3px solid rgba(255,255,255,0.35);color:#fff;font-size:32px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:99999;touch-action:none;box-shadow:0 0 18px rgba(255,80,0,0.5);transition:transform 0.1s;';
     document.body.appendChild(ab);
 
     // Pallet button (smaller, above action button)
-    const pb = document.createElement('div');
+    var pb = document.createElement('div');
     pb.id = 'pallet-btn';
-    pb.textContent = '🪵';
-    pb.style.cssText = 'position:fixed;bottom:140px;right:43px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#8B4513,#654321);border:2px solid rgba(255,255,255,0.3);color:#fff;font-size:22px;display:none;align-items:center;justify-content:center;z-index:99999;touch-action:none;box-shadow:0 0 12px rgba(139,69,19,0.6);';
+    pb.textContent = '\ud83e\udeb5';
+    pb.style.cssText = 'position:fixed;bottom:130px;right:35px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#8B4513,#654321);border:2px solid rgba(255,255,255,0.25);color:#fff;font-size:24px;display:none;align-items:center;justify-content:center;z-index:99999;touch-action:none;box-shadow:0 0 14px rgba(139,69,19,0.5);transition:transform 0.1s;';
     document.body.appendChild(pb);
 
     const jbase = document.getElementById('joy-base');

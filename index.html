@@ -67,12 +67,19 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
     <div class="loader-bar-wrap"><div class="loader-bar" id="load-bar"></div></div>
     <div class="loader-status" id="load-status">Инициализация...</div>
     <div class="loader-tips" id="load-tip"></div>
+    <div id="menu-buttons" style="display:none;flex-direction:column;align-items:center;gap:10px;margin-top:25px;">
+      <button id="btn-multiplayer" class="btn primary" style="width:220px">🎮 Начать игру</button>
+      <button id="btn-solo" class="btn secondary" style="width:220px">🎮 Играть (Соло)</button>
+    </div>
   </div>
 </div>
 
-<div id="main-menu" class="screen"><h1>☣ Miasma Massacre</h1><div class="menu-buttons"><button id="btn-create-lobby" class="btn primary">🔪 Создать лобби (Маньяк)</button><button id="btn-find-lobby" class="btn secondary">🔍 Найти игру (Выживший)</button><button id="btn-solo" class="btn" style="background:#222;margin-top:8px">🎮 Играть Solo</button></div><div class="version">v4.1</div></div>
-
-<div id="role-select" class="screen"><h2>Выбери роль</h2><button id="btn-play-killer" class="btn primary">🔪 Убийца</button><button id="btn-play-survivor" class="btn secondary">🏃 Выживший</button><button id="btn-back-role" class="btn" style="margin-top:15px;background:#222">← Назад</button></div>
+<div id="role-select" class="screen">
+  <h2>Выбери роль</h2>
+  <button id="btn-play-killer" class="btn primary">🔪 Маньяк</button>
+  <button id="btn-play-survivor" class="btn secondary">🏃 Выживший</button>
+  <button id="btn-back-menu" class="btn" style="margin-top:15px;background:#222">← Назад</button>
+</div>
 
 <div id="lobby-create" class="screen"><h2>🏠 Лобби: <span id="display-room-code" style="color:#fff;font-size:20px"></span></h2><p id="lobby-status" style="color:#aaa;margin-bottom:15px;text-align:center">Ожидание игроков...</p><div id="lobby-players" style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:300px;margin-bottom:15px"></div><button id="btn-start-game" class="btn primary" disabled style="background:#555">Начать игру</button><button id="btn-leave-lobby" class="btn secondary" style="margin-top:8px">← Выйти</button></div>
 
@@ -231,7 +238,7 @@ function showToast(msg, duration) {
 }
 
 function showScreen(name) {
-  var screens = ['loading-screen','main-menu','role-select','lobby-create','lobby-join','game-screen','game-over'];
+  var screens = ['loading-screen','role-select','lobby-create','lobby-join','game-screen','game-over'];
   screens.forEach(function(s) {
     var el = document.getElementById(s);
     if (el) el.classList.remove('active');
@@ -239,6 +246,9 @@ function showScreen(name) {
   var target = document.getElementById(name);
   if (target) target.classList.add('active');
 }
+
+/* ═══════ GAME MODE ═══════ */
+var gameMode = null; // 'multiplayer' or 'solo'
 
 /* ═══════ USER FUNCTIONS ═══════ */
 function getMyId() {
@@ -624,6 +634,7 @@ function findAndJoinLobby() {
   document.getElementById('found-lobbies').innerHTML = '<p style="color:#aaa">Поиск лобби...</p>';
 
   var roomsQuery = db.ref('rooms').orderByChild('status').equalTo('waiting');
+  window._roomsQuery = roomsQuery;
   var foundLobby = false;
 
   roomsQuery.on('child_added', function(snapshot) {
@@ -662,7 +673,9 @@ function findAndJoinLobby() {
 
   document.getElementById('btn-leave-search').onclick = function() {
     roomsQuery.off();
-    showScreen('main-menu');
+    showScreen('loading-screen');
+    var menuBtns = document.getElementById('menu-buttons');
+    if (menuBtns) menuBtns.style.display = 'flex';
   };
 }
 
@@ -768,12 +781,90 @@ window.leaveLobby = function() {
 
 /* ═══════ SOLO GAME ═══════ */
 function startSoloGame(killerMode) {
+  console.log('startSoloGame called, killerMode:', killerMode);
   try {
     if (typeof Game !== 'undefined' && Game.start) {
       Game.start(killerMode, false, null, null);
     } else {
       console.error('Game or Game.start not found!');
     }
+  } catch (e) {
+    console.error('Error starting game:', e);
+    alert('Ошибка запуска игры: ' + e.message);
+  }
+}
+
+/* ═══════ BUTTON SETUP ═══════ */
+function setupButtons() {
+  function on(id, fn) {
+    var el = document.getElementById(id);
+    if (el) el.onclick = fn;
+  }
+  
+  // Multiplayer buttons
+  on('btn-multiplayer', function() {
+    gameMode = 'multiplayer';
+    showScreen('role-select');
+  });
+  
+  // Solo button
+  on('btn-solo', function() {
+    gameMode = 'solo';
+    showScreen('role-select');
+  });
+  
+  // Role selection
+  on('btn-play-killer', function() {
+    if (gameMode === 'solo') {
+      startSoloGame(true);
+    } else {
+      createLobby();
+    }
+  });
+  
+  on('btn-play-survivor', function() {
+    if (gameMode === 'solo') {
+      startSoloGame(false);
+    } else {
+      findAndJoinLobby();
+    }
+  });
+  
+  on('btn-back-menu', function() {
+    if (typeof Game !== 'undefined') Game.stop();
+    gameMode = null;
+    showScreen('loading-screen');
+    var menuBtns = document.getElementById('menu-buttons');
+    if (menuBtns) menuBtns.style.display = 'flex';
+  });
+  
+  on('btn-start-game', function() {
+    if (!gRoomId || !gIsHost) return;
+    showToast('Начинаем игру...');
+    startGame(gRoomId).then(function(result) {
+      if (result.success) {
+        showToast('Игра начинается...');
+        var isKiller = (gMyRole === 'killer');
+        if (typeof Game !== 'undefined') {
+          Game.start(isKiller, true, gRoomId, gMyId);
+        }
+      } else {
+        showToast('Ошибка: ' + result.error);
+      }
+    }).catch(function(e) {
+      console.error('[FB] Start game error:', e);
+      showToast('Ошибка запуска игры: ' + e.message);
+    });
+  });
+  
+  on('btn-leave-lobby', window.leaveLobby);
+  on('btn-leave-search', function() {
+    if (window._roomsQuery) window._roomsQuery.off();
+    showScreen('loading-screen');
+    var menuBtns = document.getElementById('menu-buttons');
+    if (menuBtns) menuBtns.style.display = 'flex';
+  });
+}
   } catch (e) {
     console.error('Error starting game:', e);
     alert('Ошибка запуска игры: ' + e.message);
@@ -902,8 +993,17 @@ function tryInit() {
     initUser(function(user) {
       setProgress(5, 'Готово!');
       setTimeout(function() {
-        document.getElementById('loading-screen').classList.remove('active');
-        document.getElementById('main-menu').classList.add('active');
+        // Hide loading bar and status, show menu buttons
+        var loadBarWrap = document.querySelector('.loader-bar-wrap');
+        var loadStatusEl = document.getElementById('load-status');
+        var loadTipEl = document.getElementById('load-tip');
+        if (loadBarWrap) loadBarWrap.style.display = 'none';
+        if (loadStatusEl) loadStatusEl.style.display = 'none';
+        if (loadTipEl) loadTipEl.style.display = 'none';
+        
+        var menuBtns = document.getElementById('menu-buttons');
+        if (menuBtns) menuBtns.style.display = 'flex';
+        
         setupButtons();
         console.log('App ready. User:', user, 'Low-end device:', isLowEndDevice);
       }, 300);
