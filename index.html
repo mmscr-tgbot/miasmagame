@@ -290,22 +290,26 @@ function joinRoom(roomCode, playerId, playerName) {
     });
 }
 
+// Update room status to 'playing' and set roles
 function startGame(roomCode) {
-  if (!firebaseReady) return Promise.resolve({ success: false, error: 'Firebase не готова' });
+  console.log('[FB] startGame called:', roomCode);
+  if (!firebaseReady) return Promise.reject(new Error('Firebase не готова'));
 
   return db.ref('rooms/' + roomCode).once('value')
     .then(function(snapshot) {
       var roomData = snapshot.val();
       var playerIds = Object.keys(roomData.players || {});
+      console.log('[FB] startGame playerIds:', playerIds);
       if (playerIds.length < 2) return { success: false, error: 'Нужно минимум 2 игрока' };
 
       var updates = { status: 'playing', startedAt: Date.now() };
       playerIds.forEach(function(id) {
         updates['players/' + id + '/role'] = (id === roomData.hostId) ? 'killer' : 'survivor';
       });
+      console.log('[FB] startGame updates:', updates);
       return db.ref('rooms/' + roomCode).update(updates)
         .then(function() {
-          console.log('Игра началась:', roomCode);
+          console.log('[FB] Game started in room:', roomCode);
           return { success: true };
         });
     })

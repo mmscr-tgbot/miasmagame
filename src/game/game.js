@@ -5227,7 +5227,7 @@ function sendPositionUpdate() {
     if (now - lastPosUpdate < POS_UPDATE_INTERVAL) return;
     lastPosUpdate = now;
 
-    console.log('[MP] Sending position update:', player.sprite.x, player.sprite.y);
+    console.log('[MP] Sending position:', playerId, 'pos:', Math.round(player.sprite.x), Math.round(player.sprite.y));
     sendPlayerPosition(roomCode, playerId, player.sprite.x, player.sprite.y);
 
     // Also update state
@@ -5607,6 +5607,7 @@ function interpolateRemotePlayers(dt) {
     const lerpFactor = 1 - Math.pow(1 - POS_LERP_SPEED, dt / 16.67);
 
     Object.values(remotePlayers).forEach(rp => {
+        console.log('[MP] interpolateRemotePlayers:', rp.playerId, 'targetX:', rp.targetX, 'targetY:', rp.targetY, 'sprite.x:', rp.sprite.x, 'sprite.y:', rp.sprite.y);
         if (rp.targetX === undefined || rp.targetY === undefined) return;
         if (rp.state === 'dead' || rp.state === 'hooked') return;
 
