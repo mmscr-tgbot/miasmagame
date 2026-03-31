@@ -28,8 +28,6 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 #lobby-players{display:flex;flex-direction:column;align-items:center;margin:15px 0;width:100%}
 #lobby-status,#search-status{font-size:15px;color:#aaa;margin-bottom:8px;text-align:center}
 .version{position:absolute;bottom:15px;color:#555;font-size:11px}
-.loader{width:38px;height:38px;border:3px solid #333;border-top-color:#ff3333;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:15px}
-@keyframes spin{to{transform:rotate(360deg)}}
 #toast{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.92);color:#fff;padding:11px 22px;border-radius:8px;font-size:14px;z-index:99999;display:none;white-space:nowrap;pointer-events:none}
 #toast.show{display:block;animation:fadeInOut 2.5s forwards}
 @keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(15px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}75%{opacity:1}100%{opacity:0}}
@@ -40,22 +38,37 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 #game-container canvas{display:block!important;visibility:visible!important}
 #game-over{z-index:10000}
 #game-result-message{color:#aaa;margin-bottom:25px;text-align:center;font-size:15px}
+
+/* Animated preloader */
+#loading-screen{background:radial-gradient(ellipse at center,#1a0a0a 0%,#0a0a0a 100%)}
+.loader-container{display:flex;flex-direction:column;align-items:center;gap:20px}
+.loader-skull{font-size:64px;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.1);opacity:1}}
+.loader-title{font-size:24px;font-weight:700;color:#ff3333;text-shadow:0 0 30px rgba(255,51,51,.6);letter-spacing:2px}
+.loader-bar-wrap{width:220px;height:6px;background:#222;border-radius:3px;overflow:hidden}
+.loader-bar{height:100%;width:0%;background:linear-gradient(90deg,#ff3333,#ff6600);border-radius:3px;transition:width .3s ease}
+.loader-status{font-size:13px;color:#888;min-height:18px;text-align:center}
+.loader-tips{font-size:11px;color:#555;margin-top:10px;max-width:260px;text-align:center;line-height:1.5}
 </style>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+<!-- Core: Phaser only (needed for game). Firebase loaded lazily. -->
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<!-- FIX #2: Удалён дублирующий <script src="src/game/game.js"> из <head> -->
 </head>
 <body>
 <div id="app">
 
-<div id="loading-screen" class="screen active"><div class="loader"></div><p id="load-text">Загрузка...</p></div>
+<div id="loading-screen" class="screen active">
+  <div class="loader-container">
+    <div class="loader-skull">☣</div>
+    <div class="loader-title">MIASMA MASSACRE</div>
+    <div class="loader-bar-wrap"><div class="loader-bar" id="load-bar"></div></div>
+    <div class="loader-status" id="load-status">Инициализация...</div>
+    <div class="loader-tips" id="load-tip"></div>
+  </div>
+</div>
 
-<div id="main-menu" class="screen"><h1>☣ Miasma Massacre</h1><div class="menu-buttons"><button id="btn-create-lobby" class="btn primary">🔪 Создать лобби (Маньяк)</button><button id="btn-find-lobby" class="btn secondary">🔍 Найти игру (Выживший)</button><button id="btn-solo" class="btn" style="background:#222;margin-top:8px">🎮 Играть Solo</button></div><div class="version">v4.0</div></div>
+<div id="main-menu" class="screen"><h1>☣ Miasma Massacre</h1><div class="menu-buttons"><button id="btn-create-lobby" class="btn primary">🔪 Создать лобби (Маньяк)</button><button id="btn-find-lobby" class="btn secondary">🔍 Найти игру (Выживший)</button><button id="btn-solo" class="btn" style="background:#222;margin-top:8px">🎮 Играть Solo</button></div><div class="version">v4.1</div></div>
 
 <div id="role-select" class="screen"><h2>Выбери роль</h2><button id="btn-play-killer" class="btn primary">🔪 Убийца</button><button id="btn-play-survivor" class="btn secondary">🏃 Выживший</button><button id="btn-back-role" class="btn" style="margin-top:15px;background:#222">← Назад</button></div>
 
@@ -84,8 +97,41 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 (function(){
 'use strict';
 
+/* ═══════ PERFORMANCE DETECTION ═══════ */
+var isLowEndDevice = (function() {
+  var mem = navigator.deviceMemory || 4;
+  var cores = navigator.hardwareConcurrency || 4;
+  return mem < 4 || cores < 4;
+})();
+
+/* ═══════ LOADING TIPS ═══════ */
+var tips = [
+  'Генераторы — ключ к побегу. Почини все 5!',
+  'Люк появляется когда все генераторы починены.',
+  'Прячься в тумане — убийца хуже видит.',
+  'Доски можно уронить чтобы оглушить маньяка.',
+  'Помогай раненым — вместе выжить проще!',
+  'Будь осторожен — крюки не прощают ошибок.',
+  'Один выживший? Ищи люк для спасения!'
+];
+var tipEl = document.getElementById('load-tip');
+if (tipEl) tipEl.textContent = tips[Math.floor(Math.random() * tips.length)];
+
+/* ═══════ PROGRESS BAR ═══════ */
+var loadBar = document.getElementById('load-bar');
+var loadStatus = document.getElementById('load-status');
+var loadSteps = 0;
+var loadTotal = 5;
+
+function setProgress(step, msg) {
+  loadSteps = step;
+  var pct = Math.round((step / loadTotal) * 100);
+  if (loadBar) loadBar.style.width = pct + '%';
+  if (loadStatus) loadStatus.textContent = msg;
+}
+
 /* ═══════ FIREBASE CONFIG ═══════ */
-const firebaseConfig = {
+var firebaseConfig = {
   apiKey: "AIzaSyClnLMd7bt99ngZU7UzSxnStvYD3WXdkew",
   authDomain: "dbdtg-d24d7.firebaseapp.com",
   databaseURL: "https://dbdtg-d24d7-default-rtdb.europe-west1.firebasedatabase.app",
@@ -95,21 +141,50 @@ const firebaseConfig = {
   appId: "1:48938774159:web:3beaea874e68ed07104afa"
 };
 
-try {
-  firebase.initializeApp(firebaseConfig);
-  window.fbDB = firebase.database();
-  window.fbFS = firebase.firestore();
-  window.firebaseLoaded = true;
-  window.fsLoaded = true;
-  console.log('Firebase initialized');
-} catch (e) {
-  console.error('Firebase init error:', e);
-  window.firebaseLoaded = false;
-  window.fsLoaded = false;
+/* ═══════ LAZY LOAD SCRIPTS ═══════ */
+function loadScript(src) {
+  return new Promise(function(resolve, reject) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = function() {
+      console.warn('Failed to load script:', src);
+      resolve(); // Resolve anyway — game works without it
+    };
+    document.head.appendChild(s);
+  });
+}
+
+function loadFirebase() {
+  return Promise.all([
+    loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js'),
+    loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js'),
+    loadScript('https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js')
+  ]).then(function() {
+    try {
+      firebase.initializeApp(firebaseConfig);
+      window.fbDB = firebase.database();
+      window.fbFS = firebase.firestore();
+      window.firebaseLoaded = true;
+      window.fsLoaded = true;
+    } catch (e) {
+      console.error('Firebase init error:', e);
+      window.firebaseLoaded = false;
+      window.fsLoaded = false;
+    }
+  });
+}
+
+function loadThreeJS() {
+  if (typeof THREE !== 'undefined') return Promise.resolve();
+  return Promise.all([
+    loadScript('https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js'),
+    loadScript('https://cdn.jsdelivr.net/npm/three@0.149.0/examples/js/loaders/GLTFLoader.js')
+  ]);
 }
 
 /* ═══════ GAME CONFIG ═══════ */
-const CONFIG = {
+var CONFIG = {
   ROOM_CODE_LENGTH: 6,
   MAX_PLAYERS: 4,
   MIN_PLAYERS_TO_START: 2,
@@ -131,17 +206,15 @@ const CONFIG = {
 };
 
 /* ═══════ GLOBAL STATE ═══════ */
-let gUser = null;
-let gIsTelegram = false;
-let gMyId = null;
-let gRoomId = null;
-let gIsHost = false;
-let gMyRole = null;
-let gGameSessionId = null;
-
-// FIX #3: Хранение ref и callback отдельно для корректного .off()
-let gRoomRef = null;
-let gRoomCallback = null;
+var gUser = null;
+var gIsTelegram = false;
+var gMyId = null;
+var gRoomId = null;
+var gIsHost = false;
+var gMyRole = null;
+var gGameSessionId = null;
+var gRoomRef = null;
+var gRoomCallback = null;
 
 /* ═══════ UI HELPERS ═══════ */
 function showToast(msg, duration) {
@@ -208,8 +281,8 @@ function initUser(callback) {
 }
 
 /* ═══════ FIREBASE DB FUNCTIONS ═══════ */
-let db = null;
-let firebaseReady = false;
+var db = null;
+var firebaseReady = false;
 
 function initFirebaseDB() {
   return new Promise(function(resolve, reject) {
@@ -245,18 +318,10 @@ function createRoom(roomName, maxPlayers, hostId, hostName) {
   }
 
   var roomData = {
-    code: roomCode,
-    name: roomName || 'Комната',
-    maxPlayers: maxPlayers || 4,
-    hostId: hostId,
-    hostName: hostName,
-    status: 'waiting',
-    createdAt: Date.now(),
-    players: {}
+    code: roomCode, name: roomName || 'Комната', maxPlayers: maxPlayers || 4,
+    hostId: hostId, hostName: hostName, status: 'waiting', createdAt: Date.now(), players: {}
   };
-  roomData.players[hostId] = {
-    id: hostId, name: hostName, role: 'killer', isHost: true, ready: true, joinedAt: Date.now()
-  };
+  roomData.players[hostId] = { id: hostId, name: hostName, role: 'killer', isHost: true, ready: true, joinedAt: Date.now() };
 
   return db.ref('rooms/' + roomCode).set(roomData)
     .then(function() { return { success: true, roomId: roomCode, roomData: roomData }; })
@@ -277,9 +342,7 @@ function joinRoom(roomCode, playerId, playerName) {
       if (playerCount >= roomData.maxPlayers) return { success: false, error: 'Комната полна' };
       if (roomData.status === 'playing') return { success: false, error: 'Игра уже началась' };
 
-      var playerData = {
-        id: playerId, name: playerName, role: 'survivor', isHost: false, ready: true, joinedAt: Date.now()
-      };
+      var playerData = { id: playerId, name: playerName, role: 'survivor', isHost: false, ready: true, joinedAt: Date.now() };
       return db.ref('rooms/' + roomCode.toUpperCase() + '/players/' + playerId).set(playerData)
         .then(function() {
           roomData.players[playerId] = playerData;
@@ -292,7 +355,6 @@ function joinRoom(roomCode, playerId, playerName) {
     });
 }
 
-// Update room status to 'playing' and set roles
 function startGame(roomCode) {
   console.log('[FB] startGame called:', roomCode);
   if (!firebaseReady) return Promise.reject(new Error('Firebase не готова'));
@@ -319,12 +381,10 @@ function startGame(roomCode) {
 }
 
 /* ═══════ GAME SESSION SYNC ═══════ */
-let gameSessionRef = null;
-// FIX #3: Хранение ref и callback для корректного .off()
-let gameSessionListenerRef = null;
-let gameSessionCallback = null;
+var gameSessionRef = null;
+var gameSessionListenerRef = null;
+var gameSessionCallback = null;
 
-// FIX #4: initGameSession больше не перезаписывает генераторы для выживших
 function initGameSession(roomCode, playerId, isKiller) {
   console.log('[FB] initGameSession called:', roomCode, playerId, isKiller, 'firebaseReady:', firebaseReady);
   if (!firebaseReady) return Promise.reject(new Error('Firebase не готова'));
@@ -332,26 +392,19 @@ function initGameSession(roomCode, playerId, isKiller) {
   gameSessionRef = db.ref('gameSessions/' + roomCode);
 
   var playerData = {
-    id: playerId,
-    role: isKiller ? 'killer' : 'survivor',
-    x: isKiller ? 1200 : 200 + Math.random() * 100,
-    y: isKiller ? 900 : 200 + Math.random() * 100,
-    state: 'alive',
-    health: isKiller ? null : 100,
-    lastUpdate: Date.now()
+    id: playerId, role: isKiller ? 'killer' : 'survivor',
+    x: isKiller ? 1200 : 200 + Math.random() * 100, y: isKiller ? 900 : 200 + Math.random() * 100,
+    state: 'alive', health: isKiller ? null : 100, lastUpdate: Date.now()
   };
 
   var promise = gameSessionRef.child('players').child(playerId).set(playerData);
 
-  // FIX #4: Генераторы инициализирует только маньяк (хост)
   if (isKiller) {
     var generators = {};
     for (var i = 0; i < 5; i++) {
       generators[i] = { id: i, progress: 0, repaired: false, lastUpdate: Date.now() };
     }
-    promise = promise.then(function() {
-      return gameSessionRef.child('generators').set(generators);
-    });
+    promise = promise.then(function() { return gameSessionRef.child('generators').set(generators); });
   }
 
   return promise.then(function() {
@@ -361,11 +414,7 @@ function initGameSession(roomCode, playerId, isKiller) {
 }
 
 function sendPlayerPosition(roomCode, playerId, x, y) {
-  if (!firebaseReady || !db) {
-    console.log('[FB] sendPlayerPosition skipped: firebaseReady:', firebaseReady);
-    return;
-  }
-  console.log('[FB] Sending position:', playerId, x, y);
+  if (!firebaseReady || !db) return;
   db.ref('gameSessions/' + roomCode).child('players/' + playerId).update({
     x: x, y: y, lastUpdate: Date.now()
   }).catch(function(e) { console.error('[FB] sendPlayerPosition error:', e); });
@@ -378,7 +427,6 @@ function updatePlayerState(roomCode, playerId, state) {
   }).catch(function() {});
 }
 
-// FIX #1: Добавлена отсутствующая функция updatePlayerHealth
 function updatePlayerHealth(roomCode, playerId, health) {
   if (!firebaseReady || !db) return;
   db.ref('gameSessions/' + roomCode).child('players/' + playerId).update({
@@ -465,9 +513,7 @@ function updatePalletState(roomCode, palletId, state, x, y) {
 
 function stunRemoteKiller(roomCode) {
   if (!firebaseReady || !db) return;
-  db.ref('gameSessions/' + roomCode).update({
-    killerStun: Date.now()
-  }).catch(function() {});
+  db.ref('gameSessions/' + roomCode).update({ killerStun: Date.now() }).catch(function() {});
 }
 
 function setGameResult(roomCode, winner, message) {
@@ -477,27 +523,17 @@ function setGameResult(roomCode, winner, message) {
   }).catch(function() {});
 }
 
-// FIX #3: Исправлен subscribeToGameSession — используем .off(callback) для отписки
 function subscribeToGameSession(roomCode, callbacks) {
-  if (!firebaseReady || !db) {
-    console.log('[FB] subscribeToGameSession aborted: firebaseReady:', firebaseReady, 'db:', !!db);
-    return null;
-  }
+  if (!firebaseReady || !db) return null;
 
-  // Отписываемся от предыдущей подписки корректно
   if (gameSessionListenerRef && gameSessionCallback) {
     gameSessionListenerRef.off('value', gameSessionCallback);
   }
 
-  console.log('[FB] Subscribing to gameSessions/' + roomCode);
   gameSessionListenerRef = db.ref('gameSessions/' + roomCode);
   gameSessionCallback = function(snapshot) {
-    if (!snapshot.exists()) {
-      console.log('[FB] Snapshot does not exist');
-      return;
-    }
+    if (!snapshot.exists()) return;
     var data = snapshot.val();
-    console.log('[FB] Received data, players:', data.players ? Object.keys(data.players) : 'none');
     if (callbacks.onPlayersUpdate) callbacks.onPlayersUpdate(data.players || {});
     if (callbacks.onGeneratorsUpdate) callbacks.onGeneratorsUpdate(data.generators || {});
     if (callbacks.onCrowsUpdate && data.crows) callbacks.onCrowsUpdate(data.crows);
@@ -515,7 +551,6 @@ function subscribeToGameSession(roomCode, callbacks) {
     if (callbacks.onError) callbacks.onError(error);
   });
 
-  // Возвращаем функцию отписки
   return function() {
     if (gameSessionListenerRef && gameSessionCallback) {
       gameSessionListenerRef.off('value', gameSessionCallback);
@@ -528,7 +563,6 @@ function subscribeToGameSession(roomCode, callbacks) {
 function leaveGameSession(roomCode, playerId) {
   if (!firebaseReady || !db) return;
   db.ref('gameSessions/' + roomCode).child('players/' + playerId).remove().catch(function() {});
-  // FIX #3: Корректная отписка
   if (gameSessionListenerRef && gameSessionCallback) {
     gameSessionListenerRef.off('value', gameSessionCallback);
     gameSessionListenerRef = null;
@@ -538,7 +572,6 @@ function leaveGameSession(roomCode, playerId) {
 
 /* ═══════ LOBBY FUNCTIONS ═══════ */
 function unsubscribeFromLobby() {
-  // FIX #3: Корректная отписка от лобби через .off()
   if (gRoomRef && gRoomCallback) {
     gRoomRef.off('value', gRoomCallback);
     gRoomRef = null;
@@ -594,11 +627,9 @@ function findAndJoinLobby() {
   roomsQuery.on('child_added', function(snapshot) {
     if (foundLobby) return;
     var room = snapshot.val();
-    console.log('[FB] Found room:', snapshot.key, 'status:', room.status);
     var playerCount = Object.keys(room.players || {}).length;
     if (playerCount < 4 && room.hostId !== gMyId) {
       foundLobby = true;
-      console.log('[FB] Joining room:', snapshot.key);
       roomsQuery.off();
       joinRoom(snapshot.key, gMyId, sName).then(function(result) {
         if (result.success) {
@@ -607,7 +638,6 @@ function findAndJoinLobby() {
           showScreen('lobby-create');
           document.getElementById('display-room-code').textContent = result.roomId;
           document.getElementById('lobby-status').textContent = 'Вы присоединились!';
-          console.log('[FB] Joined room, calling subscribeToLobby:', gRoomId);
           subscribeToLobby(gRoomId);
           showToast('Подключился к лобби!');
         } else {
@@ -634,21 +664,17 @@ function findAndJoinLobby() {
   };
 }
 
-// FIX #3: Переписан subscribeToLobby для корректной отписки
 function subscribeToLobby(roomCode) {
-  console.log('[FB] subscribeToLobby called:', roomCode);
   unsubscribeFromLobby();
 
   gRoomRef = db.ref('rooms/' + roomCode);
   gRoomCallback = function(snapshot) {
-    console.log('[FB] Lobby callback, exists:', snapshot.exists());
     if (!snapshot.exists()) {
       showToast('Лобби закрыто!');
       showScreen('main-menu');
       return;
     }
     var room = snapshot.val();
-    console.log('[FB] Lobby status:', room.status, 'players:', Object.keys(room.players || {}));
     if (room.status === 'closed') {
       showToast('Лобби закрыто!', 3000);
       showScreen('main-menu');
@@ -701,12 +727,10 @@ function subscribeToLobby(roomCode) {
     }
 
     if (room.status === 'playing') {
-      console.log('[FB] Game starting! status=playing detected');
       unsubscribeFromLobby();
       var isKiller = (gMyRole === 'killer');
       gGameSessionId = roomCode;
       initGameSession(roomCode, gMyId, isKiller).then(function() {
-        console.log('[FB] Game session initialized, starting game...');
         if (typeof Game !== 'undefined') {
           Game.start(isKiller, true, roomCode, gMyId);
         }
@@ -742,13 +766,9 @@ window.leaveLobby = function() {
 
 /* ═══════ SOLO GAME ═══════ */
 function startSoloGame(killerMode) {
-  console.log('startSoloGame called, killerMode:', killerMode);
-  console.log('Game object:', typeof Game);
   try {
     if (typeof Game !== 'undefined' && Game.start) {
-      console.log('Calling Game.start...');
       Game.start(killerMode, false, null, null);
-      console.log('Game.start completed');
     } else {
       console.error('Game or Game.start not found!');
     }
@@ -775,20 +795,13 @@ function setupButtons() {
     showScreen('main-menu');
   });
   on('btn-start-game', function() {
-    console.log('[FB] btn-start-game clicked, gRoomId:', gRoomId, 'gIsHost:', gIsHost);
-    if (!gRoomId || !gIsHost) {
-      console.log('[FB] Blocked: gRoomId=', gRoomId, 'gIsHost=', gIsHost);
-      return;
-    }
+    if (!gRoomId || !gIsHost) return;
     showToast('Начинаем игру...');
     startGame(gRoomId).then(function(result) {
-      console.log('[FB] startGame result:', result);
       if (result.success) {
         showToast('Игра начинается...');
-        // Запускаем саму игру
         var isKiller = (gMyRole === 'killer');
         if (typeof Game !== 'undefined') {
-          console.log('[FB] Starting Game.start for killer:', isKiller);
           Game.start(isKiller, true, gRoomId, gMyId);
         }
       } else {
@@ -805,41 +818,33 @@ function setupButtons() {
 /* ═══════ MISSING FUNCTIONS ═══════ */
 function initializeGenerators(roomCode) {
   if (!isFirebaseReady() || !db) return;
-  const generators = {};
-  for (let i = 0; i < CONFIG.GENERATOR_COUNT; i++) {
+  var generators = {};
+  for (var i = 0; i < CONFIG.GENERATOR_COUNT; i++) {
     generators[i] = { id: i, progress: 0, repaired: false, repairingBy: null, lastUpdate: Date.now() };
   }
-  db.ref('gameSessions/' + roomCode).child('generators').set(generators).catch(() => {});
+  db.ref('gameSessions/' + roomCode).child('generators').set(generators).catch(function() {});
 }
 
 function initializeCrows(roomCode, count) {
-  if (!isFirebaseReady() || !db) return;
-  // Crows are initialized locally in game.js, this just notifies server
-  // The actual crow data is synced via updateCrows function
+  // Crows are initialized locally in game.js
 }
 
 function updateCrows(roomCode, crows) {
   if (!isFirebaseReady() || !db) return;
-  const crowsData = {};
-  crows.forEach((crow, i) => {
+  var crowsData = {};
+  crows.forEach(function(crow, i) {
     crowsData[i] = {
-      state: crow.state,
-      x: crow.sprite.x,
-      y: crow.sprite.y,
-      targetX: crow.targetX,
-      targetY: crow.targetY,
-      flipX: crow.sprite.flipX,
+      state: crow.state, x: crow.sprite.x, y: crow.sprite.y,
+      targetX: crow.targetX, targetY: crow.targetY, flipX: crow.sprite.flipX,
       landingX: crow.landingSpot ? crow.landingSpot.x : null,
       landingY: crow.landingSpot ? crow.landingSpot.y : null
     };
   });
-  db.ref('gameSessions/' + roomCode).child('crows').set(crowsData).catch(() => {});
+  db.ref('gameSessions/' + roomCode).child('crows').set(crowsData).catch(function() {});
 }
 
 function updatePalletsFromServer(palletsData) {
-  // Pallets are handled locally in game.js via updatePallets
-  // This function exists for compatibility but does nothing
-  // as pallets are server-authoritative only on the host
+  // Handled locally in game.js
 }
 
 /* ═══════ EXPORT FOR GAME.JS ═══════ */
@@ -864,38 +869,54 @@ window.subscribeToGameSession = subscribeToGameSession;
 window.leaveGameSession = leaveGameSession;
 window.sendPlayerPosition = sendPlayerPosition;
 window.updatePlayerState = updatePlayerState;
-window.updatePlayerHealth = updatePlayerHealth; // FIX #1: теперь определена выше
+window.updatePlayerHealth = updatePlayerHealth;
+window.loadThreeJS = loadThreeJS;
+window.isLowEndDevice = isLowEndDevice;
 
 /* ═══════ APP INIT ═══════ */
+setProgress(1, 'Загрузка ядра...');
+
+// Firebase loads in background while user sees menu
+loadFirebase().then(function() {
+  setProgress(2, 'Firebase подключён');
+  initFirebaseDB().catch(function(e) { console.error('Firebase DB error:', e); });
+}).catch(function(e) { console.error('Firebase load error:', e); });
+
+// Load game.js
+var gameScript = document.createElement('script');
+gameScript.src = 'src/game/game.js';
+gameScript.onload = function() { setProgress(3, 'Игровой движок готов'); };
+gameScript.onerror = function() {
+  if (loadStatus) loadStatus.textContent = 'Ошибка загрузки game.js';
+};
+document.head.appendChild(gameScript);
+
+setProgress(4, 'Подготовка...');
+
+// Wait for Phaser + game.js, then show menu
 var _initTries = 0;
 function tryInit() {
   if (typeof Phaser !== 'undefined' && typeof Phaser.Game !== 'undefined') {
-    initFirebaseDB().then(function() {
-      console.log('Firebase DB initialized');
-    }).catch(function(e) {
-      console.error('Firebase DB init error:', e);
-    });
     initUser(function(user) {
-      document.getElementById('loading-screen').classList.remove('active');
-      document.getElementById('main-menu').classList.add('active');
-      setupButtons();
-      console.log('App ready. User:', user);
+      setProgress(5, 'Готово!');
+      setTimeout(function() {
+        document.getElementById('loading-screen').classList.remove('active');
+        document.getElementById('main-menu').classList.add('active');
+        setupButtons();
+        console.log('App ready. User:', user, 'Low-end device:', isLowEndDevice);
+      }, 300);
     });
     return;
   }
   if (++_initTries < 80) {
     setTimeout(tryInit, 100);
   } else {
-    var t = document.getElementById('load-text');
-    if (t) t.textContent = 'Ошибка загрузки Phaser';
+    if (loadStatus) loadStatus.textContent = 'Ошибка загрузки Phaser';
   }
 }
 tryInit();
 
 })();
 </script>
-
-<!-- game.js подключается только здесь (один раз) -->
-<script src="src/game/game.js"></script>
 </body>
 </html>

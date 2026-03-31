@@ -166,7 +166,7 @@ function initThreeJS() {
         return;
     }
 
-    const container = document.getElementById('game-container');
+    var container = document.getElementById('game-container');
     if (!container) {
         console.warn('[3D] No game-container found');
         threeError = true;
@@ -174,58 +174,65 @@ function initThreeJS() {
     }
 
     try {
+        var lowEnd = window.isLowEndDevice || false;
+
         // Create canvas renderer
-        threeRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        threeRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: !lowEnd });
         threeRenderer.setSize(window.innerWidth, window.innerHeight);
-        threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        threeRenderer.setPixelRatio(lowEnd ? 1 : Math.min(window.devicePixelRatio, 2));
         threeRenderer.setClearColor(0x000000, 0);
-        threeRenderer.outputEncoding = THREE.sRGBEncoding;
-        threeRenderer.shadowMap.enabled = true;
-        threeRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        if (!lowEnd) {
+            threeRenderer.outputEncoding = THREE.sRGBEncoding;
+            threeRenderer.shadowMap.enabled = true;
+            threeRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        }
         threeRenderer.domElement.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:11;pointer-events:none;';
         container.appendChild(threeRenderer.domElement);
-
-        // Handle window resize
-        window.addEventListener('resize', function () {
-            if (!threeRenderer || !threeCamera) return;
-            const w = window.innerWidth;
-            const h = window.innerHeight;
-            threeRenderer.setSize(w, h);
-            threeCamera.aspect = w / h;
-            threeCamera.updateProjectionMatrix();
-        });
 
         // Create scene
         threeScene = new THREE.Scene();
 
         // Create camera - orthographic for top-down-ish view
-        const aspect = window.innerWidth / window.innerHeight;
-        const frustumSize = 12;
+        var aspect = window.innerWidth / window.innerHeight;
         threeCamera = new THREE.PerspectiveCamera(50, aspect, 0.1, 100);
         threeCamera.position.set(0, 10, 8);
         threeCamera.lookAt(0, 0, 0);
 
         // Lighting
-        const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+        var ambientLight = new THREE.AmbientLight(0x404060, 0.6);
         threeScene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffeedd, 1.0);
+        var dirLight = new THREE.DirectionalLight(0xffeedd, 1.0);
         dirLight.position.set(5, 10, 5);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 512;
-        dirLight.shadow.mapSize.height = 512;
-        dirLight.shadow.camera.near = 0.1;
-        dirLight.shadow.camera.far = 30;
-        dirLight.shadow.camera.left = -8;
-        dirLight.shadow.camera.right = 8;
-        dirLight.shadow.camera.top = 8;
-        dirLight.shadow.camera.bottom = -8;
+        if (!lowEnd) {
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 512;
+            dirLight.shadow.mapSize.height = 512;
+            dirLight.shadow.camera.near = 0.1;
+            dirLight.shadow.camera.far = 30;
+            dirLight.shadow.camera.left = -8;
+            dirLight.shadow.camera.right = 8;
+            dirLight.shadow.camera.top = 8;
+            dirLight.shadow.camera.bottom = -8;
+        }
         threeScene.add(dirLight);
 
         // Red rim light for horror atmosphere
-        const rimLight = new THREE.PointLight(0xff2200, 0.4, 15);
-        rimLight.position.set(-3, 4, -3);
-        threeScene.add(rimLight);
+        if (!lowEnd) {
+            var rimLight = new THREE.PointLight(0xff2200, 0.4, 15);
+            rimLight.position.set(-3, 4, -3);
+            threeScene.add(rimLight);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', function () {
+            if (!threeRenderer || !threeCamera) return;
+            var w = window.innerWidth;
+            var h = window.innerHeight;
+            threeRenderer.setSize(w, h);
+            threeCamera.aspect = w / h;
+            threeCamera.updateProjectionMatrix();
+        });
 
         // Load model
         loadKillerModel();
@@ -299,10 +306,14 @@ function loadKillerModel() {
 }
 
 function updateKillerModelPosition(worldX, worldY, dt) {
-    if (!killerModel || !killerModel.visible) return;
+    if (!killerModel) return;
+
+    // Make model visible once we have a player position
+    if (!killerModel.visible) {
+        killerModel.visible = true;
+    }
 
     // Convert Phaser world coordinates to Three.js coordinates
-    // Phaser: origin at top-left, Three.js: origin at center
     const cam = scene.cameras.main;
     if (!cam) return;
 
@@ -453,17 +464,34 @@ function initGame() {
     console.log('initGame called');
     document.getElementById('game-container').innerHTML = '';
 
-    // Initialize Three.js for 3D killer model
-    initThreeJS();
+    // Detect renderer type for weak devices
+    var rendererType = Phaser.AUTO;
+    var pixelRatio = window.isLowEndDevice ? 1 : Math.min(window.devicePixelRatio, 2);
+
+    // Initialize Three.js for 3D killer model (only if not low-end)
+    if (!window.isLowEndDevice) {
+        // Load Three.js first if not already loaded, then init
+        if (typeof window.loadThreeJS === 'function') {
+            window.loadThreeJS().then(function() {
+                initThreeJS();
+            }).catch(function(e) {
+                console.warn('[3D] Failed to load Three.js:', e);
+                threeError = true;
+            });
+        } else {
+            initThreeJS();
+        }
+    }
 
     try {
         console.log('Creating Phaser.Game...');
         game = new Phaser.Game({
-            type: Phaser.AUTO,
+            type: rendererType,
             parent: 'game-container',
             width: window.innerWidth,
             height: window.innerHeight,
             backgroundColor: '#1a1a1a',
+            roundPixels: true,
             physics: {
                 default: 'arcade',
                 arcade: {
@@ -479,6 +507,16 @@ function initGame() {
             scale: {
                 mode: Phaser.Scale.RESIZE,
                 autoCenter: Phaser.Scale.CENTER_BOTH
+            },
+            render: {
+                pixelArt: false,
+                antialias: !window.isLowEndDevice,
+                roundPixels: true,
+                powerPreference: 'high-performance'
+            },
+            fps: {
+                target: window.isLowEndDevice ? 30 : 60,
+                forceSetTimeOut: window.isLowEndDevice
             }
         });
         console.log('Phaser.Game created successfully');
@@ -3280,11 +3318,8 @@ function spawnPlayers() {
         player = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', true);
         this.physics.add.collider(player.sprite, staticGroup);
 
-        // Hide 2D killer sprite if 3D model is loaded
-        if (threeLoaded && killerModel) {
-            player.sprite.setVisible(false);
-            setKillerModelVisible(true);
-        }
+        // Always hide 2D killer sprite - 3D model will show when loaded, or stay hidden
+        player.sprite.setVisible(false);
 
         // AI survivors - only in singleplayer mode
         if (!isMultiplayer) {
@@ -3386,13 +3421,19 @@ function update(time, dt) {
 
     gameTime += dt;
 
-    // Render Three.js 3D scene (killer model)
-    if (threeLoaded && isKiller && player && player.sprite) {
+    // Render Three.js 3D scene (killer model) - skip on low-end
+    if (threeLoaded && isKiller && player && player.sprite && !window.isLowEndDevice) {
+        // Hide 2D sprite once 3D system is ready
+        if (player.sprite.visible) {
+            player.sprite.setVisible(false);
+        }
         updateKillerModelPosition(player.sprite.x, player.sprite.y, dt);
         const moving = (inputVec.x !== 0 || inputVec.y !== 0);
         updateKillerAnimation(moving);
     }
-    renderThreeJS();
+    if (threeLoaded && !window.isLowEndDevice) {
+        renderThreeJS();
+    }
 
     // Sync actionPressed and inputVec from Input module (for mobile/touch controls)
     if (typeof Input !== 'undefined') {
@@ -3438,8 +3479,8 @@ function update(time, dt) {
         }
     });
 
-    // Animate Silent Hill Style Fog - Dense ground fog
-    if (scene.fogGfx && scene.fogPatches) {
+    // Animate Silent Hill Style Fog - Dense ground fog (skip on low-end)
+    if (scene.fogGfx && scene.fogPatches && !window.isLowEndDevice) {
         // Clear fog layers
         scene.fogGfx.forEach(g => g.clear());
         
@@ -4198,17 +4239,8 @@ function updatePlayer(dt) {
             if (!sp.texture.key.includes('killer_strike')) {
                 sp.setTexture('killer_strike');
             }
-            // Show 2D sprite during strike animation for visual feedback
-            if (threeLoaded && killerModel && killerModel.visible) {
-                sp.setVisible(true);
-                sp.setAlpha(0.7);
-            }
             if (killerStrikeTimer <= 0) {
                 sp.setTexture('killer');
-                // Hide 2D sprite again after strike
-                if (threeLoaded && killerModel && killerModel.visible) {
-                    sp.setVisible(false);
-                }
                 if (isMultiplayer && roomCode && playerId) {
                     setKillerStrikeAnimation(roomCode, playerId, false);
                 }
