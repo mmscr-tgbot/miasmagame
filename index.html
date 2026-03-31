@@ -865,48 +865,6 @@ function setupButtons() {
     if (menuBtns) menuBtns.style.display = 'flex';
   });
 }
-  } catch (e) {
-    console.error('Error starting game:', e);
-    alert('Ошибка запуска игры: ' + e.message);
-  }
-}
-
-/* ═══════ BUTTON SETUP ═══════ */
-function setupButtons() {
-  function on(id, fn) {
-    var el = document.getElementById(id);
-    if (el) el.onclick = fn;
-  }
-  on('btn-create-lobby', createLobby);
-  on('btn-find-lobby', findAndJoinLobby);
-  on('btn-solo', function() { showScreen('role-select'); });
-  on('btn-back-role', function() { showScreen('main-menu'); });
-  on('btn-play-killer', function() { startSoloGame(true); });
-  on('btn-play-survivor', function() { startSoloGame(false); });
-  on('btn-back-menu', function() {
-    if (typeof Game !== 'undefined') Game.stop();
-    showScreen('main-menu');
-  });
-  on('btn-start-game', function() {
-    if (!gRoomId || !gIsHost) return;
-    showToast('Начинаем игру...');
-    startGame(gRoomId).then(function(result) {
-      if (result.success) {
-        showToast('Игра начинается...');
-        var isKiller = (gMyRole === 'killer');
-        if (typeof Game !== 'undefined') {
-          Game.start(isKiller, true, gRoomId, gMyId);
-        }
-      } else {
-        showToast('Ошибка: ' + result.error);
-      }
-    }).catch(function(e) {
-      console.error('[FB] Start game error:', e);
-      showToast('Ошибка запуска игры: ' + e.message);
-    });
-  });
-  on('btn-leave-lobby', window.leaveLobby);
-}
 
 /* ═══════ MISSING FUNCTIONS ═══════ */
 function initializeGenerators(roomCode) {
