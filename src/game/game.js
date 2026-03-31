@@ -157,8 +157,6 @@ let isKillerMoving = false;
 let threeLoaded = false;
 let threeError = false;
 let threeCanvas = null;
-let killer3DOverlay = null;
-let killer3DTexture = null;
 let killer3DSprite = null;
 
 // ═══════ THREE.JS INITIALIZATION ═══════
@@ -172,33 +170,49 @@ function initThreeJS() {
     }
 
     try {
-        // Offscreen canvas for 3D rendering
+        // Create canvas and add to game-container
+        var container = document.getElementById('game-container');
+        if (!container) {
+            console.warn('[3D] No game-container found');
+            threeError = true;
+            return;
+        }
+
         threeCanvas = document.createElement('canvas');
         threeCanvas.width = 128;
         threeCanvas.height = 192;
+        threeCanvas.style.cssText = 'position:fixed;z-index:20;pointer-events:none;display:none;image-rendering:auto;width:80px;height:120px;';
+        document.body.appendChild(threeCanvas);
 
         threeRenderer = new THREE.WebGLRenderer({
             canvas: threeCanvas,
             alpha: true,
-            antialias: false,
+            antialias: true,
             preserveDrawingBuffer: true
         });
         threeRenderer.setSize(128, 192);
         threeRenderer.setPixelRatio(1);
         threeRenderer.setClearColor(0x000000, 0);
+        threeRenderer.outputEncoding = THREE.sRGBEncoding;
 
         threeScene = new THREE.Scene();
 
-        // Camera - portrait view of character
+        // Camera - closer to see model
         threeCamera = new THREE.PerspectiveCamera(35, 128 / 192, 0.01, 50);
-        threeCamera.position.set(0, 0.8, 2.2);
-        threeCamera.lookAt(0, 0.8, 0);
+        threeCamera.position.set(0, 0.5, 2.5);
+        threeCamera.lookAt(0, 0.5, 0);
 
-        // Lighting
-        threeScene.add(new THREE.AmbientLight(0x909090, 1.2));
-        var dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        // Lighting - bright for PBR
+        var ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+        threeScene.add(ambientLight);
+
+        var dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
         dirLight.position.set(2, 4, 2);
         threeScene.add(dirLight);
+
+        var hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
+        threeScene.add(hemiLight);
+
         var rimLight = new THREE.PointLight(0xff3300, 0.5, 8);
         rimLight.position.set(-1.5, 2, -1.5);
         threeScene.add(rimLight);
@@ -230,13 +244,27 @@ function loadKillerModel() {
         function (gltf) {
             killerModel = gltf.scene;
 
+            // Fix materials
+            killerModel.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = false;
+                    child.receiveShadow = false;
+                    if (child.material) {
+                        child.material.needsUpdate = true;
+                        if (child.material.transparent) {
+                            child.material.depthWrite = false;
+                        }
+                    }
+                }
+            });
+
             // Compute bounding box
             var box = new THREE.Box3().setFromObject(killerModel);
             var size = box.getSize(new THREE.Vector3());
             var height = size.y || 1;
 
-            // Scale to ~1.8 units tall
-            var targetScale = 1.8 / height;
+            // Model already properly scaled in Blender - use fixed scale
+            var targetScale = 1.0;
             killerModel.scale.set(targetScale, targetScale, targetScale);
 
             // Center at origin
@@ -246,12 +274,14 @@ function loadKillerModel() {
             killerModel.visible = true;
             threeScene.add(killerModel);
 
-            // Hide 2D sprite and show 3D sprite
+            // Hide 2D sprite
             if (player && player.sprite) {
                 player.sprite.setVisible(false);
             }
-            if (killer3DSprite) {
-                killer3DSprite.visible = true;
+
+            // Show 3D canvas
+            if (threeCanvas) {
+                threeCanvas.style.display = 'block';
             }
 
             // Animations
@@ -264,7 +294,6 @@ function loadKillerModel() {
                     killerAnimations[clip.name.toLowerCase()] = killerMixer.clipAction(clip);
                 });
 
-                // Play walking animation
                 var firstAnim = Object.values(killerAnimations)[0];
                 if (firstAnim) {
                     firstAnim.play();
@@ -281,75 +310,50 @@ function loadKillerModel() {
         },
         function (error) {
             console.error('[3D] Model load error:', error);
-            // Fallback: keep 2D sprite visible
             if (player && player.sprite) {
                 player.sprite.setVisible(true);
             }
-            if (killer3DSprite) {
-                killer3DSprite.destroy();
-                killer3DSprite = null;
+            if (threeCanvas) {
+                threeCanvas.style.display = 'none';
             }
             threeError = true;
         }
     );
 }
 
-function createKiller3DSprite(sceneObj, x, y) {
-    if (!threeLoaded || !threeCanvas) return null;
-    
-    // Initial render
-    threeRenderer.render(threeScene, threeCamera);
-    
-    var texKey = 'killer3d_tex';
-    if (sceneObj.textures.exists(texKey)) {
-        sceneObj.textures.remove(texKey);
-    }
-    sceneObj.textures.addBase64(texKey, threeCanvas.toDataURL());
-    
-    var sprite = sceneObj.add.sprite(x, y, texKey).setDepth(y + 2);
-    sprite.setScale(1.2, 1.2);
-    
-    return sprite;
-}
-
 function updateKiller3DSprite(dt) {
-    if (!killer3DSprite || !killer3DSprite.visible) return;
+    if (!killerModel || !threeCanvas || !threeRenderer) return;
     if (!player || !player.sprite) return;
+
+    var cam = scene.cameras.main;
+    if (!cam) return;
+
+    // Position canvas over killer sprite
+    var screenX = player.sprite.x - cam.scrollX;
+    var screenY = player.sprite.y - cam.scrollY;
     
-    // Update position to match 2D sprite
-    killer3DSprite.setPosition(player.sprite.x, player.sprite.y);
-    killer3DSprite.setDepth(player.sprite.y + 2);
-    
-    // Update 3D model rotation based on movement
-    if (killerModel) {
-        var moving = (inputVec.x !== 0 || inputVec.y !== 0);
-        if (moving) {
-            var targetAngle = Math.atan2(inputVec.x, inputVec.y);
-            var currentAngle = killerModel.rotation.y;
-            var diff = targetAngle - currentAngle;
-            while (diff > Math.PI) diff -= Math.PI * 2;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            killerModel.rotation.y += diff * 0.15;
-        }
-        
-        // Update animation mixer
-        if (killerMixer) {
-            killerMixer.update(dt / 1000);
-        }
-        
-        // Re-render texture
-        threeRenderer.render(threeScene, threeCamera);
-        
-        // Update Phaser texture
-        var texKey = 'killer3d_tex';
-        if (scene && scene.textures) {
-            if (scene.textures.exists(texKey)) {
-                scene.textures.remove(texKey);
-            }
-            scene.textures.addBase64(texKey, threeCanvas.toDataURL());
-            killer3DSprite.setTexture(texKey);
-        }
+    threeCanvas.style.left = (screenX - 40) + 'px';
+    threeCanvas.style.top = (screenY - 60) + 'px';
+    threeCanvas.style.display = 'block';
+
+    // Rotate model
+    var moving = (inputVec.x !== 0 || inputVec.y !== 0);
+    if (moving) {
+        var targetAngle = Math.atan2(inputVec.x, inputVec.y);
+        var currentAngle = killerModel.rotation.y;
+        var diff = targetAngle - currentAngle;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        killerModel.rotation.y += diff * 0.15;
     }
+
+    // Update animation
+    if (killerMixer) {
+        killerMixer.update(dt / 1000);
+    }
+
+    // Render
+    threeRenderer.render(threeScene, threeCamera);
 }
 
 function cleanupThreeJS() {
@@ -363,9 +367,8 @@ function cleanupThreeJS() {
     }
     killerAnimations = {};
     currentKillerAction = null;
-    if (killer3DSprite) {
-        killer3DSprite.destroy();
-        killer3DSprite = null;
+    if (threeCanvas && threeCanvas.parentNode) {
+        threeCanvas.parentNode.removeChild(threeCanvas);
     }
     threeRenderer = null;
     threeScene = null;
@@ -3347,10 +3350,13 @@ function spawnPlayers() {
         player = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', true);
         this.physics.add.collider(player.sprite, staticGroup);
 
-        // 3D model - will hide 2D sprite when model is actually loaded
-        if (threeLoaded && !threeError) {
+        // 3D model loads async - keep 2D visible for now
+        // When model loads, callback will hide 2D and create 3D sprite
+        if (threeLoaded && !threeError && killerModel) {
+            // Model already loaded (rare case)
+            player.sprite.setVisible(false);
             killer3DSprite = createKiller3DSprite(this, kSpawn.x, kSpawn.y);
-            // Don't hide 2D sprite yet - wait for model to load
+            killer3DSprite.visible = true;
         }
 
         // AI survivors - only in singleplayer mode
