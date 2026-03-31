@@ -182,8 +182,8 @@ function initThreeJS() {
         threeCanvas.width = 256;
         threeCanvas.height = 384;
         var dpr = Math.min(window.devicePixelRatio || 1, 2);
-        var canvasSize = Math.round(80 * dpr);
-        var canvasHeight = Math.round(120 * dpr);
+        var canvasSize = Math.round(200 * dpr);
+        var canvasHeight = Math.round(300 * dpr);
         threeCanvas.style.cssText = 'position:fixed;z-index:20;pointer-events:none;display:none;image-rendering:auto;width:' + canvasSize + 'px;height:' + canvasHeight + 'px;';
         document.body.appendChild(threeCanvas);
 
@@ -200,10 +200,10 @@ function initThreeJS() {
 
         threeScene = new THREE.Scene();
 
-        // Camera - closer to see model
-        threeCamera = new THREE.PerspectiveCamera(35, 256 / 384, 0.01, 50);
-        threeCamera.position.set(0, 0.5, 2.5);
-        threeCamera.lookAt(0, 0.5, 0);
+        // Camera - very close so model fills canvas completely, centered vertically
+        threeCamera = new THREE.PerspectiveCamera(60, 256 / 384, 0.01, 50);
+        threeCamera.position.set(0, 0.08, 0.15);
+        threeCamera.lookAt(0, 0.05, 0);
 
         // Lighting - bright for PBR
         var ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
