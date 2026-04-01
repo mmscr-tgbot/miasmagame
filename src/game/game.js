@@ -341,14 +341,37 @@ function loadKillerModel(type, modelPath) {
 
 function updateKiller3DSprite(dt) {
     if (!threeCanvas || !threeRenderer || !threeLoaded) return;
-    if (!player || !player.sprite) return;
+
+    // Find the killer to track
+    var killerSprite = null;
+    if (isKiller && player && player.sprite) {
+        killerSprite = player.sprite;
+    } else if (!isMultiplayer && player && player.aiPlayers) {
+        // Find AI killer
+        for (var i = 0; i < player.aiPlayers.length; i++) {
+            if (player.aiPlayers[i].isAIKiller && player.aiPlayers[i].sprite) {
+                killerSprite = player.aiPlayers[i].sprite;
+                break;
+            }
+        }
+    } else if (isMultiplayer) {
+        // Find remote killer
+        for (var id in remotePlayers) {
+            if (remotePlayers[id].role === 'killer' && remotePlayers[id].sprite) {
+                killerSprite = remotePlayers[id].sprite;
+                break;
+            }
+        }
+    }
+
+    if (!killerSprite) return;
 
     var cam = scene.cameras.main;
     if (!cam) return;
 
     // Position canvas over killer sprite
-    var screenX = player.sprite.x - cam.scrollX;
-    var screenY = player.sprite.y - cam.scrollY;
+    var screenX = killerSprite.x - cam.scrollX;
+    var screenY = killerSprite.y - cam.scrollY;
     
     var w = parseInt(threeCanvas.style.width) || 80;
     var h = parseInt(threeCanvas.style.height) || 120;
@@ -357,12 +380,20 @@ function updateKiller3DSprite(dt) {
     threeCanvas.style.top = (screenY - h / 2) + 'px';
     threeCanvas.style.display = 'block';
 
-    // Check if moving
-    var moving = (inputVec.x !== 0 || inputVec.y !== 0);
+    // Check if moving (only for player-controlled killer)
+    var moving = false;
+    if (isKiller) {
+        moving = (inputVec.x !== 0 || inputVec.y !== 0);
+    } else {
+        // For AI/multiplayer, check if killer is actually moving
+        if (killerSprite.body) {
+            moving = Math.abs(killerSprite.body.velocity.x) > 5 || Math.abs(killerSprite.body.velocity.y) > 5;
+        }
+    }
 
     // Rotate model
     if (moving) {
-        var targetAngle = Math.atan2(inputVec.x, inputVec.y);
+        var targetAngle = Math.atan2(inputVec.x || 0, inputVec.y || 0);
         var diff = targetAngle - killerRotation;
         while (diff > Math.PI) diff -= Math.PI * 2;
         while (diff < -Math.PI) diff += Math.PI * 2;
@@ -3402,10 +3433,9 @@ function spawnPlayers() {
 
     if (isKiller) {
         player = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', true);
+        // Always hide 2D killer sprite - 3D model is used instead
+        player.sprite.setVisible(false);
         this.physics.add.collider(player.sprite, staticGroup);
-
-        // 3D model loads async - keep 2D visible for now
-        // When model loads, callback will hide 2D and show 3D canvas
 
         // AI survivors - only in singleplayer mode
         if (!isMultiplayer) {
@@ -3429,6 +3459,8 @@ function spawnPlayers() {
         if (!isMultiplayer) {
             const aiK = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', false);
             aiK.isAIKiller = true; aiK.aiTimer = 0; aiK.aiHitCooldown = 0;
+            // Hide 2D AI killer sprite - 3D model is used instead
+            aiK.sprite.setVisible(false);
             this.physics.add.collider(aiK.sprite, staticGroup);
             this.physics.add.collider(player.sprite, aiK.sprite);
             player.aiPlayers = [aiK];
@@ -3677,12 +3709,22 @@ function update(time, dt) {
     // Update blood splatters
     updateBloodSplatters(dt);
 
-    // Update 3D killer model
-    if (threeLoaded && isKiller && player && player.sprite && !window.isLowEndDevice) {
-        if (player.sprite.visible) {
-            player.sprite.setVisible(false);
-        }
+    // Update 3D killer model (always render, regardless of role)
+    if (threeLoaded && !window.isLowEndDevice) {
         updateKiller3DSprite(dt);
+    }
+
+    // Hide 2D killer sprite for local player
+    if (isKiller && player && player.sprite && player.sprite.visible) {
+        player.sprite.setVisible(false);
+    }
+    // Hide 2D AI killer sprite
+    if (!isKiller && !isMultiplayer && player && player.aiPlayers) {
+        player.aiPlayers.forEach(ai => {
+            if (ai.isAIKiller && ai.sprite && ai.sprite.visible) {
+                ai.sprite.setVisible(false);
+            }
+        });
     }
 
     // Sync actionPressed and inputVec from Input module (for mobile/touch controls)
@@ -5989,10 +6031,6 @@ function updateRemotePlayers(players) {
             if (pdata.state === 'dead') {
                 rp.sprite.setAlpha(0.3);
                 rp.sprite.setVelocity(0, 0);
-                // Reset killer strike texture
-                if (rp.sprite.texture.key.includes('killer_strike')) {
-                    rp.sprite.setTexture('killer');
-                }
             } else if (pdata.state === 'dying') {
                 // Show dying texture for remote players
                 if (!rp.sprite.texture.key.includes('_dying') && rp.tex) {
@@ -6119,15 +6157,9 @@ function updateRemotePlayers(players) {
                     rp.sprite.setScale(1, 1);
                 }
                 
-                // Handle killer strike animation
+                // Always hide 2D killer sprite - 3D model is used instead
                 if (rp.role === 'killer') {
-                    if (pdata.isStriking) {
-                        if (!rp.sprite.texture.key.includes('killer_strike')) {
-                            rp.sprite.setTexture('killer_strike');
-                        }
-                    } else if (rp.sprite.texture.key.includes('killer_strike')) {
-                        rp.sprite.setTexture('killer');
-                    }
+                    rp.sprite.setVisible(false);
                 }
                 
                 // Clear tint for alive state, set tint for injured
