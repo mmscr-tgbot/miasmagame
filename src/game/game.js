@@ -4373,14 +4373,13 @@ function dropPallet(pallet) {
 }
 
 function breakPallet(pallet) {
-    if (pallet.state !== 'standing') return;
+    if (pallet.state !== 'fallen') return;
     
     pallet.state = 'broken';
     pallet.breakTimer = 2;
-    pallet.sprite.setTexture('pallet_broken');
-    pallet.sprite.setScale(1.2, 1);
+    pallet.sprite.setAlpha(0.5);
+    pallet.sprite.setScale(1, 0.5);
     
-    // Break sound effect placeholder
     UI.showToast('💪 Убийца ломает доску!', 1000);
     
     // Sync in multiplayer
@@ -6596,13 +6595,11 @@ function createControls() {
 
     // Pallet button handlers
     pb.addEventListener('touchstart', function (e) {
-        e.preventDefault();
         palletPressed = true;
         pb.style.transform = 'scale(0.9)';
-    }, { passive: false });
+    }, { passive: true });
 
     pb.addEventListener('touchend', function (e) {
-        e.preventDefault();
         palletPressed = false;
         pb.style.transform = 'scale(1)';
     });
@@ -6612,12 +6609,12 @@ function createControls() {
         pb.style.transform = 'scale(1)';
     });
 
-    pb.addEventListener('mousedown', function () {
+    pb.addEventListener('pointerdown', function (e) {
         palletPressed = true;
         pb.style.transform = 'scale(0.9)';
     });
 
-    pb.addEventListener('mouseup', function () {
+    pb.addEventListener('pointerup', function () {
         palletPressed = false;
         pb.style.transform = 'scale(1)';
     });
