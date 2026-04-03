@@ -86,34 +86,8 @@ function initGame() {
 function preload() {
     var g = this.make.graphics({ x: 0, y: 0, add: false });
 
-    // Ground texture - procedural (no external file needed)
-    var g = this.make.graphics({ x: 0, y: 0, add: false });
-    g.fillStyle(0x1a1a1a); g.fillRect(0, 0, 256, 256);
-    // Add noise and variation
-    for (var i = 0; i < 3000; i++) {
-        var x = Math.random() * 256, y = Math.random() * 256;
-        var shade = 20 + Math.floor(Math.random() * 30);
-        g.fillStyle(shade << 16 | shade << 8 | shade, 0.3 + Math.random() * 0.4);
-        g.fillCircle(x, y, 1 + Math.random() * 3);
-    }
-    // Add some green/brown patches (grass/dirt)
-    for (var i = 0; i < 200; i++) {
-        var x = Math.random() * 256, y = Math.random() * 256;
-        var r = 15 + Math.floor(Math.random() * 20);
-        var gr = 20 + Math.floor(Math.random() * 15);
-        var b = 8 + Math.floor(Math.random() * 10);
-        g.fillStyle(r << 16 | gr << 8 | b, 0.2 + Math.random() * 0.3);
-        g.fillCircle(x, y, 2 + Math.random() * 5);
-    }
-    // Add small stones
-    for (var i = 0; i < 80; i++) {
-        var x = Math.random() * 256, y = Math.random() * 256;
-        var s = 30 + Math.floor(Math.random() * 20);
-        g.fillStyle(s << 16 | s << 8 | s, 0.5);
-        g.fillCircle(x, y, 1 + Math.random() * 2);
-    }
-    g.generateTexture('ground_tile', 256, 256);
-    g.clear();
+    // Ground texture - WebP atlas with seamless blending
+    this.load.image('ground_tile', 'src/textures/ground/ground_tile.webp');
 
     // Brick wall texture - procedural
     g.fillStyle(0x3a2a1a); g.fillRect(0, 0, 128, 128);
@@ -935,12 +909,12 @@ function create() {
     scene = this;
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
 
-    // Tiled ground background - covers entire map exactly
-    var ground = this.add.tileSprite(MAP_W/2, MAP_H/2, MAP_W, MAP_H, 'ground_tile');
-    ground.setTint(0x555555);
+    // Tiled ground background - WebP atlas, tiles naturally
+    var ground = this.add.tileSprite(MAP_W / 2, MAP_H / 2, MAP_W, MAP_H, 'ground_tile');
+    ground.setTint(0x888888); // Slight darkening for horror atmosphere
     ground.setDepth(-1);
-    ground.tileScaleX = 0.125;
-    ground.tileScaleY = 0.125;
+    ground.tileScaleX = 0.5;
+    ground.tileScaleY = 0.5;
 
     staticGroup = this.physics.add.staticGroup();
     buildFence.call(this, MAP_W, MAP_H);

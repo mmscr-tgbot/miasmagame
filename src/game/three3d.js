@@ -97,7 +97,8 @@ function loadKillerModel(type, modelPath) {
                             map: oldMat.map || null,
                             transparent: oldMat.transparent || false,
                             opacity: oldMat.opacity !== undefined ? oldMat.opacity : 1.0,
-                            side: THREE.FrontSide
+                            side: THREE.FrontSide,
+                            skinning: true // CRITICAL: enables skeletal animation
                         });
                         child.material = simpleMat;
                         // Dispose old material to free memory
