@@ -14,11 +14,15 @@ function updateFog(dt) {
     var cam = scene.cameras.main;
     if (!cam) return;
 
+    // Only render fog patches near the camera (optimization)
+    var camCenterX = cam.scrollX + cam.width / 2;
+    var camCenterY = cam.scrollY + cam.height / 2;
+    var maxDist = cam.width * 0.8;
+
     scene.fogPatches.forEach(function(patch) {
-        var dx = cam.scrollX + cam.width / 2 - patch.x;
-        var dy = cam.scrollY + cam.height / 2 - patch.y;
+        var dx = camCenterX - patch.x;
+        var dy = camCenterY - patch.y;
         var d = Math.sqrt(dx * dx + dy * dy);
-        var maxDist = patch.width * 0.8;
 
         if (d < maxDist) {
             var alpha = patch.alpha * (1 - d / maxDist);

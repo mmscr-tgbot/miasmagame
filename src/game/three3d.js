@@ -1,21 +1,10 @@
 // ═══════ THREE.JS 3D MODEL ═══════
+// State variables are defined in state.js
 
-var threeRenderer = null;
-var threeScene = null;
-var threeCamera = null;
-var killerModelIdle = null;
-var killerModelWalking = null;
-var killerModel = null;
-var killerMixerIdle = null;
-var killerMixerWalking = null;
-var killerAnimationsIdle = {};
-var killerAnimationsWalking = {};
-var threeLoaded = false;
-var threeError = false;
-var threeCanvas = null;
-var modelsLoaded = 0;
-var totalModels = 2;
-var killerRotation = 0;
+var killerModelRun = null;
+var killerMixerRun = null;
+var killerAnimationsRun = {};
+var totalModels = 3;
 
 function initThreeJS() {
     if (threeLoaded || threeError) return;
@@ -34,34 +23,43 @@ function initThreeJS() {
         document.body.appendChild(threeCanvas);
         threeCanvas.setAttribute('style', 'position:fixed!important;top:0!important;left:0!important;z-index:20!important;pointer-events:none!important;display:none!important;width:' + canvasSize + 'px!important;height:' + canvasHeight + 'px!important;');
 
+        // Optimized renderer for mobile
         threeRenderer = new THREE.WebGLRenderer({
             canvas: threeCanvas,
             alpha: true,
-            antialias: true,
-            preserveDrawingBuffer: true
+            antialias: false,
+            preserveDrawingBuffer: true,
+            powerPreference: 'high-performance'
         });
         threeRenderer.setSize(canvasSize, canvasHeight);
-        threeRenderer.setPixelRatio(1);
+        threeRenderer.setPixelRatio(1); // Force 1x pixel ratio for performance
         threeRenderer.setClearColor(0x000000, 0);
         threeRenderer.outputEncoding = THREE.sRGBEncoding;
+        // Disable expensive features
+        threeRenderer.shadowMap.enabled = false;
+        threeRenderer.toneMapping = THREE.NoToneMapping;
 
         threeScene = new THREE.Scene();
 
+        // Camera - very close so model fills canvas completely, centered vertically
         threeCamera = new THREE.PerspectiveCamera(60, canvasSize / canvasHeight, 0.01, 50);
         threeCamera.position.set(0, 0.08, 0.15);
         threeCamera.lookAt(0, 0.05, 0);
 
+        // Optimized lighting - fewer lights, no shadows
         threeScene.add(new THREE.AmbientLight(0xffffff, 1.5));
         var dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
         dirLight.position.set(2, 4, 2);
         threeScene.add(dirLight);
-        threeScene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.8));
-        var rimLight = new THREE.PointLight(0xff3300, 0.5, 8);
-        rimLight.position.set(-1.5, 2, -1.5);
-        threeScene.add(rimLight);
+        // Removed hemisphere and rim lights for performance
+        // threeScene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.8));
+        // var rimLight = new THREE.PointLight(0xff3300, 0.5, 8);
+        // rimLight.position.set(-1.5, 2, -1.5);
+        // threeScene.add(rimLight);
 
         loadKillerModel('idle', 'src/models/killers/scare/ScareKiller_Idle.glb');
         loadKillerModel('walking', 'src/models/killers/scare/ScareKiller_Walking.glb');
+        loadKillerModel('running', 'src/models/killers/scare/ScareKiller_Run.glb');
 
         threeLoaded = true;
         console.log('[3D] Three.js initialized');
@@ -86,15 +84,25 @@ function loadKillerModel(type, modelPath) {
         function (gltf) {
             var model = gltf.scene;
 
+            // Optimize materials - replace PBR with simpler materials for mobile
             model.traverse(function (child) {
                 if (child.isMesh) {
                     child.castShadow = false;
                     child.receiveShadow = false;
+                    // Replace complex PBR materials with simple Lambert
                     if (child.material) {
-                        child.material.needsUpdate = true;
-                        if (child.material.transparent) {
-                            child.material.depthWrite = false;
-                        }
+                        var oldMat = child.material;
+                        var simpleMat = new THREE.MeshLambertMaterial({
+                            color: oldMat.color || 0xffffff,
+                            map: oldMat.map || null,
+                            transparent: oldMat.transparent || false,
+                            opacity: oldMat.opacity !== undefined ? oldMat.opacity : 1.0,
+                            side: THREE.FrontSide
+                        });
+                        child.material = simpleMat;
+                        // Dispose old material to free memory
+                        if (oldMat.map) oldMat.map.dispose();
+                        oldMat.dispose();
                     }
                 }
             });
@@ -138,6 +146,9 @@ function loadKillerModel(type, modelPath) {
             if (type === 'idle') {
                 killerModelIdle = model;
                 killerMixerIdle = mixer;
+            } else if (type === 'running') {
+                killerModelRun = model;
+                killerMixerRun = mixer;
             } else {
                 killerModelWalking = model;
                 killerMixerWalking = mixer;
@@ -206,10 +217,13 @@ function updateKiller3DSprite(dt) {
     threeCanvas.style.display = 'block';
 
     var moving = false;
+    var joystickIntensity = 0;
     if (isKiller) {
         moving = (inputVec.x !== 0 || inputVec.y !== 0);
+        joystickIntensity = Math.sqrt(inputVec.x * inputVec.x + inputVec.y * inputVec.y);
     } else if (killerSprite.body) {
         moving = Math.abs(killerSprite.body.velocity.x) > 5 || Math.abs(killerSprite.body.velocity.y) > 5;
+        joystickIntensity = 1;
     }
 
     if (moving) {
@@ -222,23 +236,79 @@ function updateKiller3DSprite(dt) {
 
     if (killerModelIdle) killerModelIdle.rotation.y = killerRotation;
     if (killerModelWalking) killerModelWalking.rotation.y = killerRotation;
+    if (killerModelRun) killerModelRun.rotation.y = killerRotation;
 
-    if (moving && killerModel !== killerModelWalking) {
-        if (killerModelIdle) killerModelIdle.visible = false;
-        if (killerModelWalking) {
-            killerModelWalking.visible = true;
-            killerModel = killerModelWalking;
+    // Determine target animation based on joystick intensity
+    var targetState = 'idle';
+    if (joystickIntensity > 0.8) targetState = 'run';
+    else if (moving) targetState = 'walk';
+
+    // Cross-fade between animations
+    var fadeTime = 0.15;
+
+    if (targetState === 'run' && killerMixerRun) {
+        if (currentKillerState !== 'run') {
+            if (currentKillerState === 'walk' && killerMixerWalking) {
+                var walkAction = killerAnimationsWalking[Object.keys(killerAnimationsWalking)[0]];
+                var runAction = killerAnimationsRun[Object.keys(killerAnimationsRun)[0]];
+                if (walkAction && runAction) {
+                    walkAction.fadeOut(fadeTime);
+                    runAction.reset().fadeIn(fadeTime).play();
+                }
+            } else if (currentKillerState === 'idle' && killerMixerIdle) {
+                var idleAction = killerAnimationsIdle[Object.keys(killerAnimationsIdle)[0]];
+                var runAction = killerAnimationsRun[Object.keys(killerAnimationsRun)[0]];
+                if (idleAction && runAction) {
+                    idleAction.fadeOut(fadeTime);
+                    runAction.reset().fadeIn(fadeTime).play();
+                }
+            }
+            currentKillerState = 'run';
         }
-    } else if (!moving && killerModel !== killerModelIdle) {
-        if (killerModelWalking) killerModelWalking.visible = false;
-        if (killerModelIdle) {
-            killerModelIdle.visible = true;
-            killerModel = killerModelIdle;
+    } else if (targetState === 'walk' && killerMixerWalking) {
+        if (currentKillerState !== 'walk') {
+            if (currentKillerState === 'run' && killerMixerRun) {
+                var runAction = killerAnimationsRun[Object.keys(killerAnimationsRun)[0]];
+                var walkAction = killerAnimationsWalking[Object.keys(killerAnimationsWalking)[0]];
+                if (runAction && walkAction) {
+                    runAction.fadeOut(fadeTime);
+                    walkAction.reset().fadeIn(fadeTime).play();
+                }
+            } else if (currentKillerState === 'idle' && killerMixerIdle) {
+                var idleAction = killerAnimationsIdle[Object.keys(killerAnimationsIdle)[0]];
+                var walkAction = killerAnimationsWalking[Object.keys(killerAnimationsWalking)[0]];
+                if (idleAction && walkAction) {
+                    idleAction.fadeOut(fadeTime);
+                    walkAction.reset().fadeIn(fadeTime).play();
+                }
+            }
+            currentKillerState = 'walk';
+        }
+    } else if (targetState === 'idle' && killerMixerIdle) {
+        if (currentKillerState !== 'idle') {
+            if (currentKillerState === 'walk' && killerMixerWalking) {
+                var walkAction = killerAnimationsWalking[Object.keys(killerAnimationsWalking)[0]];
+                var idleAction = killerAnimationsIdle[Object.keys(killerAnimationsIdle)[0]];
+                if (walkAction && idleAction) {
+                    walkAction.fadeOut(fadeTime);
+                    idleAction.reset().fadeIn(fadeTime).play();
+                }
+            } else if (currentKillerState === 'run' && killerMixerRun) {
+                var runAction = killerAnimationsRun[Object.keys(killerAnimationsRun)[0]];
+                var idleAction = killerAnimationsIdle[Object.keys(killerAnimationsIdle)[0]];
+                if (runAction && idleAction) {
+                    runAction.fadeOut(fadeTime);
+                    idleAction.reset().fadeIn(fadeTime).play();
+                }
+            }
+            currentKillerState = 'idle';
         }
     }
 
+    // Update all mixers
     if (killerMixerWalking) killerMixerWalking.update(dt / 1000);
     if (killerMixerIdle) killerMixerIdle.update(dt / 1000);
+    if (killerMixerRun) killerMixerRun.update(dt / 1000);
 
     threeRenderer.render(threeScene, threeCamera);
 }
@@ -246,10 +316,13 @@ function updateKiller3DSprite(dt) {
 function cleanupThreeJS() {
     if (killerModelIdle) { threeScene.remove(killerModelIdle); killerModelIdle = null; }
     if (killerModelWalking) { threeScene.remove(killerModelWalking); killerModelWalking = null; }
+    if (killerModelRun) { threeScene.remove(killerModelRun); killerModelRun = null; }
     if (killerMixerIdle) { killerMixerIdle.stopAllAction(); killerMixerIdle = null; }
     if (killerMixerWalking) { killerMixerWalking.stopAllAction(); killerMixerWalking = null; }
+    if (killerMixerRun) { killerMixerRun.stopAllAction(); killerMixerRun = null; }
     killerAnimationsIdle = {};
     killerAnimationsWalking = {};
+    killerAnimationsRun = {};
     killerModel = null;
     killerRotation = 0;
     if (threeCanvas && threeCanvas.parentNode) {

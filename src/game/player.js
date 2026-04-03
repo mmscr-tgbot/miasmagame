@@ -308,3 +308,171 @@ function killerAction(dt) {
         });
     }
 }
+
+function survivorAction(dt) {
+    if (isKiller || !player || !player.sprite) return;
+
+    var p = player;
+    var sp = p.sprite;
+
+    // Already repairing - check if still holding button and near generator
+    if (p.isRepairing && p.progressAction) {
+        var gen = p.progressAction;
+        if (!gen || gen.repaired) {
+            p.isRepairing = false;
+            p.progressAction = null;
+            if (sp.texture.key.includes('_repair')) sp.setTexture(p.tex);
+            return;
+        }
+
+        // Check distance - if too far, stop repairing
+        var d = dist(sp, gen);
+        if (d > CONFIG.INTERACT_DISTANCE + 20 || !actionPressed) {
+            // Stop repairing but keep progress
+            p.isRepairing = false;
+            p.progressAction = null;
+            if (sp.texture.key.includes('_repair')) sp.setTexture(p.tex);
+            if (gen.repairSparks) gen.repairSparks.setVisible(false);
+            return;
+        }
+
+        gen.progress += CONFIG.GENERATOR_REPAIR_RATE * dt / 1000;
+
+        // Sparks
+        if (gen.repairSparks) {
+            gen.repairSparks.setVisible(true);
+            gen.repairSparks.clear();
+            for (var i = 0; i < 3; i++) {
+                var sx = gen.bx + (Math.random() - 0.5) * 30;
+                var sy = gen.by + (Math.random() - 0.5) * 20;
+                gen.repairSparks.fillStyle(0xffff00, 0.6 + Math.random() * 0.4);
+                gen.repairSparks.fillCircle(sx, sy, 1 + Math.random() * 2);
+            }
+        }
+
+        // Progress bar
+        if (gen.barGfx) {
+            gen.barGfx.clear();
+            gen.barGfx.fillStyle(0x000000, 0.7);
+            gen.barGfx.fillRect(gen.bx - 25, gen.by - 45, 50, 8);
+            gen.barGfx.fillStyle(0xffee00, 0.9);
+            gen.barGfx.fillRect(gen.bx - 24, gen.by - 44, 48 * (gen.progress / 100), 6);
+        }
+
+        if (gen.progress >= 100) {
+            gen.progress = 100;
+            gen.repaired = true;
+            p.isRepairing = false;
+            p.progressAction = null;
+            if (sp.texture.key.includes('_repair')) sp.setTexture(p.tex);
+            if (gen.repairSparks) gen.repairSparks.setVisible(false);
+
+            var repairedCount = generators.filter(function(g) { return g.repaired; }).length;
+            UI.showToast('\u26A1 \u0413\u0435\u043D\u0435\u0440\u0430\u0442\u043E\u0440 \u043F\u043E\u0447\u0438\u043D\u0435\u043D! (' + repairedCount + '/5)', 2000);
+
+            if (isMultiplayer && roomCode && playerId) {
+                updateGeneratorProgress(roomCode, gen.genId, 100, true);
+            }
+
+            if (repairedCount >= CONFIG.GENS_REQUIRED_FOR_EXIT && !exitOpen) {
+                exitOpen = true;
+                UI.showToast('\uD83D\uDEAA \u0412\u044B\u0445\u043E\u0434 \u043E\u0442\u043A\u0440\u044B\u0442!', 3000);
+                if (isMultiplayer && roomCode) setGateOpened(roomCode, true);
+            }
+
+            if (repairedCount >= 5 && !hatchOpen && !hatchClosed) {
+                hatchOpen = true;
+                hatch.sprite.setVisible(true);
+                hatch.sprite.setDepth(hatch.sprite.y + 1);
+                UI.showToast('\uD83D\uDD73\uFE0F \u041B\u044E\u043A \u043F\u043E\u044F\u0432\u0438\u043B\u0441\u044F!', 3000);
+                if (isMultiplayer && roomCode) setHatchSpawned(roomCode, hatch.x, hatch.y);
+            }
+        }
+        return;
+    }
+
+    if (!actionPressed) return;
+    actionPressed = false;
+
+    // Heal injured survivor
+    var nearSurvivor = null;
+    if (!isMultiplayer && player.aiPlayers) {
+        player.aiPlayers.forEach(function(ai) {
+            if (ai.state === 'injured' && dist(sp, ai.sprite) < CONFIG.INTERACT_DISTANCE) {
+                nearSurvivor = ai;
+            }
+        });
+    } else if (isMultiplayer) {
+        Object.values(remotePlayers).forEach(function(rp) {
+            if (rp.state === 'injured' && rp.sprite && dist(sp, rp.sprite) < CONFIG.INTERACT_DISTANCE) {
+                nearSurvivor = rp;
+            }
+        });
+    }
+
+    if (nearSurvivor) {
+        nearSurvivor.state = 'alive';
+        nearSurvivor.sprite.clearTint();
+        UI.showToast('\u2764\uFE0F \u0412\u044B\u0436\u0438\u0432\u0448\u0438\u0439 \u0432\u044B\u043B\u0435\u0447\u0435\u043D!', 1500);
+        if (isMultiplayer && roomCode && nearSurvivor.playerId) {
+            updatePlayerHealth(roomCode, nearSurvivor.playerId, 100);
+            updatePlayerState(roomCode, nearSurvivor.playerId, 'alive');
+        }
+        return;
+    }
+
+    // Unhook survivor
+    var nearHooked = null;
+    hooks.forEach(function(hook) {
+        if (hook.occupied && hook.hookedSurvivor) {
+            var d = dist(sp, hook);
+            if (d < CONFIG.INTERACT_DISTANCE) nearHooked = hook;
+        }
+    });
+
+    if (nearHooked) {
+        var hookedSurvivor = nearHooked.hookedSurvivor;
+        nearHooked.occupied = false;
+        nearHooked.hookedSurvivor = null;
+        nearHooked.hookTimer = 0;
+        hookedSurvivor.state = 'injured';
+        hookedSurvivor.sprite.clearTint();
+        hookedSurvivor.sprite.setPosition(nearHooked.x + 30, nearHooked.y);
+        UI.showToast('\uD83E\uDE9D \u0412\u044B\u0436\u0438\u0432\u0448\u0438\u0439 \u0441\u043D\u044F\u0442 \u0441 \u043A\u0440\u044E\u043A\u0430!', 1500);
+        if (isMultiplayer && roomCode && hookedSurvivor.playerId) {
+            unhookSurvivor(roomCode, hookedSurvivor.playerId);
+        }
+        return;
+    }
+
+    // Open gate
+    if (exitOpen) {
+        var nearGate = null;
+        gates.forEach(function(gate) {
+            if (!gate.opened && dist(sp, gate) < CONFIG.INTERACT_DISTANCE) nearGate = gate;
+        });
+
+        if (nearGate) {
+            nearGate.isOpening = true;
+            nearGate.progress = 0;
+            UI.showToast('\uD83D\uDEAA \u041E\u0442\u043A\u0440\u044B\u0432\u0430\u044E \u0432\u043E\u0440\u043E\u0442\u0430...', 1500);
+            return;
+        }
+    }
+
+    // Repair generator
+    var nearGen = null;
+    generators.forEach(function(gen) {
+        if (!gen.repaired && dist(sp, gen) < CONFIG.INTERACT_DISTANCE) nearGen = gen;
+    });
+
+    if (nearGen) {
+        p.isRepairing = true;
+        p.progressAction = nearGen;
+        if (!sp.texture.key.includes('_repair')) {
+            sp.setTexture(getTexWithFallback(p.tex, '_repair'));
+        }
+        UI.showToast('\uD83D\uDD27 \u041F\u043E\u0447\u0438\u043D\u043A\u0430 \u0433\u0435\u043D\u0435\u0440\u0430\u0442\u043E\u0440\u0430...', 1500);
+        return;
+    }
+}

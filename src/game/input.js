@@ -3,24 +3,25 @@
 function createControls() {
     var joy = document.createElement('div');
     joy.id = 'joystick-zone';
-    joy.style.cssText = 'position:fixed;bottom:20px;left:20px;width:130px;height:130px;z-index:99999;touch-action:none;';
+    joy.style.cssText = 'position:fixed;bottom:20px;left:20px;width:130px;height:130px;z-index:99999;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;';
     joy.innerHTML = '<div id="joy-base" style="width:100%;height:100%;background:rgba(255,255,255,0.1);border:3px solid rgba(255,255,255,0.25);border-radius:50%;position:relative;"><div id="joy-knob" style="width:50px;height:50px;background:rgba(220,50,50,0.85);border-radius:50%;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);box-shadow:0 0 12px rgba(220,50,50,0.4);"></div></div>';
     document.body.appendChild(joy);
 
     var ab = document.createElement('div');
     ab.id = 'action-btn';
     ab.textContent = '\u26a1';
-    ab.style.cssText = 'position:fixed;bottom:30px;right:20px;width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#cc2200);border:3px solid rgba(255,255,255,0.35);color:#fff;font-size:32px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:99999;touch-action:none;box-shadow:0 0 18px rgba(255,80,0,0.5);transition:transform 0.1s;';
+    ab.style.cssText = 'position:fixed;bottom:30px;right:20px;width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#ff6600,#cc2200);border:3px solid rgba(255,255,255,0.35);color:#fff;font-size:32px;font-weight:bold;display:flex;align-items:center;justify-content:center;z-index:99999;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;box-shadow:0 0 18px rgba(255,80,0,0.5);transition:transform 0.1s;';
     document.body.appendChild(ab);
 
     var pb = document.createElement('div');
     pb.id = 'pallet-btn';
     pb.textContent = '\ud83e\udeb5';
-    pb.style.cssText = 'position:fixed;bottom:130px;right:35px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#8B4513,#654321);border:2px solid rgba(255,255,255,0.25);color:#fff;font-size:24px;display:none;align-items:center;justify-content:center;z-index:99999;touch-action:none;box-shadow:0 0 14px rgba(139,69,19,0.5);transition:transform 0.1s;';
+    pb.style.cssText = 'position:fixed;bottom:130px;right:35px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#8B4513,#654321);border:2px solid rgba(255,255,255,0.25);color:#fff;font-size:24px;display:none;align-items:center;justify-content:center;z-index:99999;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;box-shadow:0 0 14px rgba(139,69,19,0.5);transition:transform 0.1s;';
     document.body.appendChild(pb);
 
     var joyBase = document.getElementById('joy-base');
     var joyKnob = document.getElementById('joy-knob');
+    var joyTouchId = null;
 
     function handleJoy(e) {
         e.preventDefault();
@@ -39,19 +40,44 @@ function createControls() {
     }
 
     function resetJoy() {
+        joyTouchId = null;
         joyKnob.style.transform = 'translate(-50%, -50%)';
         inputVec.x = 0;
         inputVec.y = 0;
     }
 
-    joy.addEventListener('touchstart', handleJoy, { passive: false });
-    joy.addEventListener('touchmove', handleJoy, { passive: false });
-    joy.addEventListener('touchend', resetJoy);
+    // Touch events for joystick
+    joy.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        joyTouchId = e.changedTouches[0].identifier;
+        handleJoy(e);
+    }, { passive: false });
+
+    joy.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joyTouchId) {
+                handleJoy(e);
+                break;
+            }
+        }
+    }, { passive: false });
+
+    joy.addEventListener('touchend', function(e) {
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joyTouchId) {
+                resetJoy();
+                break;
+            }
+        }
+    });
+
     joy.addEventListener('touchcancel', resetJoy);
     joy.addEventListener('mousedown', handleJoy);
-    joy.addEventListener('mousemove', function(e) { if (e.buttons) handleJoy(e); });
-    joy.addEventListener('mouseup', resetJoy);
+    document.addEventListener('mousemove', function(e) { if (e.buttons === 1) handleJoy(e); });
+    document.addEventListener('mouseup', resetJoy);
 
+    // Action button
     ab.addEventListener('touchstart', function(e) {
         e.preventDefault();
         actionPressed = true;
@@ -75,11 +101,14 @@ function createControls() {
         ab.style.transform = 'scale(1)';
     });
 
+    // Pallet button
     pb.addEventListener('touchstart', function(e) {
+        e.preventDefault();
         palletPressed = true;
         pb.style.transform = 'scale(0.9)';
-    }, { passive: true });
-    pb.addEventListener('touchend', function() {
+    }, { passive: false });
+    pb.addEventListener('touchend', function(e) {
+        e.preventDefault();
         palletPressed = false;
         pb.style.transform = 'scale(1)';
     });
@@ -87,11 +116,11 @@ function createControls() {
         palletPressed = false;
         pb.style.transform = 'scale(1)';
     });
-    pb.addEventListener('pointerdown', function() {
+    pb.addEventListener('mousedown', function() {
         palletPressed = true;
         pb.style.transform = 'scale(0.9)';
     });
-    pb.addEventListener('pointerup', function() {
+    pb.addEventListener('mouseup', function() {
         palletPressed = false;
         pb.style.transform = 'scale(1)';
     });

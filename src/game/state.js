@@ -53,3 +53,25 @@ var remotePlayers = {};
 var lastPosUpdate = 0;
 var POS_UPDATE_INTERVAL = 50;
 var POS_LERP_SPEED = 0.15;
+
+// Three.js 3D model state
+var threeRenderer = null;
+var threeScene = null;
+var threeCamera = null;
+var killerModelIdle = null;
+var killerModelWalking = null;
+var killerModelRun = null;
+var killerModel = null;
+var killerMixerIdle = null;
+var killerMixerWalking = null;
+var killerMixerRun = null;
+var killerAnimationsIdle = {};
+var killerAnimationsWalking = {};
+var killerAnimationsRun = {};
+var threeLoaded = false;
+var threeError = false;
+var threeCanvas = null;
+var modelsLoaded = 0;
+var totalModels = 3;
+var killerRotation = 0;
+var currentKillerState = 'idle';

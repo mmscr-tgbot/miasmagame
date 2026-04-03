@@ -37,29 +37,366 @@ function stopGame() {
 
 function initGame() {
     console.log('initGame called');
-    document.getElementById('game-container').innerHTML = '';
-    if (!window.isLowEndDevice && typeof THREE !== 'undefined') initThreeJS();
+    var container = document.getElementById('game-container');
+    if (!container) {
+        console.error('game-container not found!');
+        alert('Ошибка: game-container не найден');
+        return;
+    }
+    container.innerHTML = '';
+
+    console.log('isLowEndDevice:', window.isLowEndDevice);
+    console.log('THREE available:', typeof THREE !== 'undefined');
+
+    if (!window.isLowEndDevice && typeof THREE !== 'undefined') {
+        try {
+            initThreeJS();
+            console.log('Three.js init called');
+        } catch (e) {
+            console.error('Three.js init error:', e);
+        }
+    }
+
     try {
+        console.log('Creating Phaser.Game...');
         game = new Phaser.Game({
-            type: Phaser.AUTO, parent: 'game-container',
-            width: window.innerWidth, height: window.innerHeight, backgroundColor: '#1a1a1a', roundPixels: true,
-            physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+            type: Phaser.AUTO,
+            parent: 'game-container',
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: '#1a1a1a',
+            roundPixels: true,
+            physics: {
+                default: 'arcade',
+                arcade: { gravity: { y: 0 }, debug: false }
+            },
             scene: { preload: preload, create: create, update: update },
             scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
             render: { pixelArt: false, antialias: !window.isLowEndDevice, roundPixels: true, powerPreference: 'high-performance' },
             fps: { target: window.isLowEndDevice ? 30 : 60, forceSetTimeOut: window.isLowEndDevice }
         });
         console.log('Phaser.Game created successfully');
-    } catch (e) { console.error('Error creating Phaser.Game:', e); alert('\u041E\u0448\u0438\u0431\u043A\u0430: ' + e.message); }
+    } catch (e) {
+        console.error('Error creating Phaser.Game:', e);
+        alert('Ошибка создания игры: ' + e.message);
+    }
 }
 
 // ═══════ TEXTURE BUILDER ═══════
 function preload() {
     var g = this.make.graphics({ x: 0, y: 0, add: false });
 
-    // Ground tile
-    this.load.image('ground_tile', 'src/textures/ground/1/ground_with_rocks_01_color.png');
-    this.load.image('brick_wall', 'src/textures/bricks_wall/1/bricks_wall_color.png');
+    // Ground texture - procedural (no external file needed)
+    var g = this.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0x1a1a1a); g.fillRect(0, 0, 256, 256);
+    // Add noise and variation
+    for (var i = 0; i < 3000; i++) {
+        var x = Math.random() * 256, y = Math.random() * 256;
+        var shade = 20 + Math.floor(Math.random() * 30);
+        g.fillStyle(shade << 16 | shade << 8 | shade, 0.3 + Math.random() * 0.4);
+        g.fillCircle(x, y, 1 + Math.random() * 3);
+    }
+    // Add some green/brown patches (grass/dirt)
+    for (var i = 0; i < 200; i++) {
+        var x = Math.random() * 256, y = Math.random() * 256;
+        var r = 15 + Math.floor(Math.random() * 20);
+        var gr = 20 + Math.floor(Math.random() * 15);
+        var b = 8 + Math.floor(Math.random() * 10);
+        g.fillStyle(r << 16 | gr << 8 | b, 0.2 + Math.random() * 0.3);
+        g.fillCircle(x, y, 2 + Math.random() * 5);
+    }
+    // Add small stones
+    for (var i = 0; i < 80; i++) {
+        var x = Math.random() * 256, y = Math.random() * 256;
+        var s = 30 + Math.floor(Math.random() * 20);
+        g.fillStyle(s << 16 | s << 8 | s, 0.5);
+        g.fillCircle(x, y, 1 + Math.random() * 2);
+    }
+    g.generateTexture('ground_tile', 256, 256);
+    g.clear();
+
+    // Brick wall texture - procedural
+    g.fillStyle(0x3a2a1a); g.fillRect(0, 0, 128, 128);
+    // Bricks
+    var brickH = 16, brickW = 32;
+    for (var row = 0; row < 8; row++) {
+        var offset = (row % 2) * (brickW / 2);
+        for (var col = -1; col < 5; col++) {
+            var bx = col * brickW + offset;
+            var by = row * brickH;
+            var r = 70 + Math.floor(Math.random() * 30);
+            var gr = 35 + Math.floor(Math.random() * 15);
+            var b = 20 + Math.floor(Math.random() * 10);
+            g.fillStyle(r << 16 | gr << 8 | b);
+            g.fillRect(bx + 1, by + 1, brickW - 2, brickH - 2);
+            // Brick highlight
+            g.fillStyle((r + 15) << 16 | (gr + 10) << 8 | (b + 5), 0.3);
+            g.fillRect(bx + 1, by + 1, brickW - 2, 3);
+        }
+    }
+    // Mortar lines
+    g.fillStyle(0x5a5a5a, 0.6);
+    for (var row = 0; row <= 8; row++) {
+        g.fillRect(0, row * brickH, 128, 2);
+    }
+    for (var col = 0; col <= 4; col++) {
+        g.fillRect(col * brickW, 0, 2, 128);
+    }
+    g.generateTexture('brick_wall', 128, 128);
+    g.clear();
+
+    // Trees
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(35, 100, 20, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(30, 60, 10, 40);
+    g.fillStyle(0x4a3a2a); g.fillRect(30, 60, 4, 40);
+    g.fillStyle(0x1a3a1a); g.fillCircle(35, 40, 25);
+    g.fillStyle(0x2a4a2a); g.fillCircle(35, 35, 22);
+    g.fillStyle(0x3a5a3a); g.fillCircle(35, 30, 18);
+    g.fillStyle(0x4a6a4a); g.fillCircle(30, 25, 12);
+    g.fillStyle(0x2a4a2a); g.fillCircle(42, 45, 10);
+    g.generateTexture('tree0', 70, 100); g.clear();
+
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(35, 100, 20, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(30, 60, 10, 40);
+    g.fillStyle(0x4a3a2a); g.fillRect(30, 60, 4, 40);
+    g.fillStyle(0x1a4a1a); g.fillCircle(35, 40, 25);
+    g.fillStyle(0x2a5a2a); g.fillCircle(35, 35, 22);
+    g.fillStyle(0x3a6a3a); g.fillCircle(35, 30, 18);
+    g.fillStyle(0x4a7a4a); g.fillCircle(28, 25, 12);
+    g.fillStyle(0x2a5a2a); g.fillCircle(44, 45, 10);
+    g.generateTexture('tree1', 70, 100); g.clear();
+
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(35, 100, 20, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(30, 60, 10, 40);
+    g.fillStyle(0x4a3a2a); g.fillRect(30, 60, 4, 40);
+    g.fillStyle(0x1a3a2a); g.fillCircle(35, 40, 25);
+    g.fillStyle(0x2a4a3a); g.fillCircle(35, 35, 22);
+    g.fillStyle(0x3a5a4a); g.fillCircle(35, 30, 18);
+    g.fillStyle(0x4a6a5a); g.fillCircle(32, 25, 12);
+    g.fillStyle(0x2a4a3a); g.fillCircle(40, 45, 10);
+    g.generateTexture('tree2', 70, 100); g.clear();
+
+    // Pine trees
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(25, 95, 16, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(22, 70, 6, 25);
+    g.fillStyle(0x1a3a1a); g.fillTriangle(25, 10, 5, 50, 45, 50);
+    g.fillStyle(0x2a4a2a); g.fillTriangle(25, 15, 10, 45, 40, 45);
+    g.fillStyle(0x3a5a3a); g.fillTriangle(25, 20, 15, 40, 35, 40);
+    g.fillStyle(0x4a6a4a); g.fillTriangle(25, 25, 18, 35, 32, 35);
+    g.generateTexture('pine_tree', 50, 95); g.clear();
+
+    // Small trees
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(20, 80, 14, 6);
+    g.fillStyle(0x3a2a1a); g.fillRect(18, 50, 4, 30);
+    g.fillStyle(0x1a3a1a); g.fillCircle(20, 35, 18);
+    g.fillStyle(0x2a4a2a); g.fillCircle(20, 30, 15);
+    g.fillStyle(0x3a5a3a); g.fillCircle(20, 25, 12);
+    g.generateTexture('tree_small', 40, 80); g.clear();
+
+    // Bushes
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(30, 45, 50, 12);
+    g.fillStyle(0x1a3a1a); g.fillCircle(20, 30, 18); g.fillCircle(40, 28, 16);
+    g.fillStyle(0x2a4a2a); g.fillCircle(30, 25, 20); g.fillCircle(15, 35, 12);
+    g.fillStyle(0x3a5a3a); g.fillCircle(25, 20, 14); g.fillCircle(45, 32, 10);
+    g.fillStyle(0x4a6a4a); g.fillCircle(30, 18, 10); g.fillCircle(38, 22, 8);
+    g.generateTexture('bush', 60, 45); g.clear();
+
+    // Tall grass
+    g.fillStyle(0x2a4a1a); g.fillRect(5, 20, 3, 20); g.fillRect(12, 15, 3, 25);
+    g.fillRect(20, 18, 3, 22); g.fillRect(28, 12, 3, 28); g.fillRect(36, 20, 3, 20);
+    g.fillRect(44, 16, 3, 24);
+    g.fillStyle(0x3a5a2a); g.fillRect(5, 18, 3, 2); g.fillRect(12, 13, 3, 2);
+    g.fillRect(20, 16, 3, 2); g.fillRect(28, 10, 3, 2); g.fillRect(36, 18, 3, 2);
+    g.fillRect(44, 14, 3, 2);
+    g.fillStyle(0x1a3a0a); g.fillRect(8, 25, 2, 15); g.fillRect(16, 22, 2, 18);
+    g.fillRect(24, 24, 2, 16); g.fillRect(32, 20, 2, 20); g.fillRect(40, 26, 2, 14);
+    g.generateTexture('tall_grass', 50, 40); g.clear();
+
+    // Flower patches
+    g.fillStyle(0x2a4a1a); g.fillEllipse(26, 25, 40, 20);
+    g.fillStyle(0x3a5a2a); g.fillEllipse(26, 22, 36, 16);
+    g.fillStyle(0xff4444); g.fillCircle(12, 18, 3); g.fillCircle(30, 14, 3);
+    g.fillStyle(0xffff44); g.fillCircle(22, 20, 3); g.fillCircle(40, 22, 3);
+    g.fillStyle(0xff44ff); g.fillCircle(18, 26, 3); g.fillCircle(35, 28, 3);
+    g.fillStyle(0xffffff); g.fillCircle(12, 18, 1.5); g.fillCircle(30, 14, 1.5);
+    g.fillCircle(22, 20, 1.5); g.fillCircle(40, 22, 1.5);
+    g.generateTexture('flower_patch', 52, 35); g.clear();
+
+    // Rocks
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(28, 45, 40, 14);
+    g.fillStyle(0x4a4a4a); g.fillCircle(28, 28, 18);
+    g.fillStyle(0x5a5a5a); g.fillCircle(28, 26, 15);
+    g.fillStyle(0x6a6a6a); g.fillCircle(26, 24, 12);
+    g.fillStyle(0x7a7a7a); g.fillCircle(24, 22, 8);
+    g.fillStyle(0x8a8a8a); g.fillCircle(22, 20, 5);
+    g.fillStyle(0x3a3a3a); g.fillCircle(40, 32, 10);
+    g.fillStyle(0x4a4a4a); g.fillCircle(40, 30, 8);
+    g.fillStyle(0x3a3a3a); g.fillCircle(16, 30, 8);
+    g.generateTexture('rock_detailed', 56, 45); g.clear();
+
+    // Stones
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(20, 38, 30, 10);
+    g.fillStyle(0x4a4a4a); g.fillCircle(20, 20, 16);
+    g.fillStyle(0x5a5a5a); g.fillCircle(20, 18, 13);
+    g.fillStyle(0x6a6a6a); g.fillCircle(18, 16, 10);
+    g.generateTexture('stone1', 40, 38); g.clear();
+
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(19, 34, 28, 8);
+    g.fillStyle(0x4a4a4a); g.fillCircle(19, 18, 14);
+    g.fillStyle(0x5a5a5a); g.fillCircle(19, 16, 11);
+    g.fillStyle(0x6a6a6a); g.fillCircle(17, 14, 8);
+    g.generateTexture('stone2', 38, 34); g.clear();
+
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(18, 28, 26, 8);
+    g.fillStyle(0x4a4a4a); g.fillCircle(18, 16, 12);
+    g.fillStyle(0x5a5a5a); g.fillCircle(18, 14, 9);
+    g.fillStyle(0x6a6a6a); g.fillCircle(16, 12, 6);
+    g.generateTexture('stone3', 36, 28); g.clear();
+
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(24, 30, 36, 10);
+    g.fillStyle(0x4a4a4a); g.fillCircle(24, 18, 18);
+    g.fillStyle(0x5a5a5a); g.fillCircle(24, 16, 15);
+    g.fillStyle(0x6a6a6a); g.fillCircle(22, 14, 10);
+    g.generateTexture('stone4', 48, 30); g.clear();
+
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(14, 28, 20, 8);
+    g.fillStyle(0x4a4a4a); g.fillCircle(14, 16, 10);
+    g.fillStyle(0x5a5a5a); g.fillCircle(14, 14, 8);
+    g.fillStyle(0x6a6a6a); g.fillCircle(12, 12, 5);
+    g.generateTexture('stone5', 28, 28); g.clear();
+
+    // Fence
+    g.fillStyle(0x5a4a3a); g.fillRect(4, 0, 16, 64); g.fillStyle(0x6b5a48); g.fillRect(5, 0, 3, 64);
+    g.fillStyle(0x4a3a2a); g.fillRect(18, 0, 2, 64); g.fillStyle(0x7a6a58); g.fillRect(2, -2, 20, 6);
+    g.fillStyle(0x888888); g.fillCircle(12, 15, 2); g.fillCircle(12, 35, 2); g.fillCircle(12, 55, 2);
+    g.generateTexture('fence_post', 24, 64); g.clear();
+    g.fillStyle(0x5a4a3a); g.fillRect(0, 2, 64, 8); g.fillStyle(0x6b5a48); g.fillRect(0, 2, 64, 2);
+    g.generateTexture('fence_rail', 64, 12); g.clear();
+
+    // Crows
+    g.fillStyle(0x1a1a1a); g.fillEllipse(24, 16, 20, 12); g.fillStyle(0x2a2a2a); g.fillEllipse(24, 15, 18, 10);
+    g.fillStyle(0x3a3a3a); g.fillEllipse(24, 14, 14, 8);
+    g.fillStyle(0x1a1a1a); g.fillCircle(36, 10, 8); g.fillStyle(0x2a2a2a); g.fillCircle(36, 9, 7);
+    g.fillStyle(0x3a3a3a); g.fillCircle(36, 8, 5);
+    g.fillStyle(0x3a3a3a); g.fillTriangle(42, 10, 50, 12, 42, 14);
+    g.fillStyle(0x1a1a1a); g.fillCircle(38, 8, 3); g.fillStyle(0x4a4a4a); g.fillCircle(38, 8, 2);
+    g.fillStyle(0x1a1a1a); g.fillEllipse(8, 14, 24, 10); g.fillStyle(0x2a2a2a); g.fillEllipse(8, 13, 20, 8);
+    g.fillStyle(0x1a1a1a); g.fillEllipse(40, 14, 24, 10); g.fillStyle(0x2a2a2a); g.fillEllipse(40, 13, 20, 8);
+    g.fillStyle(0x1a1a1a); g.fillEllipse(6, 18, 12, 6);
+    g.fillStyle(0x4a4a4a); g.fillRect(20, 22, 2, 6); g.fillRect(26, 22, 2, 6);
+    g.generateTexture('crow', 50, 32); g.clear();
+
+    g.fillStyle(0x1a1a1a); g.fillEllipse(16, 20, 18, 14); g.fillStyle(0x2a2a2a); g.fillEllipse(16, 18, 16, 12);
+    g.fillStyle(0x3a3a3a); g.fillEllipse(16, 16, 12, 10);
+    g.fillStyle(0x1a1a1a); g.fillCircle(26, 8, 8); g.fillStyle(0x2a2a2a); g.fillCircle(26, 7, 7);
+    g.fillStyle(0x3a3a3a); g.fillCircle(26, 6, 5);
+    g.fillStyle(0x3a3a3a); g.fillTriangle(32, 6, 40, 8, 32, 10);
+    g.fillStyle(0x1a1a1a); g.fillCircle(28, 4, 3); g.fillStyle(0x4a4a4a); g.fillCircle(28, 4, 2);
+    g.fillStyle(0x1a1a1a); g.fillEllipse(6, 18, 14, 10); g.fillStyle(0x2a2a2a); g.fillEllipse(6, 17, 12, 8);
+    g.fillStyle(0x1a1a1a); g.fillEllipse(26, 18, 14, 10); g.fillStyle(0x2a2a2a); g.fillEllipse(26, 17, 12, 8);
+    g.fillStyle(0x1a1a1a); g.fillEllipse(2, 24, 8, 6);
+    g.fillStyle(0x4a4a4a); g.fillRect(14, 28, 2, 8); g.fillRect(20, 28, 2, 8);
+    g.fillRect(12, 34, 6, 2); g.fillRect(18, 34, 6, 2);
+    g.generateTexture('crow_sitting', 42, 40); g.clear();
+
+    // Generator
+    g.fillStyle(0x252530); g.fillRect(4, 18, 56, 58); g.fillStyle(0x2d2d38); g.fillRect(6, 20, 52, 54);
+    g.fillStyle(0x353542); g.fillRect(8, 22, 48, 50);
+    g.fillStyle(0x1a1a22); g.fillRect(8, 22, 48, 2); g.fillRect(8, 22, 2, 50);
+    g.fillStyle(0x404050); g.fillRect(54, 22, 2, 50); g.fillRect(8, 68, 48, 2);
+    g.fillStyle(0x2a2a35); g.fillRect(12, 24, 3, 46); g.fillRect(49, 24, 3, 46);
+    g.fillRect(14, 32, 36, 2); g.fillRect(14, 48, 36, 2); g.fillRect(14, 62, 36, 2);
+    g.fillStyle(0x1a1a20); g.fillRect(14, 26, 36, 8); g.fillStyle(0x252530); g.fillRect(15, 27, 34, 6);
+    for (var i = 0; i < 6; i++) { g.fillStyle(0x353540); g.fillRect(16+i*5, 27, 3, 6); g.fillStyle(0x151518); g.fillRect(16+i*5, 28, 3, 2); }
+    g.fillStyle(0x1a1a20); g.fillRect(14, 36, 36, 8); g.fillStyle(0x252530); g.fillRect(15, 37, 34, 6);
+    for (var i = 0; i < 6; i++) { g.fillStyle(0x353540); g.fillRect(16+i*5, 37, 3, 6); g.fillStyle(0x151518); g.fillRect(16+i*5, 38, 3, 2); }
+    g.fillStyle(0x1a1a20); g.fillRect(14, 46, 36, 8); g.fillStyle(0x252530); g.fillRect(15, 47, 34, 6);
+    for (var i = 0; i < 6; i++) { g.fillStyle(0x353540); g.fillRect(16+i*5, 47, 3, 6); g.fillStyle(0x151518); g.fillRect(16+i*5, 48, 3, 2); }
+    g.fillStyle(0x303038); g.fillRect(12, 56, 28, 18); g.fillStyle(0x383840); g.fillRect(13, 57, 26, 16);
+    g.fillStyle(0x404048); g.fillRect(14, 58, 24, 14);
+    g.fillStyle(0x5a5a62); g.fillCircle(15, 59, 2); g.fillCircle(37, 59, 2); g.fillCircle(15, 71, 2); g.fillCircle(37, 71, 2);
+    g.fillStyle(0x00ff44); g.fillCircle(20, 63, 4); g.fillStyle(0x00dd33); g.fillCircle(20, 63, 3);
+    g.fillStyle(0xff2222); g.fillCircle(30, 63, 4); g.fillStyle(0xcc1111); g.fillCircle(30, 63, 3);
+    g.fillStyle(0xffff00); g.fillCircle(20, 69, 2); g.fillStyle(0x00ff00); g.fillCircle(26, 69, 2); g.fillStyle(0xff8800); g.fillCircle(32, 69, 2);
+    g.fillStyle(0x1a1a1a); g.fillRect(22, 66, 6, 4); g.fillStyle(0x252525); g.fillRect(23, 67, 4, 2);
+    g.fillStyle(0x1a1a20); g.fillRect(42, 56, 5, 18); g.fillStyle(0x8B0000); g.fillRect(43, 57, 3, 6);
+    g.fillStyle(0x00aa00); g.fillRect(43, 64, 3, 4); g.fillStyle(0x0066aa); g.fillRect(43, 69, 3, 5);
+    g.fillStyle(0x2a2a30); g.fillRect(41, 55, 8, 4); g.fillRect(41, 71, 8, 4);
+    g.fillStyle(0x2a2a32); g.fillRect(48, 30, 10, 32); g.fillStyle(0x323238); g.fillRect(49, 31, 8, 30);
+    g.fillStyle(0x4a4a52); g.fillCircle(53, 34, 4); g.fillStyle(0x3a3a42); g.fillCircle(53, 34, 3);
+    g.fillStyle(0x1a1a20); g.fillRect(50, 40, 6, 18); g.fillStyle(0x00aa44); g.fillRect(51, 42, 4, 12);
+    g.fillStyle(0x3a3a40); g.fillRect(4, 40, 6, 20); g.fillStyle(0x4a4a50); g.fillRect(4, 40, 6, 2);
+    g.fillStyle(0x2a2a30); g.fillRect(2, 38, 10, 4);
+    g.fillStyle(0x5a5a62); g.fillCircle(10, 24, 3); g.fillCircle(54, 24, 3); g.fillCircle(10, 68, 3); g.fillCircle(54, 68, 3);
+    g.fillStyle(0x4a3a2a, 0.4); g.fillCircle(52, 62, 5); g.fillStyle(0x3a2a1a, 0.3); g.fillCircle(20, 70, 4);
+    g.fillStyle(0xffcc00); g.fillRect(16, 58, 14, 6); g.fillStyle(0x1a1a1a); g.fillRect(18, 60, 2, 2);
+    g.fillRect(22, 60, 2, 2); g.fillRect(26, 60, 2, 2);
+    g.fillStyle(0x4a4a52); g.fillRect(44, 50, 8, 3); g.fillStyle(0x5a5a62); g.fillRect(44, 50, 8, 1);
+    g.generateTexture('gen', 64, 80); g.clear();
+
+    // Gen pole
+    g.fillStyle(0x3a3a42); g.fillRect(28, 0, 8, 54); g.fillStyle(0x4a4a52); g.fillRect(29, 0, 3, 54);
+    g.fillStyle(0x353540); g.fillRect(32, 0, 3, 54);
+    g.fillStyle(0x2a2a32); g.fillRect(28, 0, 1, 54); g.fillRect(35, 0, 1, 54);
+    g.fillStyle(0x4a4a52); g.fillRect(22, 48, 20, 8); g.fillStyle(0x5a5a62); g.fillRect(24, 48, 16, 6);
+    g.fillStyle(0x6a6a72); g.fillCircle(26, 50, 2); g.fillCircle(38, 50, 2); g.fillCircle(26, 54, 2); g.fillCircle(38, 54, 2);
+    g.fillStyle(0x5a3a2a, 0.5); g.fillRect(29, 16, 2, 14); g.fillStyle(0x5a3a2a, 0.4); g.fillRect(30, 32, 2, 10);
+    g.fillStyle(0x4a4a52); g.fillRect(24, 0, 16, 6); g.fillStyle(0x5a5a62); g.fillRect(26, 1, 12, 4);
+    g.fillStyle(0x6a6a72); g.fillCircle(28, 3, 2); g.fillCircle(36, 3, 2);
+    g.generateTexture('gen_pole', 64, 60); g.clear();
+
+    // Gen light
+    g.fillStyle(0x3a3a40); g.fillRect(16, 0, 32, 18); g.fillStyle(0x454550); g.fillRect(18, 2, 28, 14);
+    g.fillStyle(0x404048); g.fillRect(18, 2, 28, 4);
+    g.fillStyle(0x353540); g.fillRect(16, 0, 2, 18); g.fillRect(46, 0, 2, 18);
+    g.fillStyle(0x4a4a52); g.fillRect(28, 14, 8, 6); g.fillStyle(0x5a5a62); g.fillRect(29, 15, 6, 4);
+    g.fillStyle(0x2a2a30); g.fillEllipse(32, 10, 24, 10); g.fillStyle(0x353540); g.fillEllipse(32, 10, 22, 8);
+    g.fillStyle(0x4a4a52); g.fillEllipse(32, 10, 18, 6);
+    g.fillStyle(0xffee88); g.fillCircle(32, 10, 7); g.fillStyle(0xffdd66); g.fillCircle(32, 10, 5);
+    g.fillStyle(0xffeeaa); g.fillCircle(31, 9, 3); g.fillStyle(0xffffcc); g.fillCircle(30, 8, 1.5);
+    g.fillStyle(0x5a5a62); g.fillRect(29, 15, 6, 4); g.fillStyle(0x4a4a52); g.fillRect(30, 16, 4, 3);
+    g.fillStyle(0x3a3a42); g.fillRect(31, 17, 2, 2);
+    g.fillStyle(0x2a2a30); g.fillRect(18, 14, 10, 2); g.fillRect(36, 14, 10, 2);
+    g.fillStyle(0xffee88, 0.4); g.fillCircle(32, 10, 12); g.fillStyle(0xffee88, 0.2); g.fillCircle(32, 10, 16);
+    g.generateTexture('gen_light', 64, 24); g.clear();
+
+    // Hook
+    g.fillStyle(0x2a2a30); g.fillRect(14, 18, 6, 46); g.fillStyle(0x3a3a42); g.fillRect(15, 18, 2, 46);
+    g.fillStyle(0x4a4a52); g.fillRect(10, 58, 14, 6); g.fillStyle(0x3a3a42); g.fillRect(10, 58, 14, 2);
+    g.fillStyle(0x5a3020, 0.6); g.fillCircle(12, 62, 2); g.fillCircle(20, 61, 1.5);
+    g.fillStyle(0x555560); g.fillRect(14, 4, 5, 16);
+    g.fillStyle(0x606068); g.fillCircle(18, 14, 6); g.fillStyle(0x505058); g.fillCircle(18, 14, 4);
+    g.fillStyle(0x4a4a52); g.fillRect(14, 8, 5, 6);
+    g.fillStyle(0x4a4a52); g.fillCircle(13, 10, 3); g.fillStyle(0x5a5a62); g.fillCircle(12, 9, 1.5);
+    g.fillStyle(0x484850); g.fillCircle(17, 2, 3); g.fillStyle(0x585860); g.fillCircle(17, 2, 2);
+    g.fillStyle(0x888890, 0.4); g.fillRect(15, 20, 1, 40); g.fillStyle(0x707078, 0.3); g.fillCircle(16, 12, 2);
+    g.fillStyle(0x6a3a28, 0.4); g.fillRect(14, 30, 2, 8); g.fillStyle(0x6a3a28, 0.3); g.fillRect(15, 42, 1, 6);
+    g.generateTexture('hook', 32, 64); g.clear();
+
+    // Gate
+    g.fillStyle(0x5a3a1a); g.fillRect(0, 0, 32, 64);
+    g.fillStyle(0x7a5a3a); g.fillRect(2, 2, 13, 60); g.fillRect(17, 2, 13, 60);
+    g.fillStyle(0x444450); g.fillRect(0, 10, 32, 4); g.fillRect(0, 50, 32, 4);
+    g.generateTexture('gate', 32, 64); g.clear();
+
+    // Hatch
+    g.fillStyle(0x3a3a30); g.fillCircle(20, 20, 20); g.fillStyle(0x5a5a4a); g.fillCircle(20, 20, 17);
+    g.fillStyle(0x1a1a10); g.fillCircle(20, 20, 10);
+    g.generateTexture('hatch', 40, 40); g.clear();
+
+    // Pallet
+    g.fillStyle(0x5a3a1a); g.fillRect(4, 0, 24, 48); g.fillStyle(0x6a4a2a); g.fillRect(6, 2, 20, 44);
+    g.fillStyle(0x4a2a0a); g.fillRect(4, 0, 2, 48); g.fillRect(26, 0, 2, 48);
+    g.fillStyle(0x7a5a3a); g.fillRect(6, 2, 20, 2); g.fillRect(6, 22, 20, 2); g.fillRect(6, 42, 20, 2);
+    g.fillStyle(0x3a1a0a); g.fillCircle(16, 4, 2); g.fillCircle(16, 24, 2); g.fillCircle(16, 44, 2);
+    g.generateTexture('pallet', 32, 48); g.clear();
+
+    // Pallet fallen
+    g.fillStyle(0x5a3a1a); g.fillRect(0, 16, 48, 16); g.fillStyle(0x6a4a2a); g.fillRect(2, 18, 44, 12);
+    g.fillStyle(0x4a2a0a); g.fillRect(0, 16, 48, 2); g.fillRect(0, 30, 48, 2);
+    g.fillStyle(0x7a5a3a); g.fillRect(2, 18, 2, 12); g.fillRect(22, 18, 2, 12); g.fillRect(42, 18, 2, 12);
+    g.fillStyle(0x3a1a0a); g.fillCircle(4, 24, 2); g.fillCircle(24, 24, 2); g.fillCircle(44, 24, 2);
+    g.generateTexture('pallet_falling', 48, 32); g.clear();
 
     // Fence
     g.fillStyle(0x5a4a3a); g.fillRect(4, 0, 16, 64); g.fillStyle(0x6b5a48); g.fillRect(5, 0, 3, 64);
@@ -428,27 +765,35 @@ function preload() {
     g.fillStyle(0xffffff, 0.3); g.fillRect(5, 42, 80, 4);
     g.generateTexture('killer_strike', 90, 125); g.clear();
 
-    // Survivors
+    // Survivors - detailed character sprites
     function createSurvivorTextures(name, shirtColor, hairColor) {
-        // Normal
+        // Shadow
         g.fillStyle(0x000000, 0.3); g.fillEllipse(36, 120, 40, 12);
+        // Legs
         g.fillStyle(0x1a1a2a); g.fillRect(22, 96, 12, 24); g.fillRect(38, 96, 12, 24);
         g.fillStyle(0x2a2a3a); g.fillRect(22, 96, 4, 24); g.fillRect(38, 96, 4, 24);
+        // Shoes
         g.fillStyle(0x111122); g.fillRect(20, 116, 16, 6); g.fillRect(36, 116, 16, 6);
+        // Body/shirt
         g.fillStyle(shirtColor); g.fillRect(18, 40, 36, 58);
         g.fillStyle(0xffffff); g.fillRect(18, 40, 36, 4); g.fillRect(18, 40, 4, 58);
         g.fillStyle(0x000000, 0.15); g.fillRect(18, 94, 36, 4);
+        // Arms
         g.fillStyle(0xcc8866); g.fillRect(14, 42, 8, 20); g.fillRect(50, 42, 8, 20);
         g.fillStyle(0xcc8866); g.fillCircle(18, 64, 5); g.fillCircle(54, 64, 5);
+        // Head
         g.fillStyle(0xcc8866); g.fillCircle(36, 24, 16);
+        // Hair
         g.fillStyle(hairColor); g.fillCircle(36, 18, 18); g.fillRect(18, 18, 36, 8);
+        // Eyes
         g.fillStyle(0x1a1a1a); g.fillCircle(30, 22, 2.5); g.fillCircle(42, 22, 2.5);
         g.fillStyle(0xffffff); g.fillCircle(30, 21.5, 1); g.fillCircle(42, 21.5, 1);
+        // Mouth
         g.fillStyle(0xaa6655); g.fillRect(33, 28, 6, 2); g.fillStyle(0xcc8866); g.fillRect(34, 28, 4, 1);
         g.fillStyle(0x884433); g.fillRect(33, 31, 6, 2);
         g.generateTexture(name, 72, 125); g.clear();
 
-        // Dying
+        // Dying (crawling)
         g.fillStyle(0x000000, 0.3); g.fillEllipse(40, 45, 50, 14);
         g.fillStyle(shirtColor); g.fillRect(8, 28, 56, 24);
         g.fillStyle(0xffffff); g.fillRect(8, 28, 56, 3); g.fillRect(8, 28, 3, 24);
@@ -461,7 +806,7 @@ function preload() {
         g.fillStyle(0x884433); g.fillRect(38, 40, 4, 1.5);
         g.generateTexture(name + '_dying', 80, 50); g.clear();
 
-        // Carried
+        // Carried (over shoulder)
         g.fillStyle(shirtColor); g.fillRect(12, 20, 52, 40);
         g.fillStyle(0xffffff); g.fillRect(12, 20, 52, 4); g.fillRect(12, 20, 4, 40);
         g.fillStyle(0x000000, 0.15); g.fillRect(12, 56, 52, 4);
@@ -477,7 +822,7 @@ function preload() {
         g.fillStyle(0x884433); g.fillRect(33, 16, 6, 2);
         g.generateTexture(name + '_carried', 76, 90); g.clear();
 
-        // Repairing
+        // Repairing (arms raised with wrench)
         g.fillStyle(0x000000, 0.3); g.fillEllipse(36, 120, 40, 12);
         g.fillStyle(0x1a1a2a); g.fillRect(22, 96, 12, 24); g.fillRect(38, 96, 12, 24);
         g.fillStyle(0x2a2a3a); g.fillRect(22, 96, 4, 24); g.fillRect(38, 96, 4, 24);
@@ -487,10 +832,10 @@ function preload() {
         g.fillStyle(0x000000, 0.15); g.fillRect(18, 94, 36, 4);
         g.fillStyle(0xcc8866); g.fillRect(14, 42, 8, 20); g.fillRect(50, 42, 8, 20);
         g.fillStyle(0xcc8866); g.fillCircle(18, 64, 5); g.fillCircle(54, 64, 5);
-        // Arms raised (repairing pose)
+        // Arms raised
         g.fillStyle(0xcc8866); g.fillRect(10, 20, 8, 24); g.fillRect(54, 20, 8, 24);
         g.fillStyle(0xcc8866); g.fillCircle(14, 18, 5); g.fillCircle(58, 18, 5);
-        // Wrench in hand
+        // Wrench
         g.fillStyle(0x888888); g.fillRect(8, 10, 4, 12); g.fillStyle(0x999999); g.fillRect(8, 10, 2, 12);
         g.fillStyle(0x666666); g.fillCircle(10, 8, 4); g.fillStyle(0x777777); g.fillCircle(10, 8, 2);
         g.fillStyle(0xcc8866); g.fillCircle(36, 24, 16);
@@ -503,8 +848,7 @@ function preload() {
     }
 
     function createPixelSurvivor(name, hairColor, shirtColor, pantsColor) {
-        var px = 4; // pixel size
-        // Normal
+        // Shadow
         g.fillStyle(0x000000, 0.3); g.fillRect(12, 76, 48, 8);
         // Legs
         g.fillStyle(pantsColor); g.fillRect(16, 56, 8, 20); g.fillRect(24, 56, 8, 20);
@@ -565,10 +909,8 @@ function preload() {
         g.fillStyle(shirtColor); g.fillRect(16, 28, 32, 28);
         g.fillStyle(0xffffff); g.fillRect(16, 28, 32, 4); g.fillRect(16, 28, 4, 28);
         g.fillStyle(0x000000, 0.15); g.fillRect(16, 52, 32, 4);
-        // Arms raised
         g.fillStyle(0xcc8866); g.fillRect(8, 12, 8, 20); g.fillRect(48, 12, 8, 20);
         g.fillStyle(0xcc8866); g.fillRect(8, 28, 8, 8); g.fillRect(48, 28, 8, 8);
-        // Wrench
         g.fillStyle(0x888888); g.fillRect(4, 4, 4, 12); g.fillStyle(0x999999); g.fillRect(4, 4, 2, 12);
         g.fillStyle(0x666666); g.fillRect(2, 0, 8, 8); g.fillStyle(0x777777); g.fillRect(4, 2, 4, 4);
         g.fillStyle(0xcc8866); g.fillRect(20, 8, 24, 20);
@@ -670,6 +1012,7 @@ function create() {
         var sp = this.add.sprite(p.x, p.y, 'gen').setDepth(p.y + 2).setScale(0.75);
         sp.genId = i; sp.progress = 0; sp.repaired = false;
         sp.barGfx = this.add.graphics().setDepth(p.y + 3);
+        sp.repairSparks = this.add.graphics().setDepth(p.y + 4);
         sp.bx = p.x; sp.by = p.y; sp.glowGfx = glow; sp.lightGlowGfx = lightGlow;
         sp.lightGlowInnerGfx = lightGlowInner; sp.lightSprite = light;
         sp.lightFlickerPhase = Math.random() * Math.PI * 2;
@@ -932,7 +1275,7 @@ function makePlayer(sc, x, y, tex, isMe) {
     sp.body.setCollideWorldBounds(true);
     var hs = (tex === 'killer') ? {w:30,h:35} : {w:24,h:28};
     sp.body.setSize(hs.w, hs.h, true);
-    if (tex === 's4') sp.setScale(1.5, 1.5); else sp.setScale(0.85, 0.85);
+    if (tex === 's4') sp.setScale(1.5, 1.5); else sp.setScale(1.0, 1.0);
     var glow = sc.add.graphics();
     var gc = (tex === 'killer') ? 0x333333 : 0x44aaff;
     glow.fillStyle(gc, 0.15); glow.fillCircle(0, 0, 25); glow.setDepth(999); glow.setAlpha(0.5);
@@ -962,6 +1305,7 @@ function update(time, dt) {
 
     updatePlayer(dt);
     if (isKiller) killerAction(dt);
+    else survivorAction(dt);
     updateAI(dt);
     updateGenerators(dt);
     updateHooks(dt);
@@ -990,7 +1334,7 @@ function update(time, dt) {
     // Action button
     var ab = document.getElementById('action-btn');
     if (ab) {
-        var showAction = true; // Always visible
+        var showAction = true;
         if (isKiller && player.carryTarget) {
             var nearHook = false;
             hooks.forEach(function(h) {
@@ -998,9 +1342,28 @@ function update(time, dt) {
             });
             showAction = nearHook;
         }
-        if (!isKiller && !isNearHatch && !isNearGate) {
+        if (!isKiller && !player.isRepairing) {
             // Show only near interactive objects for survivor
-            showAction = false;
+            var nearInteractive = false;
+            generators.forEach(function(gen) {
+                if (!gen.repaired && dist(player.sprite, gen) < CONFIG.INTERACT_DISTANCE) nearInteractive = true;
+            });
+            hooks.forEach(function(hook) {
+                if (hook.occupied && dist(player.sprite, hook) < CONFIG.INTERACT_DISTANCE) nearInteractive = true;
+            });
+            if (exitOpen) {
+                gates.forEach(function(gate) {
+                    if (!gate.opened && dist(player.sprite, gate) < CONFIG.INTERACT_DISTANCE) nearInteractive = true;
+                });
+            }
+            if (isNearHatch || isNearGate) nearInteractive = true;
+            // Check for healing
+            if (!isMultiplayer && player.aiPlayers) {
+                player.aiPlayers.forEach(function(ai) {
+                    if (ai.state === 'injured' && dist(player.sprite, ai.sprite) < CONFIG.INTERACT_DISTANCE) nearInteractive = true;
+                });
+            }
+            showAction = nearInteractive;
         }
         ab.style.display = showAction ? 'flex' : 'none';
     }
