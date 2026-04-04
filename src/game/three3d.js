@@ -84,27 +84,11 @@ function loadKillerModel(type, modelPath) {
         function (gltf) {
             var model = gltf.scene;
 
-            // Optimize materials - replace PBR with simpler materials for mobile
+            // Keep original materials (skinning works correctly)
             model.traverse(function (child) {
                 if (child.isMesh) {
                     child.castShadow = false;
                     child.receiveShadow = false;
-                    // Replace complex PBR materials with simple Lambert
-                    if (child.material) {
-                        var oldMat = child.material;
-                        var simpleMat = new THREE.MeshLambertMaterial({
-                            color: oldMat.color || 0xffffff,
-                            map: oldMat.map || null,
-                            transparent: oldMat.transparent || false,
-                            opacity: oldMat.opacity !== undefined ? oldMat.opacity : 1.0,
-                            side: THREE.FrontSide,
-                            skinning: true // CRITICAL: enables skeletal animation
-                        });
-                        child.material = simpleMat;
-                        // Dispose old material to free memory
-                        if (oldMat.map) oldMat.map.dispose();
-                        oldMat.dispose();
-                    }
                 }
             });
 
@@ -127,18 +111,32 @@ function loadKillerModel(type, modelPath) {
                 console.log('[3D] Found', gltf.animations.length, 'animation(s) for', type);
 
                 gltf.animations.forEach(function (clip, index) {
-                    console.log('[3D] Animation', index, ':', clip.name);
+                    console.log('[3D] Animation', index, ':', clip.name, 'for', type, '- Duration:', clip.duration.toFixed(2) + 's');
                     var action = mixer.clipAction(clip);
+                    
+                    // Normalize animation speed - adjust timeScale based on duration
+                    // Shorter animations get slowed down to match ~1 second cycle
+                    if (clip.duration < 1.0 && type === 'running') {
+                        action.timeScale = clip.duration; // Slow down short run animations
+                    } else {
+                        action.timeScale = 1.0;
+                    }
+                    
                     if (type === 'idle') {
                         killerAnimationsIdle[clip.name.toLowerCase()] = action;
+                    } else if (type === 'running') {
+                        killerAnimationsRun[clip.name.toLowerCase()] = action;
                     } else {
                         killerAnimationsWalking[clip.name.toLowerCase()] = action;
                     }
                 });
 
-                var firstAnim = Object.values(type === 'idle' ? killerAnimationsIdle : killerAnimationsWalking)[0];
+                // Play first animation for this model
+                var anims = type === 'idle' ? killerAnimationsIdle : (type === 'running' ? killerAnimationsRun : killerAnimationsWalking);
+                var firstAnim = Object.values(anims)[0];
                 if (firstAnim) {
                     firstAnim.play();
+                    console.log('[3D] Playing first animation for', type);
                 }
             } else {
                 console.warn('[3D] No animations found in', type, 'model');
@@ -244,70 +242,54 @@ function updateKiller3DSprite(dt) {
     if (joystickIntensity > 0.8) targetState = 'run';
     else if (moving) targetState = 'walk';
 
-    // Cross-fade between animations
-    var fadeTime = 0.15;
+    // Switch animations instantly (cross-fade between different models causes T-pose)
+    if (targetState !== currentKillerState) {
+        var prevState = currentKillerState;
 
-    if (targetState === 'run' && killerMixerRun) {
-        if (currentKillerState !== 'run') {
-            if (currentKillerState === 'walk' && killerMixerWalking) {
-                var walkAction = killerAnimationsWalking[Object.keys(killerAnimationsWalking)[0]];
-                var runAction = killerAnimationsRun[Object.keys(killerAnimationsRun)[0]];
-                if (walkAction && runAction) {
-                    walkAction.fadeOut(fadeTime);
-                    runAction.reset().fadeIn(fadeTime).play();
-                }
-            } else if (currentKillerState === 'idle' && killerMixerIdle) {
-                var idleAction = killerAnimationsIdle[Object.keys(killerAnimationsIdle)[0]];
-                var runAction = killerAnimationsRun[Object.keys(killerAnimationsRun)[0]];
-                if (idleAction && runAction) {
-                    idleAction.fadeOut(fadeTime);
-                    runAction.reset().fadeIn(fadeTime).play();
-                }
-            }
-            currentKillerState = 'run';
+        // Get target actions
+        var targetActions = targetState === 'run' ? killerAnimationsRun : (targetState === 'walk' ? killerAnimationsWalking : killerAnimationsIdle);
+        var currentActions = prevState === 'run' ? killerAnimationsRun : (prevState === 'walk' ? killerAnimationsWalking : killerAnimationsIdle);
+
+        // Stop current animation
+        var currentAction = currentActions[Object.keys(currentActions)[0]];
+        if (currentAction) {
+            currentAction.stop();
         }
-    } else if (targetState === 'walk' && killerMixerWalking) {
-        if (currentKillerState !== 'walk') {
-            if (currentKillerState === 'run' && killerMixerRun) {
-                var runAction = killerAnimationsRun[Object.keys(killerAnimationsRun)[0]];
-                var walkAction = killerAnimationsWalking[Object.keys(killerAnimationsWalking)[0]];
-                if (runAction && walkAction) {
-                    runAction.fadeOut(fadeTime);
-                    walkAction.reset().fadeIn(fadeTime).play();
-                }
-            } else if (currentKillerState === 'idle' && killerMixerIdle) {
-                var idleAction = killerAnimationsIdle[Object.keys(killerAnimationsIdle)[0]];
-                var walkAction = killerAnimationsWalking[Object.keys(killerAnimationsWalking)[0]];
-                if (idleAction && walkAction) {
-                    idleAction.fadeOut(fadeTime);
-                    walkAction.reset().fadeIn(fadeTime).play();
-                }
+
+        // Hide all models
+        if (killerModelIdle) killerModelIdle.visible = false;
+        if (killerModelWalking) killerModelWalking.visible = false;
+        if (killerModelRun) killerModelRun.visible = false;
+
+        // Show target model and play animation
+        var targetAction = targetActions[Object.keys(targetActions)[0]];
+        if (targetAction) {
+            targetAction.reset();
+            targetAction.play();
+
+            if (targetState === 'run' && killerModelRun) {
+                killerModelRun.visible = true;
+                killerModel = killerModelRun;
+            } else if (targetState === 'walk' && killerModelWalking) {
+                killerModelWalking.visible = true;
+                killerModel = killerModelWalking;
+            } else if (targetState === 'idle' && killerModelIdle) {
+                killerModelIdle.visible = true;
+                killerModel = killerModelIdle;
             }
-            currentKillerState = 'walk';
         }
-    } else if (targetState === 'idle' && killerMixerIdle) {
-        if (currentKillerState !== 'idle') {
-            if (currentKillerState === 'walk' && killerMixerWalking) {
-                var walkAction = killerAnimationsWalking[Object.keys(killerAnimationsWalking)[0]];
-                var idleAction = killerAnimationsIdle[Object.keys(killerAnimationsIdle)[0]];
-                if (walkAction && idleAction) {
-                    walkAction.fadeOut(fadeTime);
-                    idleAction.reset().fadeIn(fadeTime).play();
-                }
-            } else if (currentKillerState === 'run' && killerMixerRun) {
-                var runAction = killerAnimationsRun[Object.keys(killerAnimationsRun)[0]];
-                var idleAction = killerAnimationsIdle[Object.keys(killerAnimationsIdle)[0]];
-                if (runAction && idleAction) {
-                    runAction.fadeOut(fadeTime);
-                    idleAction.reset().fadeIn(fadeTime).play();
-                }
-            }
-            currentKillerState = 'idle';
-        }
+
+        currentKillerState = targetState;
     }
 
-    // Update all mixers
-    if (killerMixerWalking) killerMixerWalking.update(dt / 1000);
+    // Update active mixer
+    if (currentKillerState === 'idle' && killerMixerIdle) {
+        killerMixerIdle.update(dt / 1000);
+    } else if (currentKillerState === 'walk' && killerMixerWalking) {
+        killerMixerWalking.update(dt / 1000);
+    } else if (currentKillerState === 'run' && killerMixerRun) {
+        killerMixerRun.update(dt / 1000);
+    }
     if (killerMixerIdle) killerMixerIdle.update(dt / 1000);
     if (killerMixerRun) killerMixerRun.update(dt / 1000);
 

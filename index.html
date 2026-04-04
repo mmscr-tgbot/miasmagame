@@ -87,8 +87,11 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
     <div class="loader-status" id="load-status">Инициализация...</div>
     <div class="loader-tips" id="load-tip"></div>
     <div id="menu-buttons" style="display:none;flex-direction:column;align-items:center;gap:10px;margin-top:25px;">
+      <div id="menu-bp-display" style="color:#ff3333;font-size:16px;font-weight:bold;margin-bottom:5px">🩸 0</div>
       <button id="btn-multiplayer" class="btn primary" style="width:220px">🎮 Начать игру</button>
       <button id="btn-solo" class="btn secondary" style="width:220px">🎮 Играть (Соло)</button>
+      <button id="btn-profile" class="btn" style="width:220px;background:#333">👤 Профиль</button>
+      <button id="btn-settings" class="btn" style="width:220px;background:#333">⚙️ Настройки</button>
     </div>
   </div>
 </div>
@@ -98,6 +101,20 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
   <button id="btn-play-killer" class="btn primary">🔪 Маньяк</button>
   <button id="btn-play-survivor" class="btn secondary">🏃 Выживший</button>
   <button id="btn-back-menu" class="btn" style="margin-top:15px;background:#222">← Назад</button>
+</div>
+
+<div id="char-select" class="screen">
+  <h2 id="char-select-title">Выбери персонажа</h2>
+  <div id="char-viewer" style="width:200px;height:280px;position:relative;margin:10px auto;"></div>
+  <p id="char-name" style="color:#fff;font-size:18px;margin:8px 0">—</p>
+  <p id="char-desc" style="color:#aaa;font-size:13px;margin:0 0 15px;text-align:center;max-width:260px">—</p>
+  <div id="char-nav" style="display:flex;align-items:center;gap:15px;margin-bottom:15px;">
+    <button id="btn-char-prev" class="btn" style="width:44px;padding:10px;font-size:20px">◀</button>
+    <span id="char-index" style="color:#888;font-size:14px">1 / 1</span>
+    <button id="btn-char-next" class="btn" style="width:44px;padding:10px;font-size:20px">▶</button>
+  </div>
+  <button id="btn-char-play" class="btn primary" style="width:200px">▶ Играть</button>
+  <button id="btn-char-back" class="btn" style="margin-top:10px;background:#222">← Назад</button>
 </div>
 
 <div id="lobby-create" class="screen"><h2>🏠 Лобби: <span id="display-room-code" style="color:#fff;font-size:20px"></span></h2><p id="lobby-status" style="color:#aaa;margin-bottom:15px;text-align:center">Ожидание игроков...</p><div id="lobby-players" style="display:flex;flex-direction:column;align-items:center;width:100%;max-width:300px;margin-bottom:15px"></div><button id="btn-start-game" class="btn primary" disabled style="background:#555">Начать игру</button><button id="btn-leave-lobby" class="btn secondary" style="margin-top:8px">← Выйти</button></div>
@@ -112,10 +129,31 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
     <div>🚪 <span id="exit-state">закрыт</span></div>
     <div id="alive-count">🏃 4</div>
     <div id="remote-players-count" style="color:#ff0;font-size:10px">RP: 0</div>
+    <div id="bp-display" style="color:#ff3333;font-size:11px">🩸 0</div>
   </div>
 </div>
 
 <div id="game-over" class="screen"><h2 id="game-result-title">Победа!</h2><p id="game-result-message"></p><button id="btn-back-menu" class="btn primary">В меню</button></div>
+
+<div id="match-stats" class="screen">
+  <h2 id="match-result-title">🩸 Результаты матча</h2>
+  <div id="match-stats-content" style="width:100%;max-width:320px;margin:10px auto;"></div>
+  <div id="match-bp-total" style="font-size:22px;color:#ff3333;font-weight:bold;margin:15px 0;text-align:center"></div>
+  <div id="match-stats-summary" style="width:100%;max-width:320px;margin:10px auto;"></div>
+  <button id="btn-stats-menu" class="btn primary" style="margin-top:20px">В меню</button>
+</div>
+
+<div id="profile-screen" class="screen">
+  <h2>👤 Профиль игрока</h2>
+  <div id="profile-content" style="width:100%;max-width:320px;margin:10px auto;"></div>
+  <button id="btn-profile-back" class="btn" style="margin-top:15px;background:#222">← Назад</button>
+</div>
+
+<div id="settings-screen" class="screen">
+  <h2>⚙️ Настройки графики</h2>
+  <div id="settings-content" style="width:100%;max-width:320px;margin:10px auto;"></div>
+  <button id="btn-settings-back" class="btn" style="margin-top:15px;background:#222">← Назад</button>
+</div>
 
 </div>
 
@@ -197,6 +235,7 @@ function showMenuButtons() {
   var menuBtns = document.getElementById('menu-buttons');
   if (menuBtns) menuBtns.style.display = 'flex';
   
+  updateMenuBP();
   setupButtons();
   console.log('App ready. Low-end device:', isLowEndDevice);
 }
@@ -308,7 +347,7 @@ function showToast(msg, duration) {
 }
 
 function showScreen(name) {
-  var screens = ['loading-screen','role-select','lobby-create','lobby-join','game-screen','game-over'];
+  var screens = ['loading-screen','main-menu','role-select','char-select','lobby-create','lobby-join','game-screen','game-over','match-stats','profile-screen','settings-screen'];
   screens.forEach(function(s) {
     var el = document.getElementById(s);
     if (el) el.classList.remove('active');
@@ -319,6 +358,584 @@ function showScreen(name) {
 
 /* ═══════ GAME MODE ═══════ */
 var gameMode = null; // 'multiplayer' or 'solo'
+
+/* ═══════ CHARACTER SELECT ═══════ */
+var selectedRole = null;
+var selectedCharIndex = 0;
+var charViewerRenderer = null;
+var charViewerScene = null;
+var charViewerCamera = null;
+var charViewerModel = null;
+var charViewerMixer = null;
+var charIsDragging = false;
+var charLastX = 0;
+var charRotationY = 0;
+
+/* ═══════ GRAPHICS SETTINGS ═══════ */
+var gSettings = {
+    quality: 'auto',
+    shadows: false, fog: true, particles: true, atmosphere: true,
+    crows: true, dust: true, ash: true, bloodSplatter: true,
+    screenShake: true, fpsLimit: 60, pixelRatio: 1, antialias: false
+};
+
+function loadGSettings() {
+    try {
+        var s = localStorage.getItem('dbd_gfx');
+        if (s) { var p = JSON.parse(s); for (var k in p) { if (gSettings.hasOwnProperty(k)) gSettings[k] = p[k]; } }
+    } catch(e) {}
+    if (gSettings.quality === 'auto') {
+        var mem = navigator.deviceMemory || 4;
+        var cores = navigator.hardwareConcurrency || 4;
+        gSettings.quality = (mem >= 8 && cores >= 8) ? 'ultra' : (mem >= 6 ? 'high' : (mem >= 4 ? 'medium' : 'low'));
+    }
+    applyGSettings();
+}
+
+function applyGSettings() {
+    switch (gSettings.quality) {
+        case 'low':
+            gSettings.shadows = false; gSettings.fog = false; gSettings.particles = false;
+            gSettings.atmosphere = false; gSettings.crows = false; gSettings.dust = false;
+            gSettings.ash = false; gSettings.bloodSplatter = false; gSettings.screenShake = false;
+            gSettings.fpsLimit = 30; gSettings.pixelRatio = 1; gSettings.antialias = false;
+            break;
+        case 'medium':
+            gSettings.shadows = false; gSettings.fog = true; gSettings.particles = true;
+            gSettings.atmosphere = true; gSettings.crows = true; gSettings.dust = true;
+            gSettings.ash = false; gSettings.bloodSplatter = true; gSettings.screenShake = true;
+            gSettings.fpsLimit = 60; gSettings.pixelRatio = 1; gSettings.antialias = false;
+            break;
+        case 'high':
+            gSettings.shadows = false; gSettings.fog = true; gSettings.particles = true;
+            gSettings.atmosphere = true; gSettings.crows = true; gSettings.dust = true;
+            gSettings.ash = true; gSettings.bloodSplatter = true; gSettings.screenShake = true;
+            gSettings.fpsLimit = 60; gSettings.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            gSettings.antialias = false;
+            break;
+        case 'ultra':
+            gSettings.shadows = true; gSettings.fog = true; gSettings.particles = true;
+            gSettings.atmosphere = true; gSettings.crows = true; gSettings.dust = true;
+            gSettings.ash = true; gSettings.bloodSplatter = true; gSettings.screenShake = true;
+            gSettings.fpsLimit = 60; gSettings.pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+            gSettings.antialias = true;
+            break;
+    }
+}
+
+function saveGSettings() {
+    try { localStorage.setItem('dbd_gfx', JSON.stringify(gSettings)); } catch(e) {}
+}
+
+function syncGSettings() {
+    if (typeof graphicsSettings !== 'undefined') {
+        for (var k in gSettings) {
+            if (graphicsSettings.hasOwnProperty(k)) graphicsSettings[k] = gSettings[k];
+        }
+    }
+}
+
+loadGSettings();
+
+var killerChars = [
+  { name: 'Scare', desc: 'Жуткий маньяк в маске из мешковины', model: 'src/models/killers/scare/ScareKiller_Idle.glb' }
+];
+
+var survivorChars = [
+  { name: 'Выживший 1', desc: 'Красная рубашка, решительный', color: 0xc0392b, hair: 0x3d2314 },
+  { name: 'Выживший 2', desc: 'Фиолетовая куртка, спокойный', color: 0x8e44ad, hair: 0x4a3020 },
+  { name: 'Выживший 3', desc: 'Зелёная футболка, быстрый', color: 0x27ae60, hair: 0x1a1a1a },
+  { name: 'Выживший 4', desc: 'Пиксельный боец', color: 0xcc0033, hair: 0xaa00ff }
+];
+
+function showCharSelect() {
+  console.log('[CharSelect] showCharSelect called, role:', selectedRole);
+  showScreen('char-select');
+  var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+  selectedCharIndex = 0;
+  console.log('[CharSelect] Characters:', chars.length, 'index:', selectedCharIndex);
+  updateCharDisplay();
+}
+
+function updateCharDisplay() {
+  var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+  var ch = chars[selectedCharIndex];
+  
+  document.getElementById('char-select-title').textContent = selectedRole === 'killer' ? '🔪 Выбери маньяка' : '🏃 Выбери выжившего';
+  document.getElementById('char-name').textContent = ch.name;
+  document.getElementById('char-desc').textContent = ch.desc;
+  document.getElementById('char-index').textContent = (selectedCharIndex + 1) + ' / ' + chars.length;
+  
+  setupCharViewer(ch);
+}
+
+function setupCharViewer(ch) {
+  var container = document.getElementById('char-viewer');
+  if (!container) {
+    console.error('char-viewer element not found!');
+    return;
+  }
+  
+  container.innerHTML = '';
+  
+  if (selectedRole === 'killer' && typeof THREE !== 'undefined' && THREE.GLTFLoader) {
+    setupKiller3DViewer(container, ch);
+  } else if (selectedRole === 'killer') {
+    // Three.js not ready yet - show loading and retry
+    container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Загрузка 3D...</p>';
+    setTimeout(function() { setupCharViewer(ch); }, 500);
+  } else {
+    setupSurvivorCanvasPreview(container, ch);
+  }
+}
+
+function setupKiller3DViewer(container, ch) {
+  container.innerHTML = '';
+  
+  var renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setSize(200, 280);
+  renderer.setPixelRatio(1);
+  renderer.setClearColor(0x000000, 0);
+  renderer.domElement.style.cssText = 'width:100%;height:100%;border-radius:12px;cursor:grab;';
+  container.appendChild(renderer.domElement);
+  
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(40, 200 / 280, 0.01, 50);
+  camera.position.set(0, 0.5, 2.5);
+  camera.lookAt(0, 0.5, 0);
+  
+  scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+  var dl = new THREE.DirectionalLight(0xffffff, 2.0);
+  dl.position.set(2, 4, 2);
+  scene.add(dl);
+  
+  var model = null;
+  var mixer = null;
+  var rotationY = 0;
+  var isDragging = false;
+  var lastX = 0;
+  
+  console.log('[CharViewer] Loading:', ch.model);
+  
+  var loader = new THREE.GLTFLoader();
+  loader.load(
+    ch.model,
+    function(gltf) {
+      console.log('[CharViewer] Model loaded');
+      model = gltf.scene;
+      model.traverse(function(child) {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = false;
+        }
+      });
+      
+      var box = new THREE.Box3().setFromObject(model);
+      var size = box.getSize(new THREE.Vector3());
+      var height = size.y || 1;
+      var targetScale = 1.5 / height;
+      model.scale.set(targetScale, targetScale, targetScale);
+      var center = box.getCenter(new THREE.Vector3());
+      model.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
+      
+      scene.add(model);
+      
+      if (gltf.animations && gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(model);
+        var action = mixer.clipAction(gltf.animations[0]);
+        action.play();
+      }
+    },
+    undefined,
+    function(err) {
+      console.error('[CharViewer] Error:', err);
+      container.innerHTML = '<p style="color:#f44;text-align:center;padding:20px">Ошибка загрузки модели</p>';
+    }
+  );
+  
+  // Rotation controls
+  var canvas = renderer.domElement;
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); isDragging = true; lastX = e.touches[0].clientX; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); if (isDragging) { rotationY += (e.touches[0].clientX - lastX) * 0.01; lastX = e.touches[0].clientX; } }, { passive: false });
+  canvas.addEventListener('touchend', function() { isDragging = false; });
+  canvas.addEventListener('mousedown', function(e) { isDragging = true; lastX = e.clientX; });
+  canvas.addEventListener('mousemove', function(e) { if (isDragging) { rotationY += (e.clientX - lastX) * 0.01; lastX = e.clientX; } });
+  canvas.addEventListener('mouseup', function() { isDragging = false; });
+  
+  function animate() {
+    if (!container.parentNode) return;
+    if (model) model.rotation.y = rotationY;
+    if (mixer) mixer.update(0.016);
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+function setupSurvivorCanvasPreview(container, ch) {
+  var canvas = document.createElement('canvas');
+  canvas.width = 200;
+  canvas.height = 280;
+  canvas.style.cssText = 'width:100%;height:100%;border-radius:12px;';
+  container.appendChild(canvas);
+  
+  var ctx = canvas.getContext('2d');
+  var rotation = 0;
+  var isDragging = false;
+  var lastX = 0;
+  var animFrame = 0;
+  
+  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); isDragging = true; lastX = e.touches[0].clientX; }, { passive: false });
+  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); if (isDragging) { rotation += (e.touches[0].clientX - lastX) * 0.02; lastX = e.touches[0].clientX; } }, { passive: false });
+  canvas.addEventListener('touchend', function() { isDragging = false; });
+  canvas.addEventListener('mousedown', function(e) { isDragging = true; lastX = e.clientX; });
+  canvas.addEventListener('mousemove', function(e) { if (isDragging) { rotation += (e.clientX - lastX) * 0.02; lastX = e.clientX; } });
+  canvas.addEventListener('mouseup', function() { isDragging = false; });
+  
+  function draw() {
+    if (!container.parentNode) return;
+    ctx.clearRect(0, 0, 200, 280);
+    animFrame += 0.03;
+    var bobY = Math.sin(animFrame) * 2;
+    drawSurvivorCharPreview(ctx, ch, rotation, bobY);
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function drawSurvivorCharPreview(ctx, ch, rotation, bobY) {
+  var cx = 100, cy = 140 + bobY;
+  var s = 1.2;
+  
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 60 * s, 25 * s, 8 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  ctx.fillStyle = '#1a1a2a';
+  ctx.fillRect(cx - 10 * s, cy + 30 * s, 8 * s, 24 * s);
+  ctx.fillRect(cx + 2 * s, cy + 30 * s, 8 * s, 24 * s);
+  ctx.fillStyle = '#111122';
+  ctx.fillRect(cx - 12 * s, cy + 52 * s, 12 * s, 6 * s);
+  ctx.fillRect(cx, cy + 52 * s, 12 * s, 6 * s);
+  
+  var r = (ch.color >> 16) & 0xff, g = (ch.color >> 8) & 0xff, b = ch.color & 0xff;
+  ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+  ctx.fillRect(cx - 18 * s, cy - 20 * s, 36 * s, 52 * s);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(cx - 18 * s, cy - 20 * s, 36 * s, 4 * s);
+  ctx.fillRect(cx - 18 * s, cy - 20 * s, 4 * s, 52 * s);
+  
+  ctx.fillStyle = '#cc8866';
+  ctx.fillRect(cx - 26 * s, cy - 18 * s, 8 * s, 20 * s);
+  ctx.fillRect(cx + 18 * s, cy - 18 * s, 8 * s, 20 * s);
+  ctx.beginPath(); ctx.arc(cx - 22 * s, cy + 4 * s, 5 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 22 * s, cy + 4 * s, 5 * s, 0, Math.PI * 2); ctx.fill();
+  
+  ctx.fillStyle = '#cc8866';
+  ctx.beginPath(); ctx.arc(cx, cy - 36 * s, 16 * s, 0, Math.PI * 2); ctx.fill();
+  
+  var hr = (ch.hair >> 16) & 0xff, hg = (ch.hair >> 8) & 0xff, hb = ch.hair & 0xff;
+  ctx.fillStyle = 'rgb(' + hr + ',' + hg + ',' + hb + ')';
+  ctx.beginPath(); ctx.arc(cx, cy - 42 * s, 18 * s, Math.PI, Math.PI * 2); ctx.fill();
+  ctx.fillRect(cx - 18 * s, cy - 42 * s, 36 * s, 8 * s);
+  
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath(); ctx.arc(cx - 6 * s, cy - 38 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 6 * s, cy - 38 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(cx - 6 * s, cy - 38.5 * s, 1 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 6 * s, cy - 38.5 * s, 1 * s, 0, Math.PI * 2); ctx.fill();
+  
+  ctx.fillStyle = '#884433';
+  ctx.fillRect(cx - 3 * s, cy - 32 * s, 6 * s, 2 * s);
+}
+
+function updateCharDisplay() {
+  var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+  var ch = chars[selectedCharIndex];
+  
+  document.getElementById('char-select-title').textContent = selectedRole === 'killer' ? '🔪 Выбери маньяка' : '🏃 Выбери выжившего';
+  document.getElementById('char-name').textContent = ch.name;
+  document.getElementById('char-desc').textContent = ch.desc;
+  document.getElementById('char-index').textContent = (selectedCharIndex + 1) + ' / ' + chars.length;
+  
+  // Setup 3D viewer or canvas preview
+  setupCharViewer(ch);
+}
+
+function setupCharViewer(ch) {
+  var container = document.getElementById('char-viewer');
+  if (!container) {
+    console.error('char-viewer element not found!');
+    return;
+  }
+  
+  container.innerHTML = '';
+  
+  if (selectedRole === 'killer' && typeof THREE !== 'undefined') {
+    setupKillerViewer(container, ch);
+  } else if (selectedRole === 'killer') {
+    container.innerHTML = '<p style="color:#ff4444;text-align:center;padding:40px">Three.js не загружен<br><small>Проверьте интернет-соединение</small></p>';
+  } else {
+    setupSurvivorPreview(container, ch);
+  }
+}
+
+function setupKillerViewer(container, ch) {
+  console.log('[CharViewer] setupKillerViewer called, THREE:', typeof THREE !== 'undefined');
+  
+  if (typeof THREE === 'undefined') {
+    container.innerHTML = '<p style="color:#ff4444;text-align:center;padding:40px">Three.js не загружен<br><small>Проверьте интернет-соединение</small></p>';
+    return;
+  }
+  
+  // Create fresh renderer for each character
+  var renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+  renderer.setSize(200, 280);
+  renderer.setPixelRatio(1);
+  renderer.setClearColor(0x000000, 0);
+  renderer.domElement.style.cssText = 'width:100%;height:100%;border-radius:12px;';
+  container.appendChild(renderer.domElement);
+  
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(40, 200 / 280, 0.01, 50);
+  camera.position.set(0, 0.5, 2.5);
+  camera.lookAt(0, 0.5, 0);
+  
+  scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+  var dl = new THREE.DirectionalLight(0xffffff, 2.0);
+  dl.position.set(2, 4, 2);
+  scene.add(dl);
+  
+  var model = null;
+  var mixer = null;
+  var rotationY = 0;
+  var isDragging = false;
+  var lastX = 0;
+  
+  console.log('[CharViewer] Loading:', ch.model);
+  
+  var loader = new THREE.GLTFLoader();
+  loader.load(
+    ch.model,
+    function(gltf) {
+      console.log('[CharViewer] Model loaded successfully');
+      model = gltf.scene;
+      model.traverse(function(child) {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = false;
+        }
+      });
+      
+      var box = new THREE.Box3().setFromObject(model);
+      var size = box.getSize(new THREE.Vector3());
+      var height = size.y || 1;
+      var targetScale = 1.5 / height;
+      model.scale.set(targetScale, targetScale, targetScale);
+      var center = box.getCenter(new THREE.Vector3());
+      model.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
+      
+      scene.add(model);
+      console.log('[CharViewer] Model added to scene, scale:', targetScale);
+      
+      if (gltf.animations && gltf.animations.length > 0) {
+        mixer = new THREE.AnimationMixer(model);
+        var action = mixer.clipAction(gltf.animations[0]);
+        action.play();
+        console.log('[CharViewer] Animation playing');
+      }
+    },
+    undefined,
+    function(error) {
+      console.error('[CharViewer] Load error:', error);
+      container.innerHTML = '<p style="color:#ff4444;text-align:center;padding:40px">Ошибка загрузки модели<br><small>' + error.message + '</small></p>';
+    }
+  );
+  
+  // Touch/mouse rotation
+  var canvas = renderer.domElement;
+  canvas.style.cursor = 'grab';
+  canvas.style.touchAction = 'none';
+  
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    isDragging = true;
+    lastX = e.touches[0].clientX;
+    canvas.style.cursor = 'grabbing';
+  }, { passive: false });
+  
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (!isDragging) return;
+    var dx = e.touches[0].clientX - lastX;
+    rotationY += dx * 0.01;
+    lastX = e.touches[0].clientX;
+  }, { passive: false });
+  
+  canvas.addEventListener('touchend', function() {
+    isDragging = false;
+    canvas.style.cursor = 'grab';
+  });
+  
+  canvas.addEventListener('mousedown', function(e) {
+    isDragging = true;
+    lastX = e.clientX;
+    canvas.style.cursor = 'grabbing';
+  });
+  
+  canvas.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    var dx = e.clientX - lastX;
+    rotationY += dx * 0.01;
+    lastX = e.clientX;
+  });
+  
+  canvas.addEventListener('mouseup', function() {
+    isDragging = false;
+    canvas.style.cursor = 'grab';
+  });
+  
+  // Animate
+  function animate() {
+    if (!container.parentNode) return;
+    
+    if (model) {
+      model.rotation.y = rotationY;
+    }
+    if (mixer) {
+      mixer.update(0.016);
+    }
+    
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+function setupSurvivorPreview(container, ch) {
+  var canvas = document.createElement('canvas');
+  canvas.width = 200;
+  canvas.height = 280;
+  canvas.style.cssText = 'width:100%;height:100%;border-radius:12px;';
+  container.appendChild(canvas);
+  
+  var ctx = canvas.getContext('2d');
+  var rotation = 0;
+  var isDragging = false;
+  var lastX = 0;
+  
+  canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    isDragging = true;
+    lastX = e.touches[0].clientX;
+  }, { passive: false });
+  
+  canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    if (!isDragging) return;
+    rotation += (e.touches[0].clientX - lastX) * 0.02;
+    lastX = e.touches[0].clientX;
+  }, { passive: false });
+  
+  canvas.addEventListener('touchend', function() { isDragging = false; });
+  
+  canvas.addEventListener('mousedown', function(e) { isDragging = true; lastX = e.clientX; });
+  canvas.addEventListener('mousemove', function(e) {
+    if (!isDragging) return;
+    rotation += (e.clientX - lastX) * 0.02;
+    lastX = e.clientX;
+  });
+  canvas.addEventListener('mouseup', function() { isDragging = false; });
+  
+  function drawSurvivor() {
+    if (!container.parentNode) return;
+    ctx.clearRect(0, 0, 200, 280);
+    
+    var cx = 100, cy = 140;
+    var scale = 1.2;
+    var cos = Math.cos(rotation), sin = Math.sin(rotation);
+    
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 60 * scale, 25 * scale, 8 * scale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Legs
+    var legSpread = 8 * scale;
+    ctx.fillStyle = '#1a1a2a';
+    ctx.fillRect(cx - legSpread - 6 * scale, cy + 30 * scale, 12 * scale, 24 * scale);
+    ctx.fillRect(cx + legSpread - 6 * scale, cy + 30 * scale, 12 * scale, 24 * scale);
+    // Shoes
+    ctx.fillStyle = '#111122';
+    ctx.fillRect(cx - legSpread - 8 * scale, cy + 52 * scale, 16 * scale, 6 * scale);
+    ctx.fillRect(cx + legSpread - 8 * scale, cy + 52 * scale, 16 * scale, 6 * scale);
+    
+    // Body
+    var r = (ch.color >> 16) & 0xff;
+    var g = (ch.color >> 8) & 0xff;
+    var b = ch.color & 0xff;
+    ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+    ctx.fillRect(cx - 18 * scale, cy - 20 * scale, 36 * scale, 52 * scale);
+    // Shirt detail
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillRect(cx - 18 * scale, cy - 20 * scale, 36 * scale, 4 * scale);
+    ctx.fillRect(cx - 18 * scale, cy - 20 * scale, 4 * scale, 52 * scale);
+    
+    // Arms
+    ctx.fillStyle = '#cc8866';
+    ctx.fillRect(cx - 26 * scale, cy - 18 * scale, 8 * scale, 20 * scale);
+    ctx.fillRect(cx + 18 * scale, cy - 18 * scale, 8 * scale, 20 * scale);
+    ctx.beginPath();
+    ctx.arc(cx - 22 * scale, cy + 4 * scale, 5 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 22 * scale, cy + 4 * scale, 5 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Head
+    ctx.fillStyle = '#cc8866';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 36 * scale, 16 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Hair
+    var hr = (ch.hair >> 16) & 0xff;
+    var hg = (ch.hair >> 8) & 0xff;
+    var hb = ch.hair & 0xff;
+    ctx.fillStyle = 'rgb(' + hr + ',' + hg + ',' + hb + ')';
+    ctx.beginPath();
+    ctx.arc(cx, cy - 42 * scale, 18 * scale, Math.PI, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(cx - 18 * scale, cy - 42 * scale, 36 * scale, 8 * scale);
+    
+    // Eyes
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(cx - 6 * scale, cy - 38 * scale, 2.5 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 6 * scale, cy - 38 * scale, 2.5 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    // Eye highlights
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx - 6 * scale, cy - 38.5 * scale, 1 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + 6 * scale, cy - 38.5 * scale, 1 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Mouth
+    ctx.fillStyle = '#884433';
+    ctx.fillRect(cx - 3 * scale, cy - 32 * scale, 6 * scale, 2 * scale);
+    
+    requestAnimationFrame(drawSurvivor);
+  }
+  drawSurvivor();
+}
 
 /* ═══════ USER FUNCTIONS ═══════ */
 function getMyId() {
@@ -883,21 +1500,17 @@ function setupButtons() {
     showScreen('role-select');
   });
   
-  // Role selection
+  // Role selection - go to character select
   on('btn-play-killer', function() {
-    if (gameMode === 'solo') {
-      startSoloGame(true);
-    } else {
-      createLobby();
-    }
+    selectedRole = 'killer';
+    selectedCharIndex = 0;
+    showCharSelect();
   });
   
   on('btn-play-survivor', function() {
-    if (gameMode === 'solo') {
-      startSoloGame(false);
-    } else {
-      findAndJoinLobby();
-    }
+    selectedRole = 'survivor';
+    selectedCharIndex = 0;
+    showCharSelect();
   });
   
   on('btn-back-menu', function() {
@@ -908,32 +1521,200 @@ function setupButtons() {
     if (menuBtns) menuBtns.style.display = 'flex';
   });
   
-  on('btn-start-game', function() {
-    if (!gRoomId || !gIsHost) return;
-    showToast('Начинаем игру...');
-    startGame(gRoomId).then(function(result) {
-      if (result.success) {
-        showToast('Игра начинается...');
-        var isKiller = (gMyRole === 'killer');
-        if (typeof Game !== 'undefined') {
-          Game.start(isKiller, true, gRoomId, gMyId);
-        }
-      } else {
-        showToast('Ошибка: ' + result.error);
-      }
-    }).catch(function(e) {
-      console.error('[FB] Start game error:', e);
-      showToast('Ошибка запуска игры: ' + e.message);
-    });
+  // Character select navigation
+  on('btn-char-prev', function() {
+    var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+    selectedCharIndex = (selectedCharIndex - 1 + chars.length) % chars.length;
+    updateCharDisplay();
   });
   
-  on('btn-leave-lobby', window.leaveLobby);
-  on('btn-leave-search', function() {
-    if (window._roomsQuery) window._roomsQuery.off();
+  on('btn-char-next', function() {
+    var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+    selectedCharIndex = (selectedCharIndex + 1) % chars.length;
+    updateCharDisplay();
+  });
+  
+  on('btn-char-play', function() {
+    if (gameMode === 'solo') {
+      Game.start(selectedRole === 'killer', false, null, null);
+    } else {
+      if (selectedRole === 'killer') {
+        createLobby();
+      } else {
+        findAndJoinLobby();
+      }
+    }
+  });
+  
+  on('btn-char-back', function() {
+    showScreen('role-select');
+  });
+  
+  // Profile button
+  on('btn-profile', function() {
+    showProfile();
+  });
+  
+  // Settings button
+  on('btn-settings', function() {
+    showSettings();
+  });
+  
+  on('btn-stats-menu', function() {
     showScreen('loading-screen');
     var menuBtns = document.getElementById('menu-buttons');
     if (menuBtns) menuBtns.style.display = 'flex';
+    updateMenuBP();
   });
+  
+  on('btn-profile-back', function() {
+    showScreen('loading-screen');
+    var menuBtns = document.getElementById('menu-buttons');
+    if (menuBtns) menuBtns.style.display = 'flex';
+    updateMenuBP();
+  });
+  
+  on('btn-settings-back', function() {
+    showScreen('loading-screen');
+    var menuBtns = document.getElementById('menu-buttons');
+    if (menuBtns) menuBtns.style.display = 'flex';
+    updateMenuBP();
+  });
+}
+
+function showSettings() {
+  syncGSettings(); // Sync from state.js if it exists
+  showScreen('settings-screen');
+  
+  var html = '';
+  html += '<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;">';
+  html += '<div style="color:#aaa;font-size:13px;margin-bottom:8px">📱 Устройство: ' + (navigator.deviceMemory || '?') + 'GB RAM, ' + (navigator.hardwareConcurrency || '?') + ' ядер</div>';
+  html += '<div style="color:#aaa;font-size:13px;margin-bottom:8px">🎮 Качество: <span style="color:#ff3333">' + gSettings.quality.toUpperCase() + '</span></div>';
+  html += '</div>';
+  
+  // Quality preset selector
+  html += '<div id="quality-options" style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;">';
+  html += '<div style="color:#fff;font-size:14px;font-weight:bold;margin-bottom:10px">🎨 Качество графики</div>';
+  
+  var qualities = [
+    { key: 'low', label: '🔴 Низкое', desc: '30 FPS, без эффектов' },
+    { key: 'medium', label: '🟡 Среднее', desc: '60 FPS, базовые эффекты' },
+    { key: 'high', label: '🟢 Высокое', desc: '60 FPS, все эффекты' },
+    { key: 'ultra', label: '🔵 Ультра', desc: '60 FPS, тени + сглаживание' }
+  ];
+  
+  qualities.forEach(function(q) {
+    var isActive = gSettings.quality === q.key;
+    html += '<div class="quality-option" data-quality="' + q.key + '" style="padding:8px 12px;margin:4px 0;border-radius:6px;cursor:pointer;background:' + (isActive ? 'rgba(255,51,51,0.3)' : 'rgba(255,255,255,0.05)') + ';border:1px solid ' + (isActive ? '#ff3333' : 'rgba(255,255,255,0.1)') + ';-webkit-user-select:none;user-select:none;">';
+    html += '<div style="color:#fff;font-size:13px;font-weight:' + (isActive ? 'bold' : 'normal') + '">' + q.label + '</div>';
+    html += '<div style="color:#888;font-size:11px">' + q.desc + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  
+  // Individual toggles
+  html += '<div id="setting-toggles" style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;">';
+  html += '<div style="color:#fff;font-size:14px;font-weight:bold;margin-bottom:10px">🔧 Отдельные настройки</div>';
+  
+  var toggles = [
+    { key: 'shadows', label: '🌑 Тени' },
+    { key: 'fog', label: '🌫️ Туман' },
+    { key: 'particles', label: '✨ Частицы' },
+    { key: 'atmosphere', label: '🔴 Атмосфера' },
+    { key: 'crows', label: '🐦 Вороны' },
+    { key: 'dust', label: '💨 Пыль' },
+    { key: 'ash', label: '🔥 Пепел' },
+    { key: 'bloodSplatter', label: '🩸 Брызги крови' },
+    { key: 'screenShake', label: '📳 Тряска экрана' },
+    { key: 'antialias', label: '🔲 Сглаживание' }
+  ];
+  
+  toggles.forEach(function(t) {
+    var isOn = gSettings[t.key];
+    html += '<div class="setting-toggle" data-key="' + t.key + '" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;-webkit-user-select:none;user-select:none;">';
+    html += '<span style="color:#ccc;font-size:13px">' + t.label + '</span>';
+    html += '<span style="color:' + (isOn ? '#44cc66' : '#ff4444') + ';font-size:13px;font-weight:bold">' + (isOn ? 'ВКЛ' : 'ВЫКЛ') + '</span>';
+    html += '</div>';
+  });
+  html += '</div>';
+  
+  document.getElementById('settings-content').innerHTML = html;
+  
+  // Remove old listener and add new one
+  var container = document.getElementById('settings-content');
+  var newContainer = container.cloneNode(true);
+  container.parentNode.replaceChild(newContainer, container);
+  
+  newContainer.addEventListener('click', function(e) {
+    var qualityOption = e.target.closest('.quality-option');
+    if (qualityOption) {
+      e.preventDefault();
+      e.stopPropagation();
+      var quality = qualityOption.getAttribute('data-quality');
+      gSettings.quality = quality;
+      applyGSettings();
+      saveGSettings();
+      syncGSettings();
+      showSettings();
+      return;
+    }
+    
+    var settingToggle = e.target.closest('.setting-toggle');
+    if (settingToggle) {
+      e.preventDefault();
+      e.stopPropagation();
+      var key = settingToggle.getAttribute('data-key');
+      gSettings[key] = !gSettings[key];
+      saveGSettings();
+      syncGSettings();
+      showSettings();
+      return;
+    }
+  });
+}
+
+function showProfile() {
+  showScreen('profile-screen');
+  var stats = playerStats;
+  var totalHours = Math.floor(stats.totalPlaytime / 3600);
+  var totalMins = Math.floor((stats.totalPlaytime % 3600) / 60);
+  
+  var html = '';
+  html += '<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;">';
+  html += '<div style="color:#ff3333;font-size:16px;font-weight:bold;margin-bottom:8px">🩸 Очки крови: ' + stats.totalBloodpoints + '</div>';
+  html += '</div>';
+  
+  html += '<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;">';
+  html += '<div style="color:#aaa;font-size:14px;margin-bottom:6px">📊 Общая статистика</div>';
+  html += '<div style="color:#ccc;font-size:13px">⏱️ Время в игре: ' + totalHours + 'ч ' + totalMins + 'м</div>';
+  html += '<div style="color:#ccc;font-size:13px">🎮 Матчей: ' + stats.totalMatches + '</div>';
+  html += '<div style="color:#44cc66;font-size:13px">🏆 Побед: ' + stats.wins + '</div>';
+  html += '<div style="color:#ff6666;font-size:13px">💀 Поражений: ' + stats.losses + '</div>';
+  if (stats.totalMatches > 0) {
+    var winRate = Math.round(stats.wins / stats.totalMatches * 100);
+    html += '<div style="color:#ffaa00;font-size:13px">📈 Винрейт: ' + winRate + '%</div>';
+  }
+  html += '</div>';
+  
+  html += '<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;">';
+  html += '<div style="color:#ff8888;font-size:14px;margin-bottom:6px">🔪 Маньяк</div>';
+  html += '<div style="color:#ccc;font-size:13px">☠️ Убийств: ' + stats.killerStats.kills + '</div>';
+  html += '<div style="color:#ccc;font-size:13px">🪝 Повешений: ' + stats.killerStats.hooks + '</div>';
+  html += '</div>';
+  
+  html += '<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;">';
+  html += '<div style="color:#88ccff;font-size:14px;margin-bottom:6px">🏃 Выживший</div>';
+  html += '<div style="color:#ccc;font-size:13px">🚪 Побегов: ' + stats.survivorStats.escapes + '</div>';
+  html += '<div style="color:#ccc;font-size:13px">⚙️ Генераторов: ' + stats.survivorStats.gensRepaired + '</div>';
+  html += '<div style="color:#ccc;font-size:13px">❤️ Лечений: ' + stats.survivorStats.heals + '</div>';
+  html += '</div>';
+  
+  document.getElementById('profile-content').innerHTML = html;
+}
+
+function updateMenuBP() {
+  var bpEl = document.getElementById('menu-bp-display');
+  if (bpEl) bpEl.textContent = '\uD83E\uDE78 ' + playerStats.totalBloodpoints;
 }
 
 /* ═══════ MISSING FUNCTIONS ═══════ */

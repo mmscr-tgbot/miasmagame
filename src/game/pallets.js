@@ -60,6 +60,8 @@ function updatePallets(dt) {
                     pallet.hitFx.fillCircle(pallet.bx, pallet.by - 20, 40);
                     pallet.hitFx.setDepth(500);
                     setTimeout(function() { if (pallet.hitFx) pallet.hitFx.destroy(); }, 300);
+                    matchStats.palletsStunned++;
+                    addBloodpoints('deviousness', 2000, 'Оглушение убийцы');
                 }
 
                 pallet.breakTimer = 15;
@@ -151,6 +153,8 @@ function dropPallet(pallet) {
     pallet.dropCooldown = 0.5;
     pallet.breakTimer = 15;
     if (pallet.interactHint) pallet.interactHint.setVisible(false);
+    matchStats.palletsDropped++;
+    addBloodpoints('objective', 1000, 'Доска сброшена');
     UI.showToast('\uD83D\uDCA8 \u0414\u043E\u0441\u043A\u0430 \u043F\u0430\u0434\u0430\u0435\u0442!', 800);
     if (isMultiplayer && roomCode && playerId) {
         updatePalletState(roomCode, pallet.palletId, 'dropping', pallet.bx, pallet.by);

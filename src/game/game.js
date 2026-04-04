@@ -17,6 +17,9 @@ function startGame(killerMode, multiplayer, code, pid) {
     gateEscapeProgress = 0; floatBars = []; gameEnded = false;
     remotePlayers = {}; gameTime = 0;
 
+    // Reset match stats
+    resetMatchStats();
+
     UI.showScreen('game-screen');
     UI.showToast(isKiller ? '\uD83D\uDD2A \u041F\u043E\u0439\u043C\u0430\u0439 \u0432\u0441\u0435\u0445!' : '\u2699\uFE0F \u041F\u043E\u0447\u0438\u043D\u0438 \u0433\u0435\u043D\u0435\u0440\u0430\u0442\u043E\u0440\u044B!');
     initGame();
@@ -1037,6 +1040,7 @@ function create() {
     this.cameras.main.setBackgroundColor('#030303');
 
     // Atmosphere
+    if (graphicsSettings.atmosphere) {
     this.atmosphere = { bloodSplatters:[], bloodGfx:null, heartbeatIntensity:0, heartbeatGfx:null,
         killerAuraGfx:null, screenShakeAmount:0, ambientParticles:[], ambientGfx:null, breathPhase:0 };
     this.atmosphere.bloodGfx = this.add.graphics().setDepth(9995);
@@ -1051,11 +1055,13 @@ function create() {
             flicker: Math.random()*Math.PI*2, color: Math.random()>0.7 ? 0xff6622 : 0x886644
         });
     }
+    }
 
     // Fog
+    if (graphicsSettings.fog) {
     this.fogPatches = [];
     var fogColors = [{r:45,g:50,b:55},{r:55,g:50,b:45},{r:40,g:45,b:50},{r:50,g:48,b:45},{r:35,g:40,b:45}];
-    var fogCount = window.isLowEndDevice ? 30 : 50;
+    var fogCount = graphicsSettings.quality === 'ultra' ? 80 : (graphicsSettings.quality === 'high' ? 60 : 40);
     for (var i = 0; i < fogCount; i++) {
         this.fogPatches.push({
             x: Math.random()*MAP_W, y: Math.random()*MAP_H,
@@ -1069,8 +1075,10 @@ function create() {
     }
     this.fogGfx = [];
     for (var i = 0; i < 3; i++) { var fg = this.add.graphics(); fg.setDepth(95+i*2); this.fogGfx.push(fg); }
+    }
 
     // Dust
+    if (graphicsSettings.dust) {
     this.dustParticles = [];
     for (var i = 0; i < 35; i++) {
         this.dustParticles.push({
@@ -1081,8 +1089,10 @@ function create() {
         });
     }
     this.dustGfx = this.add.graphics().setDepth(150);
+    }
 
     // Ash
+    if (graphicsSettings.ash) {
     this.ashParticles = [];
     for (var i = 0; i < 20; i++) {
         this.ashParticles.push({
@@ -1093,8 +1103,10 @@ function create() {
         });
     }
     this.ashGfx = this.add.graphics().setDepth(149);
+    }
 
     // Crows - placed near player AFTER spawn
+    if (graphicsSettings.crows) {
     this.crows = [];
     var playerX = player ? player.sprite.x : MAP_W/2;
     var playerY = player ? player.sprite.y : MAP_H/2;
@@ -1132,6 +1144,10 @@ function create() {
         this.crows.push(crow);
     }
     this.cawGfx = this.add.graphics().setDepth(300);
+    } else {
+        this.crows = [];
+        this.cawGfx = this.add.graphics().setDepth(300);
+    }
     this.vignetteGfx = this.add.graphics().setDepth(99999);
     floatBarGfx = this.add.graphics().setDepth(55000);
 
@@ -1286,11 +1302,61 @@ function update(time, dt) {
     updatePallets(dt);
     updateGates(dt);
     updateHatch(dt);
-    updateCrows(dt);
-    updateFog(dt);
-    updateDustAndAsh(dt);
-    updateAtmosphere(dt);
+    if (graphicsSettings.crows) updateCrows(dt);
+    if (graphicsSettings.fog) updateFog(dt);
+    if (graphicsSettings.dust || graphicsSettings.ash) updateDustAndAsh(dt);
+    if (graphicsSettings.atmosphere) updateAtmosphere(dt);
     updateGateGlow(dt);
+
+    // Track chase time
+    if (player && player.sprite) {
+        var nearestEnemy = null;
+        var chaseDist = 9999;
+        if (isKiller) {
+            // Killer chasing survivors
+            if (!isMultiplayer && player.aiPlayers) {
+                player.aiPlayers.forEach(function(ai) {
+                    if (ai.state !== 'dead' && ai.state !== 'hooked' && ai.state !== 'carried') {
+                        var d = dist(player.sprite, ai.sprite);
+                        if (d < chaseDist) { chaseDist = d; nearestEnemy = ai; }
+                    }
+                });
+            } else if (isMultiplayer) {
+                Object.values(remotePlayers).forEach(function(rp) {
+                    if (rp.state !== 'dead' && rp.state !== 'hooked' && rp.state !== 'carried' && rp.sprite) {
+                        var d = dist(player.sprite, rp.sprite);
+                        if (d < chaseDist) { chaseDist = d; nearestEnemy = rp; }
+                    }
+                });
+            }
+        } else {
+            // Survivor being chased by killer
+            if (!isMultiplayer && player.aiPlayers) {
+                player.aiPlayers.forEach(function(ai) {
+                    if (ai.isAIKiller && ai.sprite) {
+                        var d = dist(player.sprite, ai.sprite);
+                        if (d < chaseDist) { chaseDist = d; nearestEnemy = ai; }
+                    }
+                });
+            } else if (isMultiplayer) {
+                Object.values(remotePlayers).forEach(function(rp) {
+                    if (rp.role === 'killer' && rp.sprite) {
+                        var d = dist(player.sprite, rp.sprite);
+                        if (d < chaseDist) { chaseDist = d; nearestEnemy = rp; }
+                    }
+                });
+            }
+        }
+        
+        var isInChase = chaseDist < 300;
+        if (isInChase && !matchStats.isChasing) {
+            matchStats.isChasing = true;
+            matchStats.chaseStartTime = Date.now();
+        } else if (!isInChase && matchStats.isChasing) {
+            matchStats.isChasing = false;
+            matchStats.chaseTime += (Date.now() - matchStats.chaseStartTime) / 1000;
+        }
+    }
 
     if (isMultiplayer) {
         interpolateRemotePlayers(dt);
@@ -1355,6 +1421,10 @@ function updateHUD() {
         else aliveCount = survivorsAlive;
     }
     UI.updateHUD(p.role, p.state, genCount, exitOpen, hatchOpen&&!hatchClosed, aliveCount);
+    
+    // Update bloodpoints display
+    var bpEl = document.getElementById('bp-display');
+    if (bpEl) bpEl.textContent = '\uD83E\uDE78 ' + bloodpoints.matchEarned;
 }
 
 function checkWinLose() {
@@ -1375,6 +1445,7 @@ function checkWinLose() {
         }
         if ((player.state === 'alive' || player.state === 'injured') && hatchOpen && !hatchClosed && !isEscapingHatch) {
             if (dist(player.sprite, hatch) < 80 && !isEscapingHatch) {
+                matchStats.hatchEscapes++;
                 // Auto escape through hatch
                 doEndGame(true, '\u0422\u044B \u0441\u0431\u0435\u0436\u0430\u043B \u0447\u0435\u0440\u0435\u0437 \u043B\u044E\u043A!');
             }
@@ -1390,8 +1461,104 @@ function doEndGame(won, msg) {
         if (c && c.sprite) { c.sprite.setScale(1,1); if (c.sprite.texture.key.includes('_carried')) c.sprite.setTexture(c.tex); }
         player.carryTarget = null;
     }
+    
+    // Track gate escapes
+    if (!isKiller && won && !matchStats.hatchEscapes) {
+        gates.forEach(function(gate) {
+            if (gate.opened && dist(player.sprite, gate) < 80) {
+                matchStats.gatesOpened++;
+            }
+        });
+    }
+    
+    // Add chase time if still chasing
+    if (matchStats.isChasing) {
+        matchStats.chaseTime += (Date.now() - matchStats.chaseStartTime) / 1000;
+        matchStats.isChasing = false;
+    }
+    
+    // Calculate and save bloodpoints
+    var matchResult = endMatch(won);
+    
     if (isMultiplayer && roomCode) setGameResult(roomCode, won ? (isKiller?'killer':'survivors') : (isKiller?'survivors':'killer'), msg);
-    setTimeout(function() { stopGame(); UI.showGameOver(won, msg); }, 600);
+    setTimeout(function() { stopGame(); showMatchStats(matchResult, msg); }, 600);
+}
+
+function showMatchStats(result, msg) {
+    showScreen('match-stats');
+    
+    var titleEl = document.getElementById('match-result-title');
+    titleEl.textContent = result.won ? '\uD83C\uDF89 \u041F\u041E\u0411\u0415\u0414\u0410!' : '\uD83D\uDC80 \u041F\u041E\u0420\u0410\u0416\u0415\u041D\u0418\u0415';
+    titleEl.style.color = result.won ? '#44cc66' : '#ff3333';
+    
+    // Bloodpoints total
+    var bpEl = document.getElementById('match-bp-total');
+    bpEl.textContent = '\uD83E\uDE78 +' + result.bloodpoints + ' \u043E\u0447\u043A\u043E\u0432 \u043A\u0440\u043E\u0432\u0438';
+    
+    // Stats breakdown
+    var content = document.getElementById('match-stats-content');
+    var mins = Math.floor(result.stats.startTime ? (Date.now() - result.stats.startTime) / 60000 : 0);
+    var secs = Math.floor(((Date.now() - result.stats.startTime) / 1000) % 60);
+    
+    var html = '<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;">';
+    html += '<div style="color:#aaa;font-size:13px;margin-bottom:8px">\u23F1\uFE0F \u0412\u0440\u0435\u043C\u044F \u043C\u0430\u0442\u0447\u0430: ' + mins + '\u043C ' + secs + '\u0441</div>';
+    
+    if (isKiller) {
+        html += '<div style="color:#ff8888;font-size:14px;margin-bottom:6px">\uD83D\uDD2A \u041C\u0430\u043D\u044C\u044F\u043A</div>';
+        html += '<div style="color:#ccc;font-size:13px">\u2620\uFE0F \u0423\u0431\u0438\u0439\u0441\u0442\u0432\u0430: ' + result.stats.survivorsKilled + '</div>';
+        html += '<div style="color:#ccc;font-size:13px">\uD83E\uDE9D \u041F\u043E\u0432\u0435\u0448\u0435\u043D\u0438\u044F: ' + result.stats.survivorsHooked + '</div>';
+        html += '<div style="color:#ccc;font-size:13px">\u23F1\uFE0F \u041F\u0440\u0435\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u043D\u0438\u0435: ' + Math.floor(result.stats.chaseTime) + '\u0441</div>';
+        if (result.stats.palletsStunned > 0) {
+            html += '<div style="color:#ff6666;font-size:13px">\uD83E\uDEB5 \u041E\u0433\u043B\u0443\u0448\u0435\u043D\u0438\u044F: ' + result.stats.palletsStunned + '</div>';
+        }
+    } else {
+        html += '<div style="color:#88ccff;font-size:14px;margin-bottom:6px">\uD83C\uDFC3 \u0412\u044B\u0436\u0438\u0432\u0448\u0438\u0439</div>';
+        html += '<div style="color:#ccc;font-size:13px">\u2699\uFE0F \u0413\u0435\u043D\u0435\u0440\u0430\u0442\u043E\u0440\u044B: ' + result.stats.generatorsRepaired + '</div>';
+        html += '<div style="color:#ccc;font-size:13px">\u2764\uFE0F \u041B\u0435\u0447\u0435\u043D\u0438\u0435: ' + result.stats.survivorsHealed + '</div>';
+        html += '<div style="color:#ccc;font-size:13px">\uD83E\uDEB5 \u0414\u043E\u0441\u043A\u0438: ' + result.stats.palletsDropped + '</div>';
+        if (result.stats.palletsStunned > 0) {
+            html += '<div style="color:#44cc66;font-size:13px">\uD83D\uDCA5 \u041E\u0433\u043B\u0443\u0448\u0435\u043D\u0438\u044F: ' + result.stats.palletsStunned + '</div>';
+        }
+        html += '<div style="color:#ccc;font-size:13px">\u23F1\uFE0F \u041F\u0440\u0435\u0441\u043B\u0435\u0434\u043E\u0432\u0430\u043D\u0438\u0435: ' + Math.floor(result.stats.chaseTime) + '\u0441</div>';
+        if (result.stats.gatesOpened > 0) {
+            html += '<div style="color:#44cc66;font-size:13px">\uD83D\uDEAA \u0412\u043E\u0440\u043E\u0442\u0430: ' + result.stats.gatesOpened + '</div>';
+        }
+        if (result.stats.hatchEscapes > 0) {
+            html += '<div style="color:#ffaa00;font-size:13px">\uD83D\uDD73\uFE0F \u041B\u044E\u043A</div>';
+        }
+    }
+    html += '</div>';
+    
+    // Bloodpoints breakdown
+    html += '<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;">';
+    html += '<div style="color:#ff3333;font-size:14px;margin-bottom:8px">\uD83E\uDE78 \u041E\u0447\u043A\u0438 \u043A\u0440\u043E\u0432\u0438</div>';
+    
+    var categories = {
+        'objective': '\u2699\uFE0F \u0417\u0430\u0434\u0430\u043D\u0438\u044F',
+        'hunter': '\uD83D\uDD2A \u041E\u0445\u043E\u0442\u0430',
+        'altruism': '\u2764\uFE0F \u0410\u043B\u044C\u0442\u0440\u0443\u0438\u0437\u043C',
+        'deviousness': '\uD83E\uDDE0 \u0425\u0438\u0442\u0440\u043E\u0441\u0442\u044C',
+        'survival': '\uD83C\uDFC3 \u0412\u044B\u0436\u0438\u0432\u0430\u043D\u0438\u0435'
+    };
+    
+    for (var cat in bloodpoints.breakdown) {
+        if (bloodpoints.breakdown[cat].total > 0) {
+            html += '<div style="display:flex;justify-content:space-between;color:#ccc;font-size:13px;padding:3px 0">';
+            html += '<span>' + (categories[cat] || cat) + '</span>';
+            html += '<span style="color:#ff6644">+' + bloodpoints.breakdown[cat].total + '</span>';
+            html += '</div>';
+        }
+    }
+    
+    if (result.won) {
+        html += '<div style="display:flex;justify-content:space-between;color:#44cc66;font-size:13px;padding:3px 0;font-weight:bold">';
+        html += '<span>\uD83C\uDFC6 \u041F\u043E\u0431\u0435\u0434\u0430</span>';
+        html += '<span>+5000</span>';
+        html += '</div>';
+    }
+    html += '</div>';
+    
+    content.innerHTML = html;
 }
 
 // ═══════ EXPORTS ═══════

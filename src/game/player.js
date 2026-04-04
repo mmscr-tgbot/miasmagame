@@ -173,6 +173,8 @@ function killerAction(dt) {
                         if (carried.sprite.texture.key.includes('_carried')) {
                             carried.sprite.setTexture(carried.tex);
                         }
+                        matchStats.survivorsHooked++;
+                        addBloodpoints('hunter', 1500, 'Выживший на крюке');
                         UI.showToast('\uD83E\uDE9D \u0412\u044B\u0436\u0438\u0432\u0448\u0438\u0439 \u043D\u0430 \u043A\u0440\u044E\u043A\u0435!', 2000);
                         if (isMultiplayer && roomCode && carried.playerId) {
                             hookSurvivor(roomCode, carried.playerId, hook.hookId);
@@ -257,6 +259,7 @@ function killerAction(dt) {
                 t.sprite.setTint(0xff8888);
                 killerSlowdown = 2.0;
                 killerAttackCooldown = 1.5;
+                addBloodpoints('hunter', 1500, 'Выживший ранен');
                 if (t.isMe) {
                     boostTimer = 1.0;
                     survivorSpeedBoost = 1.0;
@@ -367,6 +370,9 @@ function survivorAction(dt) {
             if (sp.texture.key.includes('_repair')) sp.setTexture(p.tex);
             if (gen.repairSparks) gen.repairSparks.setVisible(false);
 
+            matchStats.generatorsRepaired++;
+            addBloodpoints('objective', 2000, 'Генератор починен');
+
             var repairedCount = generators.filter(function(g) { return g.repaired; }).length;
             UI.showToast('\u26A1 \u0413\u0435\u043D\u0435\u0440\u0430\u0442\u043E\u0440 \u043F\u043E\u0447\u0438\u043D\u0435\u043D! (' + repairedCount + '/5)', 2000);
 
@@ -413,6 +419,8 @@ function survivorAction(dt) {
     if (nearSurvivor) {
         nearSurvivor.state = 'alive';
         nearSurvivor.sprite.clearTint();
+        matchStats.survivorsHealed++;
+        addBloodpoints('altruism', 1500, 'Выживший вылечен');
         UI.showToast('\u2764\uFE0F \u0412\u044B\u0436\u0438\u0432\u0448\u0438\u0439 \u0432\u044B\u043B\u0435\u0447\u0435\u043D!', 1500);
         if (isMultiplayer && roomCode && nearSurvivor.playerId) {
             updatePlayerHealth(roomCode, nearSurvivor.playerId, 100);
@@ -438,6 +446,8 @@ function survivorAction(dt) {
         hookedSurvivor.state = 'injured';
         hookedSurvivor.sprite.clearTint();
         hookedSurvivor.sprite.setPosition(nearHooked.x + 30, nearHooked.y);
+        matchStats.survivorsHealed++;
+        addBloodpoints('altruism', 2000, 'Снятие с крюка');
         UI.showToast('\uD83E\uDE9D \u0412\u044B\u0436\u0438\u0432\u0448\u0438\u0439 \u0441\u043D\u044F\u0442 \u0441 \u043A\u0440\u044E\u043A\u0430!', 1500);
         if (isMultiplayer && roomCode && hookedSurvivor.playerId) {
             unhookSurvivor(roomCode, hookedSurvivor.playerId);
