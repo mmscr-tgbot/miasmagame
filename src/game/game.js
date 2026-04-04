@@ -509,71 +509,81 @@ function preload() {
     g.fillStyle(0x3a1a0a); g.fillCircle(4, 24, 2); g.fillCircle(24, 24, 2); g.fillCircle(44, 24, 2);
     g.generateTexture('pallet_falling', 48, 32); g.clear();
 
-    // Trees
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(35, 100, 20, 8);
-    g.fillStyle(0x3a2a1a); g.fillRect(30, 60, 10, 40);
-    g.fillStyle(0x4a3a2a); g.fillRect(30, 60, 4, 40);
-    g.fillStyle(0x1a3a1a); g.fillCircle(35, 40, 25);
-    g.fillStyle(0x2a4a2a); g.fillCircle(35, 35, 22);
-    g.fillStyle(0x3a5a3a); g.fillCircle(35, 30, 18);
-    g.fillStyle(0x4a6a4a); g.fillCircle(30, 25, 12);
-    g.fillStyle(0x2a4a2a); g.fillCircle(42, 45, 10);
-    g.generateTexture('tree0', 70, 100); g.clear();
+    // Trees - realistic with trunk, canopy layers, highlights
+    for (var tv = 0; tv < 3; tv++) {
+        var trunkColors = [0x3a2a1a, 0x4a3a2a, 0x2a1a0a];
+        var leafColors = [[0x1a3a1a, 0x2a4a2a, 0x3a5a3a, 0x4a6a4a], [0x1a2a1a, 0x2a3a2a, 0x3a4a3a, 0x4a5a4a], [0x0a2a0a, 0x1a3a1a, 0x2a4a2a, 0x3a5a3a]];
+        g.fillStyle(0x000000, 0.3); g.fillEllipse(35, 95, 40, 12);
+        g.fillStyle(trunkColors[tv]); g.fillRect(30, 50, 10, 45);
+        g.fillStyle(0x2a1a0a, 0.5); g.fillRect(30, 50, 3, 45);
+        g.fillStyle(0x2a1a0a, 0.4);
+        for (var bi = 0; bi < 6; bi++) { g.fillRect(31, 55 + bi * 7, 8, 2); }
+        var lc = leafColors[tv];
+        g.fillStyle(lc[0]); g.fillCircle(35, 35, 32);
+        g.fillStyle(lc[0]); g.fillCircle(20, 45, 22); g.fillCircle(50, 45, 22);
+        g.fillStyle(lc[1]); g.fillCircle(35, 30, 28);
+        g.fillStyle(lc[1]); g.fillCircle(22, 38, 18); g.fillCircle(48, 38, 18);
+        g.fillStyle(lc[2]); g.fillCircle(35, 25, 24);
+        g.fillStyle(lc[2]); g.fillCircle(25, 30, 14); g.fillCircle(45, 30, 14);
+        g.fillStyle(lc[3]); g.fillCircle(35, 20, 18);
+        g.fillStyle(lc[3]); g.fillCircle(30, 22, 10); g.fillCircle(40, 22, 10);
+        g.fillStyle(0x5a7a5a, 0.4); g.fillCircle(30, 18, 8); g.fillCircle(42, 20, 6);
+        g.fillStyle(0x0a1a0a, 0.3); g.fillCircle(25, 40, 8); g.fillCircle(45, 35, 6);
+        g.generateTexture('tree' + tv, 70, 100); g.clear();
+    }
 
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(35, 100, 20, 8);
-    g.fillStyle(0x3a2a1a); g.fillRect(30, 60, 10, 40);
-    g.fillStyle(0x4a3a2a); g.fillRect(30, 60, 4, 40);
-    g.fillStyle(0x1a4a1a); g.fillCircle(35, 40, 25);
-    g.fillStyle(0x2a5a2a); g.fillCircle(35, 35, 22);
-    g.fillStyle(0x3a6a3a); g.fillCircle(35, 30, 18);
-    g.fillStyle(0x4a7a4a); g.fillCircle(28, 25, 12);
-    g.fillStyle(0x2a5a2a); g.fillCircle(44, 45, 10);
-    g.generateTexture('tree1', 70, 100); g.clear();
-
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(35, 100, 20, 8);
-    g.fillStyle(0x3a2a1a); g.fillRect(30, 60, 10, 40);
-    g.fillStyle(0x4a3a2a); g.fillRect(30, 60, 4, 40);
-    g.fillStyle(0x1a3a2a); g.fillCircle(35, 40, 25);
-    g.fillStyle(0x2a4a3a); g.fillCircle(35, 35, 22);
-    g.fillStyle(0x3a5a4a); g.fillCircle(35, 30, 18);
-    g.fillStyle(0x4a6a5a); g.fillCircle(32, 25, 12);
-    g.fillStyle(0x2a4a3a); g.fillCircle(40, 45, 10);
-    g.generateTexture('tree2', 70, 100); g.clear();
-
-    // Pine trees
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(25, 95, 16, 8);
-    g.fillStyle(0x3a2a1a); g.fillRect(22, 70, 6, 25);
-    g.fillStyle(0x1a3a1a); g.fillTriangle(25, 10, 5, 50, 45, 50);
-    g.fillStyle(0x2a4a2a); g.fillTriangle(25, 15, 10, 45, 40, 45);
-    g.fillStyle(0x3a5a3a); g.fillTriangle(25, 20, 15, 40, 35, 40);
-    g.fillStyle(0x4a6a4a); g.fillTriangle(25, 25, 18, 35, 32, 35);
+    // Pine trees - realistic layered cones
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(25, 90, 30, 10);
+    g.fillStyle(0x3a2a1a); g.fillRect(22, 60, 6, 30);
+    g.fillStyle(0x2a1a0a, 0.5); g.fillRect(22, 60, 2, 30);
+    g.fillStyle(0x0a2a0a); g.fillTriangle(25, 85, 5, 80, 45, 80);
+    g.fillStyle(0x1a3a1a); g.fillTriangle(25, 75, 8, 70, 42, 70);
+    g.fillStyle(0x1a3a1a); g.fillTriangle(25, 65, 10, 60, 40, 60);
+    g.fillStyle(0x2a4a2a); g.fillTriangle(25, 55, 12, 50, 38, 50);
+    g.fillStyle(0x2a4a2a); g.fillTriangle(25, 45, 14, 40, 36, 40);
+    g.fillStyle(0x3a5a3a); g.fillTriangle(25, 35, 16, 30, 34, 30);
+    g.fillStyle(0x3a5a3a); g.fillTriangle(25, 25, 18, 20, 32, 20);
+    g.fillStyle(0x4a6a4a); g.fillTriangle(25, 18, 20, 12, 30, 12);
+    g.fillStyle(0x5a7a5a, 0.4); g.fillTriangle(25, 30, 18, 25, 32, 25);
+    g.fillStyle(0x0a1a0a, 0.3); g.fillTriangle(25, 70, 10, 65, 25, 65);
     g.generateTexture('pine_tree', 50, 95); g.clear();
 
     // Small trees
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(20, 80, 14, 6);
-    g.fillStyle(0x3a2a1a); g.fillRect(18, 50, 4, 30);
-    g.fillStyle(0x1a3a1a); g.fillCircle(20, 35, 18);
-    g.fillStyle(0x2a4a2a); g.fillCircle(20, 30, 15);
-    g.fillStyle(0x3a5a3a); g.fillCircle(20, 25, 12);
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(20, 75, 25, 8);
+    g.fillStyle(0x3a2a1a); g.fillRect(18, 45, 4, 30);
+    g.fillStyle(0x1a3a1a); g.fillCircle(20, 30, 18);
+    g.fillStyle(0x2a4a2a); g.fillCircle(20, 25, 15);
+    g.fillStyle(0x2a4a2a); g.fillCircle(12, 32, 10); g.fillCircle(28, 32, 10);
+    g.fillStyle(0x3a5a3a); g.fillCircle(20, 20, 12);
+    g.fillStyle(0x3a5a3a); g.fillCircle(15, 22, 7); g.fillCircle(25, 22, 7);
+    g.fillStyle(0x4a6a4a); g.fillCircle(20, 16, 8);
+    g.fillStyle(0x5a7a5a, 0.4); g.fillCircle(18, 14, 4); g.fillCircle(23, 16, 3);
+    g.fillStyle(0x0a1a0a, 0.3); g.fillCircle(14, 30, 5); g.fillCircle(26, 28, 4);
     g.generateTexture('tree_small', 40, 80); g.clear();
 
-    // Bushes
-    g.fillStyle(0x000000, 0.3); g.fillEllipse(30, 45, 50, 12);
-    g.fillStyle(0x1a3a1a); g.fillCircle(20, 30, 18); g.fillCircle(40, 28, 16);
-    g.fillStyle(0x2a4a2a); g.fillCircle(30, 25, 20); g.fillCircle(15, 35, 12);
-    g.fillStyle(0x3a5a3a); g.fillCircle(25, 20, 14); g.fillCircle(45, 32, 10);
-    g.fillStyle(0x4a6a4a); g.fillCircle(30, 18, 10); g.fillCircle(38, 22, 8);
+    // Bushes - realistic with depth
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(30, 42, 50, 10);
+    g.fillStyle(0x0a2a0a); g.fillCircle(15, 30, 16); g.fillCircle(45, 30, 16);
+    g.fillStyle(0x1a3a1a); g.fillCircle(30, 28, 20); g.fillCircle(10, 35, 12); g.fillCircle(50, 35, 12);
+    g.fillStyle(0x2a4a2a); g.fillCircle(30, 24, 16); g.fillCircle(18, 28, 10); g.fillCircle(42, 28, 10);
+    g.fillStyle(0x3a5a3a); g.fillCircle(30, 20, 12); g.fillCircle(22, 22, 7); g.fillCircle(38, 22, 7);
+    g.fillStyle(0x4a6a4a); g.fillCircle(30, 17, 8);
+    g.fillStyle(0x5a7a5a, 0.4); g.fillCircle(25, 16, 4); g.fillCircle(35, 18, 3);
+    g.fillStyle(0x0a1a0a, 0.3); g.fillCircle(20, 32, 5); g.fillCircle(40, 30, 4);
     g.generateTexture('bush', 60, 45); g.clear();
 
-    // Tall grass
-    g.fillStyle(0x2a4a1a); g.fillRect(5, 20, 3, 20); g.fillRect(12, 15, 3, 25);
-    g.fillRect(20, 18, 3, 22); g.fillRect(28, 12, 3, 28); g.fillRect(36, 20, 3, 20);
-    g.fillRect(44, 16, 3, 24);
-    g.fillStyle(0x3a5a2a); g.fillRect(5, 18, 3, 2); g.fillRect(12, 13, 3, 2);
-    g.fillRect(20, 16, 3, 2); g.fillRect(28, 10, 3, 2); g.fillRect(36, 18, 3, 2);
-    g.fillRect(44, 14, 3, 2);
-    g.fillStyle(0x1a3a0a); g.fillRect(8, 25, 2, 15); g.fillRect(16, 22, 2, 18);
-    g.fillRect(24, 24, 2, 16); g.fillRect(32, 20, 2, 20); g.fillRect(40, 26, 2, 14);
+    // Tall grass - realistic with varied blades
+    g.fillStyle(0x1a3a0a); g.fillRect(0, 20, 50, 20);
+    var grassBlades = [
+        [5,25,3,15],[10,20,3,20],[15,22,3,18],[20,18,3,22],[25,24,3,16],[30,20,3,20],
+        [35,22,3,18],[40,18,3,22],[45,24,3,16],[8,28,2,12],[18,26,2,14],[28,28,2,12],[38,26,2,14],
+        [3,30,2,10],[13,30,2,10],[23,30,2,10],[33,30,2,10],[43,30,2,10]
+    ];
+    grassBlades.forEach(function(bl) {
+        g.fillStyle(0x2a4a1a); g.fillRect(bl[0], bl[1], bl[2], bl[3]);
+        g.fillStyle(0x3a5a2a, 0.5); g.fillRect(bl[0], bl[1], bl[2], 3);
+    });
+    g.fillStyle(0x3a6a2a, 0.3); g.fillCircle(10, 18, 3); g.fillCircle(25, 16, 3); g.fillCircle(40, 18, 3);
     g.generateTexture('tall_grass', 50, 40); g.clear();
 
     // Flower patches
@@ -629,6 +639,29 @@ function preload() {
     g.fillStyle(0x5a5a5a); g.fillCircle(14, 14, 8);
     g.fillStyle(0x6a6a6a); g.fillCircle(12, 12, 5);
     g.generateTexture('stone5', 28, 28); g.clear();
+
+    // Rusty barrel
+    g.fillStyle(0x000000, 0.3); g.fillEllipse(20, 40, 30, 10);
+    g.fillStyle(0x6a4a2a); g.fillRect(5, 10, 30, 30);
+    g.fillStyle(0x7a5a3a); g.fillRect(6, 11, 28, 28);
+    g.fillStyle(0x5a3a1a); g.fillRect(5, 10, 30, 3);
+    g.fillStyle(0x5a3a1a); g.fillRect(5, 37, 30, 3);
+    g.fillStyle(0x8a6a4a); g.fillRect(8, 14, 24, 2);
+    g.fillStyle(0x8a6a4a); g.fillRect(8, 20, 24, 2);
+    g.fillStyle(0x8a6a4a); g.fillRect(8, 26, 24, 2);
+    g.fillStyle(0x8a6a4a); g.fillRect(8, 32, 24, 2);
+    // Rust spots
+    g.fillStyle(0x8a3a1a, 0.6); g.fillCircle(12, 18, 3); g.fillCircle(28, 25, 2);
+    g.fillStyle(0x7a2a0a, 0.5); g.fillCircle(20, 30, 4); g.fillCircle(10, 35, 2);
+    // Metal bands
+    g.fillStyle(0x4a4a4a); g.fillRect(5, 15, 30, 2);
+    g.fillStyle(0x5a5a5a); g.fillRect(5, 15, 30, 1);
+    g.fillStyle(0x4a4a4a); g.fillRect(5, 33, 30, 2);
+    g.fillStyle(0x5a5a5a); g.fillRect(5, 33, 30, 1);
+    // Top
+    g.fillStyle(0x5a3a1a); g.fillEllipse(20, 10, 28, 8);
+    g.fillStyle(0x6a4a2a); g.fillEllipse(20, 10, 26, 6);
+    g.generateTexture('barrel', 40, 42); g.clear();
 
     // Brick wall
     // Brick wall - loaded from texture
@@ -1005,14 +1038,16 @@ function create() {
         hooks.push(sp);
     }, this);
 
-    // Pallets - positioned outside buildings
-    [{x:250,y:350},{x:1260,y:400},{x:1550,y:350},{x:2050,y:400},{x:300,y:800},{x:700,y:750},{x:1100,y:800},{x:1500,y:750},{x:2200,y:800},{x:400,y:1250},{x:900,y:1200},{x:1400,y:1250},{x:1900,y:1200},{x:2100,y:1300},{x:1200,y:650},{x:1200,y:1100}].forEach(function(p, i) {
-        var sp = this.add.sprite(p.x, p.y, 'pallet').setDepth(p.y + 2).setScale(1.2);
-        sp.palletId = i; sp.state = 'standing'; sp.dropTimer = 0; sp.breakTimer = 0;
-        sp.canDrop = true; sp.dropCooldown = 0; sp.stunTimer = 0; sp.bx = p.x; sp.by = p.y;
-        sp.shadow = this.add.graphics(); sp.shadow.fillStyle(0x000000, 0.3);
-        sp.shadow.fillEllipse(p.x, p.y + 35, 30, 12); sp.shadow.setDepth(p.y);
-        pallets.push(sp);
+    // Pallets - smart placement via createPallets
+    createPallets(this);
+
+    // Rusty barrels - placed from obstacles
+    var allObs = getMapObstacles();
+    allObs.forEach(function(o) {
+        if (o.t === 'barrel') {
+            var sp = this.add.sprite(o.x + o.sw/2, o.y + o.sh/2, 'barrel').setDepth(o.y + o.sh/2 + 2);
+            staticGroup.add(sp);
+        }
     }, this);
 
     // Gates
@@ -1178,14 +1213,14 @@ function getMapObstacles() {
     function overlapsAny(x, y, sw, sh, pad) {
         pad = pad || 30;
         for (var i = 0; i < obs.length; i++) {
-            if (obs[i].solid) {
-                var dx = Math.abs((x+sw/2)-(obs[i].x+obs[i].sw/2));
-                var dy = Math.abs((y+sh/2)-(obs[i].y+obs[i].sh/2));
-                if (dx < (sw+obs[i].sw)/2+pad && dy < (sh+obs[i].sh)/2+pad) return true;
-            }
+            var dx = Math.abs((x+sw/2)-(obs[i].x+obs[i].sw/2));
+            var dy = Math.abs((y+sh/2)-(obs[i].y+obs[i].sh/2));
+            if (dx < (sw+obs[i].sw)/2+pad && dy < (sh+obs[i].sh)/2+pad) return true;
         }
         return false;
     }
+    
+    // Buildings (solid brick walls)
     function addBrickRow(sx, sy, n) { for (var i = 0; i < n; i++) obs.push({t:'brick_wall', x:sx+i*60, y:sy, sw:60, sh:60, solid:true}); }
     function addBrickCol(sx, sy, n) { for (var i = 0; i < n; i++) obs.push({t:'brick_wall', x:sx, y:sy+i*60, sw:60, sh:60, solid:true}); }
     addBrickRow(280,260,5); addBrickCol(280,260,6); addBrickRow(880,340,6); addBrickCol(880,340,5);
@@ -1193,33 +1228,114 @@ function getMapObstacles() {
     addBrickRow(1580,1040,5); addBrickCol(1580,1040,4); addBrickRow(1080,1480,6);
     addBrickCol(680,820,5); addBrickRow(680,820,4);
 
+    // Rocks (solid)
     var stoneSizes = {stone1:{sw:40,sh:38},stone2:{sw:38,sh:34},stone3:{sw:36,sh:28},stone4:{sw:48,sh:30},stone5:{sw:28,sh:28}};
     [[200,400,'stone1'],[500,200,'stone3'],[1200,300,'stone2'],[1800,200,'stone4'],[2200,500,'stone5'],[300,1000,'stone2'],[600,1400,'stone1'],[1400,900,'stone5'],[2000,1100,'stone3'],[1700,1600,'stone4'],[800,1600,'stone1'],[1100,700,'stone2'],[1500,400,'stone3'],[2100,1400,'stone1'],[450,700,'stone5'],[950,1200,'stone4'],[1700,350,'stone2'],[2300,900,'stone1'],[400,1550,'stone3'],[1600,250,'stone5'],[1050,1600,'stone2'],[750,450,'stone4'],[1800,1000,'stone1'],[2200,1200,'stone3']].forEach(function(p) {
         var st = stoneSizes[p[2]];
         if (!overlapsAny(p[0], p[1], st.sw, st.sh, 40)) obs.push({t:p[2], x:p[0], y:p[1], sw:st.sw, sh:st.sh, solid:true});
     });
 
-    [[120,120],[580,80],[1100,130],[1580,90],[2180,180],[80,580],[380,380],[880,480],[1380,280],[1980,380],[130,1080],[480,880],[980,1280],[1480,1080],[2080,780],[280,1680],[680,1680],[1180,1680],[1680,1680],[2180,1580],[250,350],[720,550],[1250,450],[1750,350],[2150,550],[450,1150],[950,950],[1450,1250],[1950,950],[2350,1150]].forEach(function(p) {
-        if (!overlapsAny(p[0], p[1], 70, 100, 50)) obs.push({t:'tree'+Math.floor(Math.random()*3), x:p[0], y:p[1], sw:70, sh:100, solid:false});
-    });
-    [[350,150],[850,250],[1350,150],[1850,250],[2350,150],[150,750],[650,650],[1150,750],[1650,650],[2150,750],[250,1350],[750,1250],[1250,1350],[1750,1250],[2250,1350]].forEach(function(p) {
-        if (!overlapsAny(p[0], p[1], 50, 95, 45)) obs.push({t:'pine_tree', x:p[0], y:p[1], sw:50, sh:95, solid:false});
-    });
-    [[200,250],[700,150],[1200,250],[1700,150],[2200,250],[320,650],[820,550],[1320,650],[1820,550],[2320,650],[180,1250],[680,1150],[1180,1250],[1680,1150],[2180,1250]].forEach(function(p) {
-        if (!overlapsAny(p[0], p[1], 40, 80, 35)) obs.push({t:'tree_small', x:p[0], y:p[1], sw:40, sh:80, solid:false});
-    });
-    [[220,480],[680,280],[1020,380],[1780,680],[2080,280],[330,1180],[780,980],[1280,1380],[1580,780],[2180,1180],[420,320],[920,420],[1420,320],[1920,420],[2420,320],[280,820],[780,720],[1280,820],[1780,720],[2280,820],[520,1420],[1020,1320],[1520,1420],[2020,1320],[520,220],[1020,120],[1520,220],[2020,120]].forEach(function(p) {
-        if (!overlapsAny(p[0], p[1], 60, 45, 25)) obs.push({t:'bush', x:p[0], y:p[1], sw:60, sh:45, solid:false});
-    });
-    [[180,320],[580,180],[980,280],[1380,180],[1880,320],[2280,180],[280,720],[680,620],[1080,720],[1480,620],[1980,720],[180,1120],[580,1020],[1080,1120],[1580,1020],[2080,1120],[380,1520],[880,1420],[1380,1520],[1880,1420]].forEach(function(p) {
-        if (!overlapsAny(p[0], p[1], 50, 40, 20)) obs.push({t:'tall_grass', x:p[0], y:p[1], sw:50, sh:40, solid:false});
-    });
-    [[280,420],[780,320],[1280,420],[1780,320],[2280,420],[380,820],[880,720],[1380,820],[1880,720],[2380,820],[280,1220],[680,1120],[1180,1220],[1680,1120],[2180,1220]].forEach(function(p) {
-        if (!overlapsAny(p[0], p[1], 52, 35, 20)) obs.push({t:'flower_patch', x:p[0], y:p[1], sw:52, sh:35, solid:false});
-    });
+    // Large detailed rocks (solid)
     [[280,280],[780,180],[1280,280],[1780,180],[2280,280],[380,680],[880,580],[1380,680],[1880,580],[2380,680],[280,1080],[680,980],[1180,1080],[1680,980],[2180,1080],[480,1380],[980,1280],[1480,1380],[1980,1280]].forEach(function(p) {
         if (!overlapsAny(p[0], p[1], 56, 45, 25)) obs.push({t:'rock_detailed', x:p[0], y:p[1], sw:56, sh:45, solid:true});
     });
+
+    // Trees (non-solid, visual only) - check overlap with ALL objects
+    var treePositions = [
+        [120,120],[580,80],[1100,130],[1580,90],[2180,180],[80,580],[380,380],[880,480],[1380,280],[1980,380],
+        [130,1080],[480,880],[980,1280],[1480,1080],[2080,780],[280,1680],[680,1680],[1180,1680],[1680,1680],[2180,1580],
+        [250,350],[720,550],[1250,450],[1750,350],[2150,550],[450,1150],[950,950],[1450,1250],[1950,950],[2350,1150],
+        [100,300],[400,500],[700,700],[1000,200],[1300,500],[1600,700],[1900,200],[2200,400],[150,900],[500,1100],
+        [800,1300],[1100,1000],[1400,1200],[1700,1400],[2000,1600],[2300,1300],[300,700],[600,900],[900,600],
+        [1200,800],[1500,1000],[1800,1200],[2100,900],[200,1400],[500,1600],[800,1500],[1100,1400],[1400,1600]
+    ];
+    treePositions.forEach(function(p) {
+        if (!overlapsAny(p[0], p[1], 70, 100, 50)) obs.push({t:'tree'+Math.floor(Math.random()*3), x:p[0], y:p[1], sw:70, sh:100, solid:false});
+    });
+    
+    // Pine trees
+    var pinePositions = [
+        [350,150],[850,250],[1350,150],[1850,250],[2350,150],[150,750],[650,650],[1150,750],[1650,650],[2150,750],
+        [250,1350],[750,1250],[1250,1350],[1750,1250],[2250,1350],[200,500],[500,300],[800,100],[1100,400],
+        [1400,200],[1700,500],[2000,300],[2300,600],[100,1000],[400,1300],[700,1000],[1000,1300],[1300,1000],
+        [1600,1300],[1900,1000],[2200,1300],[300,1500],[600,1700],[900,1500],[1200,1700],[1500,1500],[1800,1700]
+    ];
+    pinePositions.forEach(function(p) {
+        if (!overlapsAny(p[0], p[1], 50, 95, 45)) obs.push({t:'pine_tree', x:p[0], y:p[1], sw:50, sh:95, solid:false});
+    });
+    
+    // Small trees
+    var smallTreePositions = [
+        [200,250],[700,150],[1200,250],[1700,150],[2200,250],[320,650],[820,550],[1320,650],[1820,550],[2320,650],
+        [180,1250],[680,1150],[1180,1250],[1680,1150],[2180,1250],[150,450],[450,350],[750,450],[1050,350],
+        [1350,450],[1650,350],[1950,450],[2250,350],[250,850],[550,750],[850,850],[1150,750],[1450,850],
+        [1750,750],[2050,850],[2350,750],[350,1450],[650,1350],[950,1450],[1250,1350],[1550,1450],[1850,1350]
+    ];
+    smallTreePositions.forEach(function(p) {
+        if (!overlapsAny(p[0], p[1], 40, 80, 35)) obs.push({t:'tree_small', x:p[0], y:p[1], sw:40, sh:80, solid:false});
+    });
+    
+    // Bushes
+    var bushPositions = [
+        [220,480],[680,280],[1020,380],[1780,680],[2080,280],[330,1180],[780,980],[1280,1380],[1580,780],[2180,1180],
+        [420,320],[920,420],[1420,320],[1920,420],[2420,320],[280,820],[780,720],[1280,820],[1780,720],[2280,820],
+        [520,1420],[1020,1320],[1520,1420],[2020,1320],[520,220],[1020,120],[1520,220],[2020,120],[150,600],
+        [450,700],[750,600],[1050,700],[1350,600],[1650,700],[1950,600],[2250,700],[250,1000],[550,900],
+        [850,1000],[1150,900],[1450,1000],[1750,900],[2050,1000],[2350,900],[350,1200],[650,1100],[950,1200],
+        [1250,1100],[1550,1200],[1850,1100],[2150,1200],[200,1600],[500,1500],[800,1600],[1100,1500],[1400,1600]
+    ];
+    bushPositions.forEach(function(p) {
+        if (!overlapsAny(p[0], p[1], 60, 45, 25)) obs.push({t:'bush', x:p[0], y:p[1], sw:60, sh:45, solid:false});
+    });
+    
+    // Tall grass patches
+    var grassPositions = [
+        [180,320],[580,180],[980,280],[1380,180],[1880,320],[2280,180],[280,720],[680,620],[1080,720],[1480,620],
+        [1980,720],[180,1120],[580,1020],[1080,1120],[1580,1020],[2080,1120],[380,1520],[880,1420],[1380,1520],[1880,1420],
+        [100,200],[300,100],[500,200],[700,100],[900,200],[1100,100],[1300,200],[1500,100],[1700,200],[1900,100],
+        [2100,200],[2300,100],[100,500],[300,400],[500,500],[700,400],[900,500],[1100,400],[1300,500],[1500,400],
+        [1700,500],[1900,400],[2100,500],[2300,400],[100,800],[300,700],[500,800],[700,700],[900,800],[1100,700],
+        [1300,800],[1500,700],[1700,800],[1900,700],[2100,800],[2300,700],[100,1100],[300,1000],[500,1100],
+        [700,1000],[900,1100],[1100,1000],[1300,1100],[1500,1000],[1700,1100],[1900,1000],[2100,1100],[2300,1000],
+        [100,1400],[300,1300],[500,1400],[700,1300],[900,1400],[1100,1300],[1300,1400],[1500,1300],[1700,1400],
+        [1900,1300],[2100,1400],[2300,1300],[200,1700],[400,1600],[600,1700],[800,1600],[1000,1700],[1200,1600],
+        [1400,1700],[1600,1600],[1800,1700],[2000,1600],[2200,1700]
+    ];
+    grassPositions.forEach(function(p) {
+        if (!overlapsAny(p[0], p[1], 50, 40, 20)) obs.push({t:'tall_grass', x:p[0], y:p[1], sw:50, sh:40, solid:false});
+    });
+    
+    // Flower patches
+    var flowerPositions = [
+        [280,420],[780,320],[1280,420],[1780,320],[2280,420],[380,820],[880,720],[1380,820],[1880,720],[2380,820],
+        [280,1220],[680,1120],[1180,1220],[1680,1120],[2180,1220],[150,350],[450,250],[750,350],[1050,250],
+        [1350,350],[1650,250],[1950,350],[2250,250],[200,650],[500,550],[800,650],[1100,550],[1400,650],
+        [1700,550],[2000,650],[2300,550],[250,950],[550,850],[850,950],[1150,850],[1450,950],[1750,850],
+        [2050,950],[2350,850],[300,1250],[600,1150],[900,1250],[1200,1150],[1500,1250],[1800,1150],[2100,1250]
+    ];
+    flowerPositions.forEach(function(p) {
+        if (!overlapsAny(p[0], p[1], 52, 35, 20)) obs.push({t:'flower_patch', x:p[0], y:p[1], sw:52, sh:35, solid:false});
+    });
+    
+    // Rusty barrels - solid obstacles, placed near buildings/chase areas
+    var barrelPositions = [
+        [320,300],[500,500],[700,350],[900,400],[1100,350],[1300,400],
+        [1500,350],[1700,400],[1900,350],[2100,400],[2300,350],
+        [300,600],[500,700],[700,650],[900,700],[1100,650],[1300,700],
+        [1500,650],[1700,700],[1900,650],[2100,700],
+        [400,900],[600,850],[800,900],[1000,850],[1200,900],[1400,850],
+        [1600,900],[1800,850],[2000,900],[2200,850],
+        [350,1100],[550,1050],[750,1100],[950,1050],[1150,1100],[1350,1050],
+        [1550,1100],[1750,1050],[1950,1100],[2150,1050],
+        [300,1300],[500,1250],[700,1300],[900,1250],[1100,1300],[1300,1250],
+        [1500,1300],[1700,1250],[1900,1300],[2100,1250],
+        [400,1500],[600,1450],[800,1500],[1000,1450],[1200,1500],[1400,1450],
+        [1600,1500],[1800,1450],[2000,1500],[2200,1450]
+    ];
+    barrelPositions.forEach(function(p) {
+        if (!overlapsAny(p[0], p[1], 40, 42, 35)) obs.push({t:'barrel', x:p[0], y:p[1], sw:40, sh:42, solid:true});
+    });
+    
     return obs;
 }
 
@@ -1271,7 +1387,7 @@ function makePlayer(sc, x, y, tex, isMe) {
     glow.fillStyle(gc, 0.15); glow.fillCircle(0, 0, 25); glow.setDepth(999); glow.setAlpha(0.5);
     var p = { sprite:sp, tex:tex, role:(tex==='killer')?'killer':'survivor', state:'alive', health:100,
         hookTimer:0, carryTarget:null, progressAction:null, isMe:isMe, glowFx:glow, glowColor:gc,
-        isRepairing:false, isVulnerable:false, repairAnimPhase:0, repairSparks:null, repairBobPhase:0 };
+        isRepairing:false, isVulnerable:false, repairAnimPhase:0, repairSparks:null, repairBobPhase:0, actionType:null };
     sp._pRef = p; return p;
 }
 
@@ -1307,6 +1423,10 @@ function update(time, dt) {
     if (graphicsSettings.dust || graphicsSettings.ash) updateDustAndAsh(dt);
     if (graphicsSettings.atmosphere) updateAtmosphere(dt);
     updateGateGlow(dt);
+
+    // Update 3D models
+    if (isKiller && !window.isLowEndDevice) updateKiller3DSprite(dt);
+    if (!isKiller && !window.isLowEndDevice) updateSurvivor3DSprite(dt);
 
     // Track chase time
     if (player && player.sprite) {
@@ -1410,21 +1530,60 @@ function update(time, dt) {
 }
 
 function updateHUD() {
-    var p = player;
     var genCount = generators.filter(function(g){return g.repaired;}).length;
-    var aliveCount;
-    if (isKiller) {
-        if (isMultiplayer) aliveCount = Object.values(remotePlayers).filter(function(rp){return rp.role==='survivor'&&rp.state!=='dead'&&rp.state!=='escaped';}).length;
-        else aliveCount = (player.aiPlayers||[]).filter(function(a){return a.state!=='dead'&&a.state!=='escaped';}).length;
-    } else {
-        if (isMultiplayer) aliveCount = (player.state!=='dead'&&player.state!=='escaped'?1:0) + Object.values(remotePlayers).filter(function(rp){return rp.role==='survivor'&&rp.state!=='dead'&&rp.state!=='escaped';}).length;
-        else aliveCount = survivorsAlive;
-    }
-    UI.updateHUD(p.role, p.state, genCount, exitOpen, hatchOpen&&!hatchClosed, aliveCount);
+    var genEl = document.getElementById('gen-count');
+    if (genEl) genEl.textContent = genCount + '/5';
     
-    // Update bloodpoints display
-    var bpEl = document.getElementById('bp-display');
-    if (bpEl) bpEl.textContent = '\uD83E\uDE78 ' + bloodpoints.matchEarned;
+    var exitEl = document.getElementById('exit-state');
+    if (exitEl) exitEl.textContent = exitOpen ? (hatchOpen && !hatchClosed ? 'люк🔓' : 'открыт!') : 'закрыт';
+    
+    // Update survivor avatars
+    updateSurvivorHUD();
+}
+
+function updateSurvivorHUD() {
+    var container = document.getElementById('survivor-status');
+    if (!container) return;
+    
+    var survivors = [];
+    
+    if (!isKiller) {
+        // Player is survivor
+        survivors.push({ name: 'Вы', state: player.state, isPlayer: true });
+    }
+    
+    // AI survivors
+    if (!isMultiplayer && player.aiPlayers) {
+        player.aiPlayers.forEach(function(ai) {
+            if (!ai.isAIKiller) {
+                var name = ai.tex === 's1' ? 'Выживший 1' : (ai.tex === 's2' ? 'Выживший 2' : 'Выживший 3');
+                survivors.push({ name: name, state: ai.state, isPlayer: false });
+            }
+        });
+    }
+    
+    // Remote survivors (multiplayer)
+    if (isMultiplayer) {
+        Object.values(remotePlayers).forEach(function(rp) {
+            if (rp.role === 'survivor') {
+                survivors.push({ name: rp.name || 'Игрок', state: rp.state, isPlayer: rp.playerId === playerId });
+            }
+        });
+    }
+    
+    var html = '';
+    survivors.forEach(function(s) {
+        var stateIcon = s.state === 'alive' ? '✅' : (s.state === 'injured' ? '🩸' : (s.state === 'dying' ? '⬇️' : (s.state === 'hooked' ? '🪝' : (s.state === 'carried' ? '🎒' : '💀'))));
+        var avatarClass = s.state || 'dead';
+        var avatarEmoji = s.isPlayer ? '👤' : '👤';
+        html += '<div class="survivor-avatar">';
+        html += '<div class="avatar ' + avatarClass + '">' + avatarEmoji + '</div>';
+        html += '<div><div class="s-name">' + (s.isPlayer ? 'Вы' : s.name) + '</div>';
+        html += '<div class="s-state">' + stateIcon + '</div></div>';
+        html += '</div>';
+    });
+    
+    container.innerHTML = html;
 }
 
 function checkWinLose() {

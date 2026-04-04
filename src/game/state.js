@@ -75,6 +75,15 @@ var modelsLoaded = 0;
 var totalModels = 3;
 var killerRotation = 0;
 var currentKillerState = 'idle';
+var survivorModel = null;
+var survivorMixer = null;
+var survivorAnimationsIdle = {};
+var survivorLoaded = false;
+var survivorCanvas = null;
+var survivorRenderer = null;
+var survivorScene = null;
+var survivorCamera = null;
+var survivorRotation = 0;
 
 // ═══════ BLOODPOINTS & STATS ═══════
 var bloodpoints = {

@@ -247,6 +247,36 @@ function killerAction(dt) {
         });
     }
 
+    // Check if killer is near a generator - damage it instead
+    var nearGen = null;
+    generators.forEach(function(gen) {
+        if (!gen.repaired) {
+            var d = Math.sqrt(Math.pow(sp.x - gen.bx, 2) + Math.pow(sp.y - gen.by, 2));
+            if (d < CONFIG.INTERACT_DISTANCE) nearGen = gen;
+        }
+    });
+
+    if (nearGen && hitTargets.length === 0) {
+        // Damage generator - rollback progress
+        nearGen.progress = Math.max(0, nearGen.progress - 15);
+        UI.showToast('\uD83D\uDD27 \u0413\u0435\u043D\u0435\u0440\u0430\u0442\u043E\u0440 \u043F\u043E\u0432\u0440\u0435\u0436\u0434\u0451\u043D!', 1000);
+        killerAttackCooldown = 1.0;
+        
+        // Visual feedback
+        if (nearGen.barGfx) {
+            nearGen.barGfx.clear();
+            nearGen.barGfx.fillStyle(0x000000, 0.7);
+            nearGen.barGfx.fillRect(nearGen.bx - 25, nearGen.by - 45, 50, 8);
+            nearGen.barGfx.fillStyle(0xff4444, 0.9);
+            nearGen.barGfx.fillRect(nearGen.bx - 24, nearGen.by - 44, 48 * (nearGen.progress / 100), 6);
+        }
+        
+        if (isMultiplayer && roomCode && playerId) {
+            updateGeneratorProgress(roomCode, nearGen.genId, nearGen.progress, false);
+        }
+        return;
+    }
+
     if (hitTargets.length > 0) {
         // Strike animation
         killerStrikeTimer = 0.5;
@@ -318,22 +348,23 @@ function survivorAction(dt) {
     var p = player;
     var sp = p.sprite;
 
-    // Already repairing - check if still holding button and near generator
-    if (p.isRepairing && p.progressAction) {
+    // Already repairing generator - requires holding button
+    if (p.isRepairing && p.progressAction && p.actionType === 'repair') {
         var gen = p.progressAction;
         if (!gen || gen.repaired) {
             p.isRepairing = false;
             p.progressAction = null;
+            p.actionType = null;
             if (sp.texture.key.includes('_repair')) sp.setTexture(p.tex);
             return;
         }
 
-        // Check distance - if too far, stop repairing
+        // Check distance or button released - stop repairing
         var d = dist(sp, gen);
         if (d > CONFIG.INTERACT_DISTANCE + 20 || !actionPressed) {
-            // Stop repairing but keep progress
             p.isRepairing = false;
             p.progressAction = null;
+            p.actionType = null;
             if (sp.texture.key.includes('_repair')) sp.setTexture(p.tex);
             if (gen.repairSparks) gen.repairSparks.setVisible(false);
             return;
@@ -367,6 +398,7 @@ function survivorAction(dt) {
             gen.repaired = true;
             p.isRepairing = false;
             p.progressAction = null;
+            p.actionType = null;
             if (sp.texture.key.includes('_repair')) sp.setTexture(p.tex);
             if (gen.repairSparks) gen.repairSparks.setVisible(false);
 
@@ -397,6 +429,60 @@ function survivorAction(dt) {
         return;
     }
 
+    // Already healing survivor - requires holding button
+    if (p.isRepairing && p.progressAction && p.actionType === 'heal') {
+        var target = p.progressAction;
+        if (!target || target.state !== 'injured') {
+            p.isRepairing = false;
+            p.progressAction = null;
+            p.actionType = null;
+            if (sp.texture.key.includes('_repair')) sp.setTexture(p.tex);
+            return;
+        }
+
+        var d = dist(sp, target.sprite);
+        if (d > CONFIG.INTERACT_DISTANCE + 20 || !actionPressed) {
+            p.isRepairing = false;
+            p.progressAction = null;
+            p.actionType = null;
+            if (sp.texture.key.includes('_repair')) sp.setTexture(p.tex);
+            return;
+        }
+
+        // Heal progress
+        if (!target.healProgress) target.healProgress = 0;
+        target.healProgress += CONFIG.HEAL_RATE * dt / 1000;
+
+        // Show heal progress bar
+        if (target.healBarGfx) {
+            target.healBarGfx.clear();
+            target.healBarGfx.fillStyle(0x000000, 0.7);
+            target.healBarGfx.fillRect(target.sprite.x - 25, target.sprite.y - 40, 50, 8);
+            target.healBarGfx.fillStyle(0x44cc66, 0.9);
+            target.healBarGfx.fillRect(target.sprite.x - 24, target.sprite.y - 39, 48 * (target.healProgress / 100), 6);
+        }
+
+        if (target.healProgress >= 100) {
+            target.state = 'alive';
+            target.healProgress = 0;
+            target.sprite.clearTint();
+            p.isRepairing = false;
+            p.progressAction = null;
+            p.actionType = null;
+            if (sp.texture.key.includes('_repair')) sp.setTexture(p.tex);
+            if (target.healBarGfx) target.healBarGfx.clear();
+            matchStats.survivorsHealed++;
+            addBloodpoints('altruism', 1500, 'Выживший вылечен');
+            UI.showToast('\u2764\uFE0F \u0412\u044B\u0436\u0438\u0432\u0448\u0438\u0439 \u0432\u044B\u043B\u0435\u0447\u0435\u043D!', 1500);
+            if (isMultiplayer && roomCode && target.playerId) {
+                updatePlayerHealth(roomCode, target.playerId, 100);
+                updatePlayerState(roomCode, target.playerId, 'alive');
+            }
+        }
+        return;
+    }
+
+    // Button pressed - start new action
     if (!actionPressed) return;
     actionPressed = false;
 
@@ -417,15 +503,15 @@ function survivorAction(dt) {
     }
 
     if (nearSurvivor) {
-        nearSurvivor.state = 'alive';
-        nearSurvivor.sprite.clearTint();
-        matchStats.survivorsHealed++;
-        addBloodpoints('altruism', 1500, 'Выживший вылечен');
-        UI.showToast('\u2764\uFE0F \u0412\u044B\u0436\u0438\u0432\u0448\u0438\u0439 \u0432\u044B\u043B\u0435\u0447\u0435\u043D!', 1500);
-        if (isMultiplayer && roomCode && nearSurvivor.playerId) {
-            updatePlayerHealth(roomCode, nearSurvivor.playerId, 100);
-            updatePlayerState(roomCode, nearSurvivor.playerId, 'alive');
+        p.isRepairing = true;
+        p.progressAction = nearSurvivor;
+        p.actionType = 'heal';
+        if (!nearSurvivor.healProgress) nearSurvivor.healProgress = 0;
+        if (!nearSurvivor.healBarGfx) nearSurvivor.healBarGfx = scene.add.graphics().setDepth(9999);
+        if (!sp.texture.key.includes('_repair')) {
+            sp.setTexture(getTexWithFallback(p.tex, '_repair'));
         }
+        UI.showToast('\u2764\uFE0F \u041B\u0435\u0447\u0435\u043D\u0438\u0435... \u0423\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0439\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443', 1500);
         return;
     }
 
@@ -470,7 +556,7 @@ function survivorAction(dt) {
         }
     }
 
-    // Repair generator
+    // Start repairing generator
     var nearGen = null;
     generators.forEach(function(gen) {
         if (!gen.repaired && dist(sp, gen) < CONFIG.INTERACT_DISTANCE) nearGen = gen;
@@ -479,10 +565,11 @@ function survivorAction(dt) {
     if (nearGen) {
         p.isRepairing = true;
         p.progressAction = nearGen;
+        p.actionType = 'repair';
         if (!sp.texture.key.includes('_repair')) {
             sp.setTexture(getTexWithFallback(p.tex, '_repair'));
         }
-        UI.showToast('\uD83D\uDD27 \u041F\u043E\u0447\u0438\u043D\u043A\u0430 \u0433\u0435\u043D\u0435\u0440\u0430\u0442\u043E\u0440\u0430...', 1500);
+        UI.showToast('\uD83D\uDD27 \u041F\u043E\u0447\u0438\u043D\u043A\u0430... \u0423\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0439\u0442\u0435 \u043A\u043D\u043E\u043F\u043A\u0443', 1500);
         return;
     }
 }

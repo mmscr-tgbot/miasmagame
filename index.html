@@ -13,6 +13,7 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui,sans-seri
 #app{width:100%;height:100%;position:relative;overflow:hidden}
 .screen{position:fixed;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:linear-gradient(180deg,#111 0%,#1a1a1a 100%)}
 .screen.active{display:flex}
+.screen.scrollable{overflow-y:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;padding-top:60px;padding-bottom:60px}
 #game-screen.active{display:block!important;padding:0;background:#1a1a1a}
 h1{font-size:28px;color:#ff3333;margin-bottom:30px;text-align:center;text-shadow:0 0 20px rgba(255,51,51,.5)}
 h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
@@ -25,15 +26,26 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 .player-slot{padding:10px 18px;background:rgba(255,255,255,.08);border-radius:6px;text-align:center;border:1px solid rgba(255,255,255,.15);font-size:15px;margin:4px 0;width:100%;max-width:280px}
 .player-slot.host{background:rgba(255,51,51,.25);border-color:#ff3333;color:#ff8888}
 .player-slot.empty{color:#555;font-style:italic}
-#lobby-players{display:flex;flex-direction:column;align-items:center;margin:15px 0;width:100%}
+#lobby-players{display:flex;flex-direction:column;align-items:center;margin:15px 0;width:100%;max-height:calc(100vh - 200px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+#profile-content,#settings-content,#match-stats-content{width:100%;max-width:320px;margin:10px auto;max-height:calc(100vh - 140px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px}
 #lobby-status,#search-status{font-size:15px;color:#aaa;margin-bottom:8px;text-align:center}
 .version{position:absolute;bottom:15px;color:#555;font-size:11px}
 #toast{position:fixed;bottom:140px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.92);color:#fff;padding:11px 22px;border-radius:8px;font-size:14px;z-index:99999;display:none;white-space:nowrap;pointer-events:none}
 #toast.show{display:block;animation:fadeInOut 2.5s forwards}
 @keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(15px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}75%{opacity:1}100%{opacity:0}}
 #hud{position:fixed;top:8px;left:8px;right:8px;display:flex;justify-content:space-between;pointer-events:none;z-index:9000;flex-wrap:wrap;gap:4px}
-#hud>div{background:rgba(0,0,0,.75);padding:6px 10px;border-radius:6px;font-size:11px;white-space:nowrap}
-#hud #role-indicator{color:#ff8888;font-weight:700}
+#hud-right{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+#hud-right>div{background:rgba(0,0,0,.75);padding:6px 10px;border-radius:6px;font-size:11px;white-space:nowrap}
+#survivor-status{display:flex;flex-direction:column;gap:4px;pointer-events:none}
+.survivor-avatar{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.75);padding:4px 8px;border-radius:6px;min-width:120px}
+.survivor-avatar .avatar{width:28px;height:28px;border-radius:50%;border:2px solid #666;display:flex;align-items:center;justify-content:center;font-size:14px}
+.survivor-avatar .avatar.alive{border-color:#44cc66}
+.survivor-avatar .avatar.injured{border-color:#ffaa00}
+.survivor-avatar .avatar.dying{border-color:#ff4444}
+.survivor-avatar .avatar.hooked{border-color:#ff0000}
+.survivor-avatar .avatar.dead{border-color:#555;opacity:0.5}
+.survivor-avatar .s-name{color:#fff;font-size:11px;font-weight:600;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.survivor-avatar .s-state{font-size:10px;color:#aaa}
 #game-container{width:100%;height:100%;position:fixed;top:0;left:0;z-index:10;background:#1a1a1a}
 #game-container canvas{display:block!important;visibility:visible!important}
 #game-over{z-index:10000}
@@ -124,18 +136,17 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 <div id="game-screen" class="screen">
   <div id="game-container"></div>
   <div id="hud">
-    <div id="role-indicator">Роль: <span id="player-role">—</span></div>
-    <div>⚙️ <span id="gen-count">0/5</span></div>
-    <div>🚪 <span id="exit-state">закрыт</span></div>
-    <div id="alive-count">🏃 4</div>
-    <div id="remote-players-count" style="color:#ff0;font-size:10px">RP: 0</div>
-    <div id="bp-display" style="color:#ff3333;font-size:11px">🩸 0</div>
+    <div id="survivor-status"></div>
+    <div id="hud-right">
+      <div>⚙️ <span id="gen-count">0/5</span></div>
+      <div>🚪 <span id="exit-state">закрыт</span></div>
+    </div>
   </div>
 </div>
 
 <div id="game-over" class="screen"><h2 id="game-result-title">Победа!</h2><p id="game-result-message"></p><button id="btn-back-menu" class="btn primary">В меню</button></div>
 
-<div id="match-stats" class="screen">
+<div id="match-stats" class="screen scrollable">
   <h2 id="match-result-title">🩸 Результаты матча</h2>
   <div id="match-stats-content" style="width:100%;max-width:320px;margin:10px auto;"></div>
   <div id="match-bp-total" style="font-size:22px;color:#ff3333;font-weight:bold;margin:15px 0;text-align:center"></div>
@@ -143,13 +154,13 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
   <button id="btn-stats-menu" class="btn primary" style="margin-top:20px">В меню</button>
 </div>
 
-<div id="profile-screen" class="screen">
+<div id="profile-screen" class="screen scrollable">
   <h2>👤 Профиль игрока</h2>
   <div id="profile-content" style="width:100%;max-width:320px;margin:10px auto;"></div>
   <button id="btn-profile-back" class="btn" style="margin-top:15px;background:#222">← Назад</button>
 </div>
 
-<div id="settings-screen" class="screen">
+<div id="settings-screen" class="screen scrollable">
   <h2>⚙️ Настройки графики</h2>
   <div id="settings-content" style="width:100%;max-width:320px;margin:10px auto;"></div>
   <button id="btn-settings-back" class="btn" style="margin-top:15px;background:#222">← Назад</button>
@@ -367,6 +378,7 @@ var charViewerScene = null;
 var charViewerCamera = null;
 var charViewerModel = null;
 var charViewerMixer = null;
+var charViewerAnimationId = null;
 var charIsDragging = false;
 var charLastX = 0;
 var charRotationY = 0;
@@ -442,10 +454,7 @@ var killerChars = [
 ];
 
 var survivorChars = [
-  { name: 'Выживший 1', desc: 'Красная рубашка, решительный', color: 0xc0392b, hair: 0x3d2314 },
-  { name: 'Выживший 2', desc: 'Фиолетовая куртка, спокойный', color: 0x8e44ad, hair: 0x4a3020 },
-  { name: 'Выживший 3', desc: 'Зелёная футболка, быстрый', color: 0x27ae60, hair: 0x1a1a1a },
-  { name: 'Выживший 4', desc: 'Пиксельный боец', color: 0xcc0033, hair: 0xaa00ff }
+  { name: 'Jack', desc: 'Выживший в синей куртке', model: 'src/models/survivors/Jack/Jack_Idle.glb' }
 ];
 
 function showCharSelect() {
@@ -466,352 +475,172 @@ function updateCharDisplay() {
   document.getElementById('char-desc').textContent = ch.desc;
   document.getElementById('char-index').textContent = (selectedCharIndex + 1) + ' / ' + chars.length;
   
+  // Setup 3D viewer with proper cleanup
   setupCharViewer(ch);
 }
 
+function cleanupCharViewer() {
+  if (charViewerAnimationId) {
+    cancelAnimationFrame(charViewerAnimationId);
+    charViewerAnimationId = null;
+  }
+  if (charViewerRenderer) {
+    charViewerRenderer.dispose();
+    var container = document.getElementById('char-viewer');
+    if (container && container.querySelector('canvas')) {
+      container.innerHTML = '';
+    }
+    charViewerRenderer = null;
+  }
+  charViewerScene = null;
+  charViewerCamera = null;
+  charViewerModel = null;
+  charViewerMixer = null;
+}
+
 function setupCharViewer(ch) {
+  cleanupCharViewer();
+  
   var container = document.getElementById('char-viewer');
   if (!container) {
     console.error('char-viewer element not found!');
     return;
   }
   
-  container.innerHTML = '';
+  container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Загрузка 3D...</p>';
   
-  if (selectedRole === 'killer' && typeof THREE !== 'undefined' && THREE.GLTFLoader) {
-    setupKiller3DViewer(container, ch);
-  } else if (selectedRole === 'killer') {
-    // Three.js not ready yet - show loading and retry
-    container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Загрузка 3D...</p>';
-    setTimeout(function() { setupCharViewer(ch); }, 500);
-  } else {
-    setupSurvivorCanvasPreview(container, ch);
-  }
-}
-
-function setupKiller3DViewer(container, ch) {
-  container.innerHTML = '';
-  
-  var renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-  renderer.setSize(200, 280);
-  renderer.setPixelRatio(1);
-  renderer.setClearColor(0x000000, 0);
-  renderer.domElement.style.cssText = 'width:100%;height:100%;border-radius:12px;cursor:grab;';
-  container.appendChild(renderer.domElement);
-  
-  var scene = new THREE.Scene();
-  var camera = new THREE.PerspectiveCamera(40, 200 / 280, 0.01, 50);
-  camera.position.set(0, 0.5, 2.5);
-  camera.lookAt(0, 0.5, 0);
-  
-  scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-  var dl = new THREE.DirectionalLight(0xffffff, 2.0);
-  dl.position.set(2, 4, 2);
-  scene.add(dl);
-  
-  var model = null;
-  var mixer = null;
-  var rotationY = 0;
-  var isDragging = false;
-  var lastX = 0;
-  
-  console.log('[CharViewer] Loading:', ch.model);
-  
-  var loader = new THREE.GLTFLoader();
-  loader.load(
-    ch.model,
-    function(gltf) {
-      console.log('[CharViewer] Model loaded');
-      model = gltf.scene;
-      model.traverse(function(child) {
-        if (child.isMesh) {
-          child.castShadow = false;
-          child.receiveShadow = false;
-        }
-      });
-      
-      var box = new THREE.Box3().setFromObject(model);
-      var size = box.getSize(new THREE.Vector3());
-      var height = size.y || 1;
-      var targetScale = 1.5 / height;
-      model.scale.set(targetScale, targetScale, targetScale);
-      var center = box.getCenter(new THREE.Vector3());
-      model.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
-      
-      scene.add(model);
-      
-      if (gltf.animations && gltf.animations.length > 0) {
-        mixer = new THREE.AnimationMixer(model);
-        var action = mixer.clipAction(gltf.animations[0]);
-        action.play();
-      }
-    },
-    undefined,
-    function(err) {
-      console.error('[CharViewer] Error:', err);
-      container.innerHTML = '<p style="color:#f44;text-align:center;padding:20px">Ошибка загрузки модели</p>';
+  function tryLoad() {
+    if (typeof THREE === 'undefined') {
+      console.log('[CharViewer] Waiting for THREE...');
+      container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Загрузка Three.js...</p>';
+      setTimeout(tryLoad, 500);
+      return;
     }
-  );
-  
-  // Rotation controls
-  var canvas = renderer.domElement;
-  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); isDragging = true; lastX = e.touches[0].clientX; }, { passive: false });
-  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); if (isDragging) { rotationY += (e.touches[0].clientX - lastX) * 0.01; lastX = e.touches[0].clientX; } }, { passive: false });
-  canvas.addEventListener('touchend', function() { isDragging = false; });
-  canvas.addEventListener('mousedown', function(e) { isDragging = true; lastX = e.clientX; });
-  canvas.addEventListener('mousemove', function(e) { if (isDragging) { rotationY += (e.clientX - lastX) * 0.01; lastX = e.clientX; } });
-  canvas.addEventListener('mouseup', function() { isDragging = false; });
-  
-  function animate() {
-    if (!container.parentNode) return;
-    if (model) model.rotation.y = rotationY;
-    if (mixer) mixer.update(0.016);
-    renderer.render(scene, camera);
-    requestAnimationFrame(animate);
-  }
-  animate();
-}
-
-function setupSurvivorCanvasPreview(container, ch) {
-  var canvas = document.createElement('canvas');
-  canvas.width = 200;
-  canvas.height = 280;
-  canvas.style.cssText = 'width:100%;height:100%;border-radius:12px;';
-  container.appendChild(canvas);
-  
-  var ctx = canvas.getContext('2d');
-  var rotation = 0;
-  var isDragging = false;
-  var lastX = 0;
-  var animFrame = 0;
-  
-  canvas.addEventListener('touchstart', function(e) { e.preventDefault(); isDragging = true; lastX = e.touches[0].clientX; }, { passive: false });
-  canvas.addEventListener('touchmove', function(e) { e.preventDefault(); if (isDragging) { rotation += (e.touches[0].clientX - lastX) * 0.02; lastX = e.touches[0].clientX; } }, { passive: false });
-  canvas.addEventListener('touchend', function() { isDragging = false; });
-  canvas.addEventListener('mousedown', function(e) { isDragging = true; lastX = e.clientX; });
-  canvas.addEventListener('mousemove', function(e) { if (isDragging) { rotation += (e.clientX - lastX) * 0.02; lastX = e.clientX; } });
-  canvas.addEventListener('mouseup', function() { isDragging = false; });
-  
-  function draw() {
-    if (!container.parentNode) return;
-    ctx.clearRect(0, 0, 200, 280);
-    animFrame += 0.03;
-    var bobY = Math.sin(animFrame) * 2;
-    drawSurvivorCharPreview(ctx, ch, rotation, bobY);
-    requestAnimationFrame(draw);
-  }
-  draw();
-}
-
-function drawSurvivorCharPreview(ctx, ch, rotation, bobY) {
-  var cx = 100, cy = 140 + bobY;
-  var s = 1.2;
-  
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.beginPath();
-  ctx.ellipse(cx, cy + 60 * s, 25 * s, 8 * s, 0, 0, Math.PI * 2);
-  ctx.fill();
-  
-  ctx.fillStyle = '#1a1a2a';
-  ctx.fillRect(cx - 10 * s, cy + 30 * s, 8 * s, 24 * s);
-  ctx.fillRect(cx + 2 * s, cy + 30 * s, 8 * s, 24 * s);
-  ctx.fillStyle = '#111122';
-  ctx.fillRect(cx - 12 * s, cy + 52 * s, 12 * s, 6 * s);
-  ctx.fillRect(cx, cy + 52 * s, 12 * s, 6 * s);
-  
-  var r = (ch.color >> 16) & 0xff, g = (ch.color >> 8) & 0xff, b = ch.color & 0xff;
-  ctx.fillStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
-  ctx.fillRect(cx - 18 * s, cy - 20 * s, 36 * s, 52 * s);
-  ctx.fillStyle = 'rgba(255,255,255,0.3)';
-  ctx.fillRect(cx - 18 * s, cy - 20 * s, 36 * s, 4 * s);
-  ctx.fillRect(cx - 18 * s, cy - 20 * s, 4 * s, 52 * s);
-  
-  ctx.fillStyle = '#cc8866';
-  ctx.fillRect(cx - 26 * s, cy - 18 * s, 8 * s, 20 * s);
-  ctx.fillRect(cx + 18 * s, cy - 18 * s, 8 * s, 20 * s);
-  ctx.beginPath(); ctx.arc(cx - 22 * s, cy + 4 * s, 5 * s, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 22 * s, cy + 4 * s, 5 * s, 0, Math.PI * 2); ctx.fill();
-  
-  ctx.fillStyle = '#cc8866';
-  ctx.beginPath(); ctx.arc(cx, cy - 36 * s, 16 * s, 0, Math.PI * 2); ctx.fill();
-  
-  var hr = (ch.hair >> 16) & 0xff, hg = (ch.hair >> 8) & 0xff, hb = ch.hair & 0xff;
-  ctx.fillStyle = 'rgb(' + hr + ',' + hg + ',' + hb + ')';
-  ctx.beginPath(); ctx.arc(cx, cy - 42 * s, 18 * s, Math.PI, Math.PI * 2); ctx.fill();
-  ctx.fillRect(cx - 18 * s, cy - 42 * s, 36 * s, 8 * s);
-  
-  ctx.fillStyle = '#1a1a1a';
-  ctx.beginPath(); ctx.arc(cx - 6 * s, cy - 38 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 6 * s, cy - 38 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(cx - 6 * s, cy - 38.5 * s, 1 * s, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + 6 * s, cy - 38.5 * s, 1 * s, 0, Math.PI * 2); ctx.fill();
-  
-  ctx.fillStyle = '#884433';
-  ctx.fillRect(cx - 3 * s, cy - 32 * s, 6 * s, 2 * s);
-}
-
-function updateCharDisplay() {
-  var chars = selectedRole === 'killer' ? killerChars : survivorChars;
-  var ch = chars[selectedCharIndex];
-  
-  document.getElementById('char-select-title').textContent = selectedRole === 'killer' ? '🔪 Выбери маньяка' : '🏃 Выбери выжившего';
-  document.getElementById('char-name').textContent = ch.name;
-  document.getElementById('char-desc').textContent = ch.desc;
-  document.getElementById('char-index').textContent = (selectedCharIndex + 1) + ' / ' + chars.length;
-  
-  // Setup 3D viewer or canvas preview
-  setupCharViewer(ch);
-}
-
-function setupCharViewer(ch) {
-  var container = document.getElementById('char-viewer');
-  if (!container) {
-    console.error('char-viewer element not found!');
-    return;
-  }
-  
-  container.innerHTML = '';
-  
-  if (selectedRole === 'killer' && typeof THREE !== 'undefined') {
-    setupKillerViewer(container, ch);
-  } else if (selectedRole === 'killer') {
-    container.innerHTML = '<p style="color:#ff4444;text-align:center;padding:40px">Three.js не загружен<br><small>Проверьте интернет-соединение</small></p>';
-  } else {
-    setupSurvivorPreview(container, ch);
-  }
-}
-
-function setupKillerViewer(container, ch) {
-  console.log('[CharViewer] setupKillerViewer called, THREE:', typeof THREE !== 'undefined');
-  
-  if (typeof THREE === 'undefined') {
-    container.innerHTML = '<p style="color:#ff4444;text-align:center;padding:40px">Three.js не загружен<br><small>Проверьте интернет-соединение</small></p>';
-    return;
-  }
-  
-  // Create fresh renderer for each character
-  var renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-  renderer.setSize(200, 280);
-  renderer.setPixelRatio(1);
-  renderer.setClearColor(0x000000, 0);
-  renderer.domElement.style.cssText = 'width:100%;height:100%;border-radius:12px;';
-  container.appendChild(renderer.domElement);
-  
-  var scene = new THREE.Scene();
-  var camera = new THREE.PerspectiveCamera(40, 200 / 280, 0.01, 50);
-  camera.position.set(0, 0.5, 2.5);
-  camera.lookAt(0, 0.5, 0);
-  
-  scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-  var dl = new THREE.DirectionalLight(0xffffff, 2.0);
-  dl.position.set(2, 4, 2);
-  scene.add(dl);
-  
-  var model = null;
-  var mixer = null;
-  var rotationY = 0;
-  var isDragging = false;
-  var lastX = 0;
-  
-  console.log('[CharViewer] Loading:', ch.model);
-  
-  var loader = new THREE.GLTFLoader();
-  loader.load(
-    ch.model,
-    function(gltf) {
-      console.log('[CharViewer] Model loaded successfully');
-      model = gltf.scene;
-      model.traverse(function(child) {
-        if (child.isMesh) {
-          child.castShadow = false;
-          child.receiveShadow = false;
-        }
-      });
-      
-      var box = new THREE.Box3().setFromObject(model);
-      var size = box.getSize(new THREE.Vector3());
-      var height = size.y || 1;
-      var targetScale = 1.5 / height;
-      model.scale.set(targetScale, targetScale, targetScale);
-      var center = box.getCenter(new THREE.Vector3());
-      model.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
-      
-      scene.add(model);
-      console.log('[CharViewer] Model added to scene, scale:', targetScale);
-      
-      if (gltf.animations && gltf.animations.length > 0) {
-        mixer = new THREE.AnimationMixer(model);
-        var action = mixer.clipAction(gltf.animations[0]);
-        action.play();
-        console.log('[CharViewer] Animation playing');
-      }
-    },
-    undefined,
-    function(error) {
-      console.error('[CharViewer] Load error:', error);
-      container.innerHTML = '<p style="color:#ff4444;text-align:center;padding:40px">Ошибка загрузки модели<br><small>' + error.message + '</small></p>';
-    }
-  );
-  
-  // Touch/mouse rotation
-  var canvas = renderer.domElement;
-  canvas.style.cursor = 'grab';
-  canvas.style.touchAction = 'none';
-  
-  canvas.addEventListener('touchstart', function(e) {
-    e.preventDefault();
-    isDragging = true;
-    lastX = e.touches[0].clientX;
-    canvas.style.cursor = 'grabbing';
-  }, { passive: false });
-  
-  canvas.addEventListener('touchmove', function(e) {
-    e.preventDefault();
-    if (!isDragging) return;
-    var dx = e.touches[0].clientX - lastX;
-    rotationY += dx * 0.01;
-    lastX = e.touches[0].clientX;
-  }, { passive: false });
-  
-  canvas.addEventListener('touchend', function() {
-    isDragging = false;
-    canvas.style.cursor = 'grab';
-  });
-  
-  canvas.addEventListener('mousedown', function(e) {
-    isDragging = true;
-    lastX = e.clientX;
-    canvas.style.cursor = 'grabbing';
-  });
-  
-  canvas.addEventListener('mousemove', function(e) {
-    if (!isDragging) return;
-    var dx = e.clientX - lastX;
-    rotationY += dx * 0.01;
-    lastX = e.clientX;
-  });
-  
-  canvas.addEventListener('mouseup', function() {
-    isDragging = false;
-    canvas.style.cursor = 'grab';
-  });
-  
-  // Animate
-  function animate() {
-    if (!container.parentNode) return;
-    
-    if (model) {
-      model.rotation.y = rotationY;
-    }
-    if (mixer) {
-      mixer.update(0.016);
+    if (typeof THREE.GLTFLoader === 'undefined') {
+      console.log('[CharViewer] Waiting for GLTFLoader...');
+      container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Загрузка GLTFLoader...</p>';
+      setTimeout(tryLoad, 500);
+      return;
     }
     
-    renderer.render(scene, camera);
-    requestAnimationFrame(animate);
+    console.log('[CharViewer] THREE ready, creating renderer...');
+    container.innerHTML = '';
+    
+    charViewerRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    charViewerRenderer.setSize(200, 280);
+    charViewerRenderer.setPixelRatio(1);
+    charViewerRenderer.setClearColor(0x1a1a1a, 1);
+    charViewerRenderer.domElement.style.cssText = 'width:100%;height:100%;border-radius:12px;cursor:grab;';
+    container.appendChild(charViewerRenderer.domElement);
+    
+    charViewerScene = new THREE.Scene();
+    charViewerCamera = new THREE.PerspectiveCamera(45, 200 / 280, 0.01, 100);
+    charViewerCamera.position.set(0, 1, 3);
+    charViewerCamera.lookAt(0, 0.8, 0);
+    
+    var ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    charViewerScene.add(ambientLight);
+    
+    var frontLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    frontLight.position.set(0, 2, 3);
+    charViewerScene.add(frontLight);
+    
+    var backLight = new THREE.DirectionalLight(0xffffff, 0.5);
+    backLight.position.set(0, 1, -2);
+    charViewerScene.add(backLight);
+    
+    charViewerModel = null;
+    charViewerMixer = null;
+    charRotationY = 0;
+    charIsDragging = false;
+    charLastX = 0;
+    
+    console.log('[CharViewer] Loading model:', ch.model);
+    
+    fetch(ch.model).then(function(res) {
+      console.log('[CharViewer] File exists, status:', res.status);
+    }).catch(function(e) {
+      console.error('[CharViewer] File NOT accessible:', e);
+    });
+    
+    var loader = new THREE.GLTFLoader();
+    loader.load(
+      ch.model,
+      function(gltf) {
+        console.log('[CharViewer] Model loaded callback fired!');
+        console.log('[CharViewer] ✓ Model loaded callback!', gltf.scene);
+        charViewerModel = gltf.scene;
+        
+        charViewerModel.traverse(function(child) {
+          if (child.isMesh) {
+            console.log('[CharViewer] Found mesh:', child.name, 'scale:', child.scale);
+            child.castShadow = false;
+            child.receiveShadow = false;
+            if (child.material) {
+              child.material.emissive = new THREE.Color(0x222222);
+            }
+          }
+        });
+        
+        console.log('[CharViewer] Root model scale before:', charViewerModel.scale);
+        
+        var box = new THREE.Box3().setFromObject(charViewerModel);
+        var size = box.getSize(new THREE.Vector3());
+        
+        console.log('[CharViewer] Model size (bounding box):', size.x, size.y, size.z);
+        
+        var isKiller = ch.model.indexOf('killer') !== -1;
+        var targetScale = isKiller ? 15.5 : 10.5;
+        console.log('[CharViewer] Using fixed scale:', targetScale, '(killer:', isKiller, ')');
+        
+        charViewerModel.scale.set(targetScale, targetScale, targetScale);
+        console.log('[CharViewer] Root model scale after:', charViewerModel.scale);
+        
+        var newBox = new THREE.Box3().setFromObject(charViewerModel);
+        var newSize = newBox.getSize(new THREE.Vector3());
+        console.log('[CharViewer] Scaled model size:', newSize.x, newSize.y, newSize.z);
+        
+        charViewerModel.position.set(0, -box.min.y * targetScale, 0);
+        
+        charViewerScene.add(charViewerModel);
+        console.log('[CharViewer] Model added to scene! Scale:', targetScale);
+        
+        if (gltf.animations && gltf.animations.length > 0) {
+          charViewerMixer = new THREE.AnimationMixer(charViewerModel);
+          var action = charViewerMixer.clipAction(gltf.animations[0]);
+          action.play();
+          console.log('[CharViewer] Animation playing');
+        } else {
+          console.log('[CharViewer] No animations in model');
+        }
+      },
+      function(progress) {
+        var pct = progress.total ? Math.round(progress.loaded / progress.total * 100) : 0;
+        console.log('[CharViewer] Loading:', pct + '%');
+        if (container.querySelector('p')) {
+          container.querySelector('p').textContent = 'Загрузка 3D... ' + pct + '%';
+        }
+      },
+      function(err) {
+        console.error('[CharViewer] Error loading model:', err);
+        container.innerHTML = '<p style="color:#f44;text-align:center;padding:20px">Ошибка: ' + (err.message || 'не удалось загрузить') + '</p>';
+      }
+    );
+    
+    var canvas = charViewerRenderer.domElement;
+    // No drag rotation - model is static
+    
+    function animate() {
+      if (!container.parentNode) return;
+      if (charViewerModel) charViewerModel.rotation.y = charRotationY;
+      if (charViewerMixer) charViewerMixer.update(0.004);
+      charViewerRenderer.render(charViewerScene, charViewerCamera);
+      charViewerAnimationId = requestAnimationFrame(animate);
+    }
+    animate();
   }
-  animate();
+  
+  tryLoad();
 }
 
 function setupSurvivorPreview(container, ch) {
