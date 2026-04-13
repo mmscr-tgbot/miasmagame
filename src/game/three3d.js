@@ -175,6 +175,19 @@ function loadCharacterModel(character, animKey, modelPath, callback) {
                 if (child.isMesh) {
                     child.castShadow = false;
                     child.receiveShadow = false;
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(function(mat) {
+                                mat.transparent = false;
+                                mat.opacity = 1;
+                                mat.depthWrite = true;
+                            });
+                        } else {
+                            child.material.transparent = false;
+                            child.material.opacity = 1;
+                            child.material.depthWrite = true;
+                        }
+                    }
                 }
             });
 

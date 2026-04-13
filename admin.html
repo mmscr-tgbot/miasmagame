@@ -84,18 +84,46 @@
         .btn {
             padding: 12px 25px;
             border: none;
-            border-radius: 8px;
+            border-radius: 50px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #0a0a0a 100%);
+            color: #fff;
+            position: relative;
+            overflow: hidden;
         }
-        .btn-primary { background: #e94560; color: #fff; }
-        .btn-primary:hover { background: #ff6b6b; transform: translateY(-2px); }
-        .btn-secondary { background: #4a69bd; color: #fff; }
-        .btn-secondary:hover { background: #6a89cc; }
-        .btn-danger { background: #c0392b; color: #fff; }
-        .btn-danger:hover { background: #e74c3c; }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 200%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            animation: shimmer 30s infinite;
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-50%); }
+            100% { transform: translateX(100%); }
+        }
+        .btn:hover {
+            filter: brightness(1.1);
+        }
+        .btn:active {
+            filter: brightness(0.95);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 50%, #050505 100%);
+        }
+        .btn-primary::before {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+        }
+        .btn-secondary {
+            background: linear-gradient(135deg, #252525 0%, #181818 50%, #0a0a0a 100%);
+        }
+        .btn-danger { background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 50%, #0a0a0a 100%); }
         .btn-small { padding: 6px 12px; font-size: 12px; }
         .grid {
             display: grid;
@@ -446,6 +474,16 @@
                 </div>
                 
                 <div class="form-group">
+                    <label>Возраст персонажа</label>
+                    <input type="number" id="charAge" placeholder="25" min="1" max="100">
+                </div>
+                
+                <div class="form-group">
+                    <label>Описание персонажа</label>
+                    <textarea id="charDescription" placeholder="Краткое описание персонажа..." rows="3" style="width:100%;padding:12px 15px;background:rgba(0,0,0,0.3);border:2px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;resize:vertical;"></textarea>
+                </div>
+                
+                <div class="form-group">
                     <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
                         <input type="checkbox" id="modelEnabled" checked>
                         <span>Включен (доступен для выбора)</span>
@@ -686,6 +724,8 @@
                         scare: {
                             name: 'Scare',
                             displayName: 'Scare Killer',
+                            age: 35,
+                            description: 'Жуткий маньяк в маске из мешковины',
                             scale: 1.0,
                             canvasWidth: 110,
                             canvasHeight: 155,
@@ -703,6 +743,8 @@
                         jack: {
                             name: 'Jack',
                             displayName: 'Jack',
+                            age: 28,
+                            description: 'Выживший в синей куртке',
                             scale: 0.6,
                             canvasWidth: 80,
                             canvasHeight: 120,
@@ -882,6 +924,8 @@
                 models[type][key].speedWalk = parseInt(document.getElementById('speedWalk').value);
                 models[type][key].speedRun = parseInt(document.getElementById('speedRun').value);
                 models[type][key].displayName = displayName;
+                models[type][key].age = parseInt(document.getElementById('charAge').value) || '';
+                models[type][key].description = document.getElementById('charDescription').value.trim() || '';
                 models[type][key].enabled = document.getElementById('modelEnabled').checked;
                 
                 saveModels();
@@ -935,6 +979,8 @@
             const modelConfig = {
                 name: name,
                 displayName: displayNameVal,
+                age: parseInt(document.getElementById('charAge').value) || '',
+                description: document.getElementById('charDescription').value.trim() || '',
                 scale: parseFloat(document.getElementById('modelScale').value),
                 canvasWidth: parseInt(document.getElementById('canvasWidth').value),
                 canvasHeight: parseInt(document.getElementById('canvasHeight').value),
@@ -997,6 +1043,8 @@
             document.getElementById('speedWalk').value = '20';
             document.getElementById('speedRun').value = '160';
             document.getElementById('displayName').value = '';
+            document.getElementById('charAge').value = '';
+            document.getElementById('charDescription').value = '';
             document.getElementById('modelEnabled').checked = true;
             
             document.getElementById('folderStructure').style.display = 'none';
@@ -1084,6 +1132,8 @@
             document.getElementById('speedWalk').value = model.speedWalk;
             document.getElementById('speedRun').value = model.speedRun;
             document.getElementById('displayName').value = model.displayName || '';
+            document.getElementById('charAge').value = model.age || '';
+            document.getElementById('charDescription').value = model.description || '';
             document.getElementById('modelEnabled').checked = model.enabled !== false;
             
             // Режим редактирования - скрываем файлы анимации
