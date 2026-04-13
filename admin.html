@@ -20,6 +20,18 @@
             font-size: 2.5em;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
+        .header-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        #syncStatus {
+            color: #888;
+            font-size: 14px;
+            min-height: 20px;
+        }
         .tabs {
             display: flex;
             gap: 5px;
@@ -322,6 +334,11 @@
 <body>
     <div class="container">
         <h1>🎮 DBD Admin - 3D Model Manager</h1>
+        
+        <div class="header-controls">
+            <button class="btn btn-primary" onclick="syncModelsToFirebase()">☁️ Синхронизировать с Firestore</button>
+            <span id="syncStatus"></span>
+        </div>
         
         <div class="tabs">
             <button class="tab active" onclick="showTab('add')">➕ Добавить модель</button>
@@ -1277,18 +1294,19 @@
             document.getElementById('modelType').disabled = false;
         });
         
-        // Firebase
+        // Firebase Firestore
         var adminFirebaseReady = false;
-        var adminDb = null;
+        var adminFirestore = null;
+        var adminFirebaseApp = null;
         
         function initAdminFirebase(callback) {
             if (adminFirebaseReady) { callback(); return; }
             
             var script = document.createElement('script');
-            script.src = 'https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js';
+            script.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js';
             script.onload = function() {
                 var script2 = document.createElement('script');
-                script2.src = 'https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js';
+                script2.src = 'https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js';
                 script2.onload = function() {
                     var firebaseConfig = {
                         apiKey: "AIzaSyClnLMd7bt99ngZU7UzSxnStvYD3WXdkew",
@@ -1299,8 +1317,8 @@
                         messagingSenderId: "48938774159",
                         appId: "1:48938774159:web:3beaea874e68ed07104afa"
                     };
-                    firebase.initializeApp(firebaseConfig);
-                    adminDb = firebase.database();
+                    adminFirebaseApp = firebase.initializeApp(firebaseConfig);
+                    adminFirestore = firebase.firestore();
                     adminFirebaseReady = true;
                     callback();
                 };
@@ -1315,8 +1333,15 @@
             status.style.color = '#ffaa00';
             
             initAdminFirebase(function() {
-                adminDb.ref('gameConfig/models').set(models).then(function() {
-                    status.textContent = '✓ Синхронизировано!';
+                var configData = {
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedBy: 'admin',
+                    version: Date.now(),
+                    data: models
+                };
+                
+                adminFirestore.collection('characters').doc('config').set(configData).then(function() {
+                    status.textContent = '✓ Синхронизировано в Firestore!';
                     status.style.color = '#27ae60';
                     setTimeout(function() { status.textContent = ''; }, 3000);
                 }).catch(function(err) {
@@ -1328,26 +1353,70 @@
         
         function loadModelsFromFirebase(callback) {
             initAdminFirebase(function() {
-                adminDb.ref('gameConfig/models').once('value').then(function(snapshot) {
-                    var fbModels = snapshot.val();
-                    if (fbModels && (fbModels.killer || fbModels.survivor)) {
-                        models = fbModels;
-                        localStorage.setItem('dbd_models', JSON.stringify(models));
-                        saveModels();
-                        renderModelList();
-                        updateConfigPreview();
-                        showToast('Модели загружены из облака!', 'success');
+                adminFirestore.collection('characters').doc('config').get().then(function(doc) {
+                    if (doc.exists && doc.data().data) {
+                        var fbModels = doc.data().data;
+                        if (fbModels.killer || fbModels.survivor) {
+                            models = fbModels;
+                            localStorage.setItem('dbd_models', JSON.stringify(models));
+                            saveModels();
+                            renderModelList();
+                            updateConfigPreview();
+                            showToast('Модели загружены из Firestore!', 'success');
+                        }
                     }
                     if (callback) callback();
                 }).catch(function(err) {
-                    console.error('Error loading from Firebase:', err);
+                    console.error('Error loading from Firestore:', err);
                     if (callback) callback();
+                });
+            });
+        }
+        
+        function pushLocalToFirestore() {
+            var localData = localStorage.getItem('dbd_models');
+            if (!localData) {
+                showToast('Нет данных в localStorage', 'error');
+                return;
+            }
+            
+            var status = document.getElementById('syncStatus');
+            status.textContent = 'Отправка в Firestore...';
+            status.style.color = '#ffaa00';
+            
+            initAdminFirebase(function() {
+                var configData = {
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    updatedBy: 'admin',
+                    version: Date.now(),
+                    data: JSON.parse(localData)
+                };
+                
+                adminFirestore.collection('characters').doc('config').set(configData).then(function() {
+                    status.textContent = '✓ Отправлено в Firestore!';
+                    status.style.color = '#27ae60';
+                    setTimeout(function() { status.textContent = ''; }, 3000);
+                }).catch(function(err) {
+                    status.textContent = '✗ Ошибка: ' + err.message;
+                    status.style.color = '#e74c3c';
                 });
             });
         }
         
         loadModels();
         loadModelsFromFirebase();
+        
+        // Auto-push to Firestore on first load if config exists and no cloud data
+        setTimeout(function() {
+            var localData = localStorage.getItem('dbd_models');
+            if (localData && adminFirebaseReady) {
+                adminFirestore.collection('characters').doc('config').get().then(function(doc) {
+                    if (!doc.exists) {
+                        pushLocalToFirestore();
+                    }
+                }).catch(function() {});
+            }
+        }, 2000);
     </script>
 </body>
 </html>

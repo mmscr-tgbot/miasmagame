@@ -1,13 +1,11 @@
 // ═══════ THREE.JS UNIFIED CHARACTER SYSTEM ═══════
 
 // ═══════ CHARACTER CONFIGURATIONS ═══════
-// Load from localStorage or use defaults
-function getCharacterConfig() {
-    var saved = localStorage.getItem('dbd_models');
-    if (saved) {
-        return JSON.parse(saved);
-    }
-    // Default configuration
+// Load from Firestore first, then localStorage, or use defaults
+var CHARACTER_CONFIG = null;
+var configLoaded = false;
+
+function getDefaultCharacterConfig() {
     return {
         killer: {
             scare: {
@@ -47,7 +45,55 @@ function getCharacterConfig() {
     };
 }
 
-var CHARACTER_CONFIG = getCharacterConfig();
+function getCharacterConfig() {
+    if (CHARACTER_CONFIG) return CHARACTER_CONFIG;
+    
+    var saved = localStorage.getItem('dbd_models');
+    if (saved) {
+        try {
+            CHARACTER_CONFIG = JSON.parse(saved);
+            return CHARACTER_CONFIG;
+        } catch(e) {}
+    }
+    
+    CHARACTER_CONFIG = getDefaultCharacterConfig();
+    return CHARACTER_CONFIG;
+}
+
+function loadCharacterConfigFromFirestore(callback) {
+    if (typeof firebase === 'undefined' || !firebase.firestore) {
+        console.log('[3D] Firestore not available, using local config');
+        CHARACTER_CONFIG = getCharacterConfig();
+        if (callback) callback();
+        return;
+    }
+    
+    var db = firebase.firestore();
+    db.collection('characters').doc('config').get().then(function(doc) {
+        if (doc.exists && doc.data().data) {
+            var fbConfig = doc.data().data;
+            if (fbConfig.killer || fbConfig.survivor) {
+                CHARACTER_CONFIG = fbConfig;
+                localStorage.setItem('dbd_models', JSON.stringify(CHARACTER_CONFIG));
+                console.log('[3D] Character config loaded from Firestore');
+            } else {
+                CHARACTER_CONFIG = getCharacterConfig();
+            }
+        } else {
+            CHARACTER_CONFIG = getCharacterConfig();
+        }
+        configLoaded = true;
+        if (callback) callback();
+    }).catch(function(err) {
+        console.error('[3D] Error loading from Firestore:', err);
+        CHARACTER_CONFIG = getCharacterConfig();
+        configLoaded = true;
+        if (callback) callback();
+    });
+}
+
+// Initialize with default config until Firestore loads
+CHARACTER_CONFIG = getDefaultCharacterConfig();
 
 // ═══════ CHARACTER DATA ═══════
 var characters3D = {};
@@ -257,6 +303,13 @@ function initThreeJS() {
         return;
     }
     
+    // Load config from Firestore first
+    loadCharacterConfigFromFirestore(function() {
+        continueInit();
+    });
+}
+
+function continueInit() {
     try {
         if (threeCanvases && Object.keys(threeCanvases).length > 0) {
             console.log('[3D] Canvases already exist');
@@ -264,10 +317,7 @@ function initThreeJS() {
             return;
         }
         
-        console.log('[3D] Creating canvases...');
-        
-        // Refresh config from localStorage
-        CHARACTER_CONFIG = getCharacterConfig();
+        console.log('[3D] Creating canvases with config:', Object.keys(CHARACTER_CONFIG));
         
         // Create canvases for each character
         for (var charType in CHARACTER_CONFIG) {
