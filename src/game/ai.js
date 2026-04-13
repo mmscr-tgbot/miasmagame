@@ -9,6 +9,14 @@ function updateAI(dt) {
 
         // AI Killer behavior - smart hunting
         if (ai.isAIKiller) {
+            // Add delay at game start before AI starts hunting
+            if (!ai.aiStartDelay) ai.aiStartDelay = 3.0;
+            if (ai.aiStartDelay > 0) {
+                ai.aiStartDelay -= dt / 1000;
+                sp.body.setVelocity(0, 0);
+                return;
+            }
+            
             if (ai.slowdownTimer > 0) {
                 ai.slowdownTimer -= dt / 1000;
                 sp.body.setVelocity(0, 0);

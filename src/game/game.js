@@ -1369,10 +1369,52 @@ function spawnPlayers() {
     }
 }
 
-function getKillerSpawnPoint() { return {x: 1200, y: 900}; }
+var allSpawnPoints = [
+    {x: 100, y: 100},
+    {x: 100, y: 1800},
+    {x: 2300, y: 100},
+    {x: 2300, y: 1800},
+    {x: 1200, y: 100},
+    {x: 1200, y: 1800},
+    {x: 100, y: 900},
+    {x: 2300, y: 900},
+    {x: 1200, y: 900}
+];
+
+function getKillerSpawnPoint() {
+    var minDist = 800;
+    var availablePoints = allSpawnPoints.filter(function(p) {
+        if (!isKiller && player && player.sprite) {
+            if (dist(p, player.sprite) < minDist) return false;
+        }
+        return true;
+    });
+    
+    if (availablePoints.length > 0) {
+        return availablePoints[Math.floor(Math.random() * availablePoints.length)];
+    }
+    return allSpawnPoints[Math.floor(Math.random() * allSpawnPoints.length)];
+}
+
 function getSurvivorSpawnPoints(ksp, n) {
-    var pts = [{x:200,y:200},{x:200,y:1600},{x:2200,y:200},{x:2200,y:1600}];
-    return pts.slice(0, n);
+    var minDist = 600;
+    
+    // Shuffle all points first
+    var shuffled = allSpawnPoints.slice();
+    for (var i = shuffled.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = shuffled[i];
+        shuffled[i] = shuffled[j];
+        shuffled[j] = temp;
+    }
+    
+    var availablePoints = shuffled.filter(function(p) {
+        // Too close to killer
+        if (ksp && dist(p, ksp) < minDist) return false;
+        return true;
+    });
+    
+    return availablePoints.slice(0, n);
 }
 
 function makePlayer(sc, x, y, tex, isMe) {
@@ -1397,9 +1439,6 @@ function update(time, dt) {
     gameTime += dt;
 
     updateBloodSplatters(dt);
-
-    // 3D model
-    if (threeLoaded && !window.isLowEndDevice) updateKiller3DSprite(dt);
 
     // Hide 2D killer sprite
     if (isKiller && player && player.sprite && player.sprite.visible) player.sprite.setVisible(false);
@@ -1427,6 +1466,15 @@ function update(time, dt) {
     // Update 3D models
     if (isKiller && !window.isLowEndDevice) updateKiller3DSprite(dt);
     if (!isKiller && !window.isLowEndDevice) updateSurvivor3DSprite(dt);
+
+    // Hide 2D sprites for AI survivors - use only 3D
+    if (!isKiller && !isMultiplayer && player && player.aiPlayers) {
+        player.aiPlayers.forEach(function(ai) {
+            if (ai && ai.sprite && !ai.isAIKiller && ai.sprite.visible) {
+                ai.sprite.setVisible(false);
+            }
+        });
+    }
 
     // Track chase time
     if (player && player.sprite) {

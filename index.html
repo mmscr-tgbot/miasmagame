@@ -1604,6 +1604,47 @@ window.updatePlayerHealth = updatePlayerHealth;
 window.loadThreeJS = loadThreeJS;
 window.isLowEndDevice = isLowEndDevice;
 
+/* ═══════ 3D MODELS PRELOAD ═══════ */
+var modelLoadProgress = 0;
+var totalModelsToLoad = 6;
+
+function preload3DModels() {
+  return new Promise(function(resolve, reject) {
+    if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
+      console.warn('[Preload] THREE not available');
+      resolve();
+      return;
+    }
+    
+    // Initialize 3D system first
+    if (typeof initThreeJS === 'function' && !window.threeInitialized) {
+      try {
+        initThreeJS();
+        window.threeInitialized = true;
+        console.log('[Preload] 3D system initialized');
+      } catch(e) {
+        console.error('[Preload] initThreeJS error:', e);
+      }
+    }
+    
+    // Wait for models to load (initThreeJS loads them)
+    var checkInterval = setInterval(function() {
+      if (window.killerLoaded && window.survivorLoaded) {
+        clearInterval(checkInterval);
+        setProgress(4.5, '3D модели загружены');
+        resolve();
+      }
+    }, 500);
+    
+    // Timeout after 30 seconds
+    setTimeout(function() {
+      clearInterval(checkInterval);
+      setProgress(4.5, '3D модели загружены (возможно с ошибками)');
+      resolve();
+    }, 30000);
+  });
+}
+
 /* ═══════ APP INIT ═══════ */
 setProgress(1, 'Загрузка ядра...');
 
@@ -1625,19 +1666,30 @@ gameScript.onerror = function() {
 };
 document.head.appendChild(gameScript);
 
-setProgress(4, 'Подготовка...');
+// Preload 3D models after Phaser loads
+setProgress(4, 'Подготовка загрузки 3D...');
 
-// Wait for Phaser + game.js, then mark ready
+// Wait for Phaser + game.js + THREE, then preload 3D models
 var _initTries = 0;
 function tryInit() {
-  if (typeof Phaser !== 'undefined' && typeof Phaser.Game !== 'undefined') {
-    initUser(function(user) {
-      setProgress(5, 'Готово!');
-      markReady();
+  if (typeof Phaser !== 'undefined' && typeof Phaser.Game !== 'undefined' && typeof THREE !== 'undefined') {
+    // Preload 3D models before showing menu
+    setProgress(4, 'Загрузка 3D моделей...');
+    preload3DModels().then(function() {
+      initUser(function(user) {
+        setProgress(5, 'Готово!');
+        markReady();
+      });
+    }).catch(function(e) {
+      console.error('[Preload] Model loading error:', e);
+      initUser(function(user) {
+        setProgress(5, 'Готово!');
+        markReady();
+      });
     });
     return;
   }
-  if (++_initTries < 80) {
+  if (++_initTries < 100) {
     setTimeout(tryInit, 100);
   } else {
     if (loadStatus) loadStatus.textContent = 'Ошибка загрузки Phaser';
