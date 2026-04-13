@@ -9,11 +9,16 @@
 <title>Miasma Massacre</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui,sans-serif;background:#111;color:#fff;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui,sans-serif;background:#111;color:#fff;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 #app{width:100%;height:100%;position:relative;overflow:hidden}
 .screen{position:fixed;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;align-items:center;justify-content:center;padding:20px;background:linear-gradient(180deg,#111 0%,#1a1a1a 100%)}
 .screen.active{display:flex}
-.screen.scrollable{overflow-y:auto;-webkit-overflow-scrolling:touch;justify-content:flex-start;padding-top:60px;padding-bottom:60px}
+.screen.scrollable{justify-content:flex-start;overflow:hidden}
+.screen.scrollable>*{flex-shrink:0}
+.settings-content{overflow-y:auto;flex:1;width:100%;max-width:320px;margin:0 auto;padding-bottom:20px}
+.settings-content::-webkit-scrollbar{width:0;height:0}
+#save-indicator{position:fixed;top:15px;right:15px;background:rgba(39,174,96,0.9);color:#fff;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:600;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:1000}
+#save-indicator.show{opacity:1}
 #game-screen.active{display:block!important;padding:0;background:#1a1a1a}
 h1{font-size:28px;color:#ff3333;margin-bottom:30px;text-align:center;text-shadow:0 0 20px rgba(255,51,51,.5)}
 h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
@@ -99,7 +104,6 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
     <div class="loader-status" id="load-status">Инициализация...</div>
     <div class="loader-tips" id="load-tip"></div>
     <div id="menu-buttons" style="display:none;flex-direction:column;align-items:center;gap:10px;margin-top:25px;">
-      <div id="menu-bp-display" style="color:#ff3333;font-size:16px;font-weight:bold;margin-bottom:5px">🩸 0</div>
       <button id="btn-multiplayer" class="btn primary" style="width:220px">🎮 Начать игру</button>
       <button id="btn-solo" class="btn secondary" style="width:220px">🎮 Играть (Соло)</button>
       <button id="btn-profile" class="btn" style="width:220px;background:#333">👤 Профиль</button>
@@ -163,12 +167,13 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 
 <div id="settings-screen" class="screen scrollable">
   <h2>⚙️ Настройки графики</h2>
-  <div id="settings-content" style="width:100%;max-width:320px;margin:10px auto;"></div>
-  <button id="btn-settings-back" class="btn" style="margin-top:15px;background:#222">← Назад</button>
+  <div id="settings-content" class="settings-content" style="width:100%;max-width:320px;"></div>
+  <button id="btn-settings-back" class="btn" style="flex-shrink:0;margin-top:15px;background:#222">← Назад</button>
 </div>
 
 </div>
 
+<div id="save-indicator">✓ Сохранено</div>
 <div id="toast"></div>
 
 <script>
@@ -238,10 +243,12 @@ function updateProgressBar() {
 }
 
 function showMenuButtons() {
-  // Hide progress bar and status text
+  // Remove progress bar, status text and loader tips
   var loadBarWrap = document.querySelector('.loader-bar-wrap');
-  if (loadBarWrap) loadBarWrap.style.display = 'none';
-  if (loadStatus) loadStatus.style.display = 'none';
+  if (loadBarWrap) loadBarWrap.remove();
+  if (loadStatus) loadStatus.remove();
+  var loadTips = document.querySelector('.loader-tips');
+  if (loadTips) loadTips.remove();
   
   // Show menu buttons
   var menuBtns = document.getElementById('menu-buttons');
@@ -438,6 +445,18 @@ function applyGSettings() {
 
 function saveGSettings() {
     try { localStorage.setItem('dbd_gfx', JSON.stringify(gSettings)); } catch(e) {}
+    showSaveIndicator();
+}
+
+var saveIndicatorTimeout = null;
+function showSaveIndicator() {
+    var indicator = document.getElementById('save-indicator');
+    if (!indicator) return;
+    indicator.classList.add('show');
+    if (saveIndicatorTimeout) clearTimeout(saveIndicatorTimeout);
+    saveIndicatorTimeout = setTimeout(function() {
+        indicator.classList.remove('show');
+    }, 2000);
 }
 
 function syncGSettings() {
@@ -491,10 +510,7 @@ function loadAvailableCharacters() {
           });
         }
       }
-      
-      console.log('[Chars] Loaded:', killerChars.length, 'killers,', survivorChars.length, 'survivors');
     } catch (e) {
-      console.error('[Chars] Error parsing config:', e);
       loadDefaultChars();
     }
   } else {
@@ -511,22 +527,48 @@ function loadDefaultChars() {
   ];
 }
 
+function loadModelsFromFirebase() {
+  if (isFirebaseReady && db) {
+    db.ref('gameConfig/models').once('value').then(function(snapshot) {
+      var fbModels = snapshot.val();
+      if (fbModels && (fbModels.killer || fbModels.survivor)) {
+        localStorage.setItem('dbd_models', JSON.stringify(fbModels));
+        loadAvailableCharacters();
+      }
+    }).catch(function() {});
+  }
+}
+
 loadAvailableCharacters();
+loadModelsFromFirebase();
 
 window.addEventListener('storage', function(e) {
   if (e.key === 'dbd_models') {
-    console.log('[Chars] Models updated, reloading...');
     loadAvailableCharacters();
   }
 });
 
 function showCharSelect() {
   loadAvailableCharacters();
-  console.log('[CharSelect] showCharSelect called, role:', selectedRole);
+  loadModelsFromFirebase();
   showScreen('char-select');
   var chars = selectedRole === 'killer' ? killerChars : survivorChars;
   selectedCharIndex = 0;
-  console.log('[CharSelect] Characters:', chars.length, 'index:', selectedCharIndex);
+  
+  // Show debug info if no chars loaded
+  var debugEl = document.getElementById('char-debug');
+  if (chars.length === 0) {
+    if (!debugEl) {
+      debugEl = document.createElement('div');
+      debugEl.id = 'char-debug';
+      debugEl.style.cssText = 'position:fixed;bottom:10px;left:10px;background:rgba(255,0,0,0.8);color:#fff;padding:10px;border-radius:8px;font-size:12px;z-index:9999;';
+      document.body.appendChild(debugEl);
+    }
+    var savedConfig = localStorage.getItem('dbd_models');
+    debugEl.innerHTML = 'Нет персонажей!<br>localStorage: ' + (savedConfig ? 'есть (' + savedConfig.length + ' символов)' : 'пусто');
+  } else {
+    if (debugEl) debugEl.remove();
+  }
   updateCharDisplay();
 }
 
@@ -1455,6 +1497,10 @@ function showSettings() {
   syncGSettings(); // Sync from state.js if it exists
   showScreen('settings-screen');
   
+  // Save and restore scroll position
+  var settingsContainer = document.getElementById('settings-content');
+  var savedScrollTop = settingsContainer ? settingsContainer.scrollTop : 0;
+  
   var html = '';
   html += '<div style="background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-bottom:10px;">';
   html += '<div style="color:#aaa;font-size:13px;margin-bottom:8px">📱 Устройство: ' + (navigator.deviceMemory || '?') + 'GB RAM, ' + (navigator.hardwareConcurrency || '?') + ' ядер</div>';
@@ -1506,15 +1552,15 @@ function showSettings() {
     html += '</div>';
   });
   html += '</div>';
-  
+   
   document.getElementById('settings-content').innerHTML = html;
   
-  // Remove old listener and add new one
-  var container = document.getElementById('settings-content');
-  var newContainer = container.cloneNode(true);
-  container.parentNode.replaceChild(newContainer, container);
+  // Restore scroll position after re-render
+  var newContainer = document.getElementById('settings-content');
+  if (newContainer) newContainer.scrollTop = savedScrollTop;
   
-  newContainer.addEventListener('click', function(e) {
+  // Add click handler for settings
+  document.getElementById('settings-content').addEventListener('click', function(e) {
     var qualityOption = e.target.closest('.quality-option');
     if (qualityOption) {
       e.preventDefault();
@@ -1524,7 +1570,14 @@ function showSettings() {
       applyGSettings();
       saveGSettings();
       syncGSettings();
-      showSettings();
+      // Update all quality options
+      document.querySelectorAll('.quality-option').forEach(function(opt) {
+        var q = opt.getAttribute('data-quality');
+        var isActive = q === quality;
+        opt.style.background = isActive ? 'rgba(255,51,51,0.3)' : 'rgba(255,255,255,0.05)';
+        opt.style.borderColor = isActive ? '#ff3333' : 'rgba(255,255,255,0.1)';
+        opt.querySelector('div:first-child').style.fontWeight = isActive ? 'bold' : 'normal';
+      });
       return;
     }
     
@@ -1536,7 +1589,11 @@ function showSettings() {
       gSettings[key] = !gSettings[key];
       saveGSettings();
       syncGSettings();
-      showSettings();
+      // Update only this toggle
+      var span = settingToggle.querySelector('span:last-child');
+      var isOn = gSettings[key];
+      span.textContent = isOn ? 'ВКЛ' : 'ВЫКЛ';
+      span.style.color = isOn ? '#44cc66' : '#ff4444';
       return;
     }
   });

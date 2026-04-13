@@ -307,6 +307,16 @@
             background: #555;
             cursor: not-allowed;
         }
+        .import-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        .import-section h4 {
+            color: #e94560;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -458,6 +468,7 @@
             <div class="config-preview" id="configPreview"></div>
             <button class="btn btn-secondary" style="margin-top:20px" onclick="copyConfig()">📋 Копировать конфигурацию</button>
             <button class="btn btn-primary" style="margin-top:20px;margin-left:10px" onclick="updateConfig()">💾 Сохранить изменения</button>
+            
         </div>
     </div>
     
@@ -647,7 +658,11 @@
         function loadModels() {
             const saved = localStorage.getItem('dbd_models');
             if (saved) {
-                models = JSON.parse(saved);
+                try {
+                    models = JSON.parse(saved);
+                } catch (e) {
+                    console.error('[Admin] Error parsing models:', e);
+                }
             } else {
                 models = {
                     killer: {
@@ -1189,8 +1204,64 @@
         }
         
         function copyConfig() {
-            navigator.clipboard.writeText(`var CHARACTER_CONFIG = ${JSON.stringify(models, null, 4)};`);
-            showToast('Скопировано!', 'success');
+            navigator.clipboard.writeText(JSON.stringify(models, null, 4));
+            showToast('Конфигурация скопирована!', 'success');
+        }
+        
+        function exportConfig() {
+            const json = JSON.stringify(models, null, 4);
+            const blob = new Blob([json], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'dbd_models_' + Date.now() + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Конфигурация экспортирована!', 'success');
+        }
+        
+        function importConfig(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported.killer || imported.survivor) {
+                        document.getElementById('importText').value = e.target.result;
+                        document.getElementById('importText').style.display = 'block';
+                        document.getElementById('importBtn').style.display = 'inline-block';
+                        showToast('Конфигурация загружена. Нажмите "Применить импорт".', 'success');
+                    } else {
+                        showToast('Неверный формат файла!', 'error');
+                    }
+                } catch (err) {
+                    showToast('Ошибка чтения файла!', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        function applyImport() {
+            const text = document.getElementById('importText').value.trim();
+            if (!text) {
+                showToast('Вставьте JSON конфигурацию!', 'error');
+                return;
+            }
+            
+            try {
+                const imported = JSON.parse(text);
+                models = imported;
+                saveModels();
+                renderModelList();
+                updateConfigPreview();
+                document.getElementById('importText').style.display = 'none';
+                document.getElementById('importBtn').style.display = 'none';
+                showToast('Конфигурация применена!', 'success');
+            } catch (err) {
+                showToast('Ошибка JSON: ' + err.message, 'error');
+            }
         }
         
         function showToast(message, type) {
@@ -1206,7 +1277,77 @@
             document.getElementById('modelType').disabled = false;
         });
         
+        // Firebase
+        var adminFirebaseReady = false;
+        var adminDb = null;
+        
+        function initAdminFirebase(callback) {
+            if (adminFirebaseReady) { callback(); return; }
+            
+            var script = document.createElement('script');
+            script.src = 'https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js';
+            script.onload = function() {
+                var script2 = document.createElement('script');
+                script2.src = 'https://www.gstatic.com/firebasejs/9.0.0/firebase-database-compat.js';
+                script2.onload = function() {
+                    var firebaseConfig = {
+                        apiKey: "AIzaSyClnLMd7bt99ngZU7UzSxnStvYD3WXdkew",
+                        authDomain: "dbdtg-d24d7.firebaseapp.com",
+                        databaseURL: "https://dbdtg-d24d7-default-rtdb.europe-west1.firebasedatabase.app",
+                        projectId: "dbdtg-d24d7",
+                        storageBucket: "dbdtg-d24d7.firebasestorage.app",
+                        messagingSenderId: "48938774159",
+                        appId: "1:48938774159:web:3beaea874e68ed07104afa"
+                    };
+                    firebase.initializeApp(firebaseConfig);
+                    adminDb = firebase.database();
+                    adminFirebaseReady = true;
+                    callback();
+                };
+                document.head.appendChild(script2);
+            };
+            document.head.appendChild(script);
+        }
+        
+        function syncModelsToFirebase() {
+            var status = document.getElementById('syncStatus');
+            status.textContent = 'Синхронизация...';
+            status.style.color = '#ffaa00';
+            
+            initAdminFirebase(function() {
+                adminDb.ref('gameConfig/models').set(models).then(function() {
+                    status.textContent = '✓ Синхронизировано!';
+                    status.style.color = '#27ae60';
+                    setTimeout(function() { status.textContent = ''; }, 3000);
+                }).catch(function(err) {
+                    status.textContent = '✗ Ошибка: ' + err.message;
+                    status.style.color = '#e74c3c';
+                });
+            });
+        }
+        
+        function loadModelsFromFirebase(callback) {
+            initAdminFirebase(function() {
+                adminDb.ref('gameConfig/models').once('value').then(function(snapshot) {
+                    var fbModels = snapshot.val();
+                    if (fbModels && (fbModels.killer || fbModels.survivor)) {
+                        models = fbModels;
+                        localStorage.setItem('dbd_models', JSON.stringify(models));
+                        saveModels();
+                        renderModelList();
+                        updateConfigPreview();
+                        showToast('Модели загружены из облака!', 'success');
+                    }
+                    if (callback) callback();
+                }).catch(function(err) {
+                    console.error('Error loading from Firebase:', err);
+                    if (callback) callback();
+                });
+            });
+        }
+        
         loadModels();
+        loadModelsFromFirebase();
     </script>
 </body>
 </html>
