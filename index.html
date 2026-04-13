@@ -20,16 +20,19 @@ html,body{width:100%;height:100%;overflow:hidden;font-family:system-ui,sans-seri
 #save-indicator{position:fixed;top:15px;right:15px;background:rgba(39,174,96,0.9);color:#fff;padding:8px 12px;border-radius:20px;font-size:12px;font-weight:600;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:1000}
 #save-indicator.show{opacity:1}
 #game-screen.active{display:block!important;padding:0;background:#1a1a1a}
-#char-select .char-content{transition:all 0.3s ease-out;position:relative}
-#char-select .char-fade-out{opacity:0;transform:translateX(-30px) scale(0.95)}
-#char-select .char-fade-in{animation:charSlideIn 0.4s ease-out forwards}
-@keyframes charSlideIn{from{opacity:0;transform:translateX(30px) scale(0.95)}to{opacity:1;transform:translateX(0) scale(1)}}
-#char-select .char-fade-in-left{animation:charSlideInLeft 0.4s ease-out forwards}
-@keyframes charSlideInLeft{from{opacity:0;transform:translateX(-30px) scale(0.95)}to{opacity:1;transform:translateX(0) scale(1)}}
-#char-select .char-name{transition:all 0.3s ease-out}
-#char-select .char-name-change{animation:charNamePulse 0.4s ease-out}
-@keyframes charNamePulse{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
-#char-viewer{transition:opacity 0.3s ease-out}
+#char-viewer{position:relative;transition:opacity 0.15s ease-out}
+#char-viewer canvas{transition:opacity 0.15s ease-out}
+#char-viewer .char-spinner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border:3px solid rgba(255,255,255,0.1);border-top-color:#e94560;border-radius:50%;animation:spin 1s linear infinite;z-index:10}
+@keyframes spin{to{transform:translate(-50%,-50%) rotate(360deg)}}
+#char-select #char-viewer.char-fade-out canvas{opacity:0}
+#char-select #char-viewer.char-fade-in-right{animation:slideInRight 0.25s ease-out forwards}
+#char-select #char-viewer.char-fade-in-left{animation:slideInLeft 0.25s ease-out forwards}
+@keyframes slideInRight{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes slideInLeft{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+#char-info{transition:opacity 0.15s ease-out}
+#char-select #char-info.char-fade-out{opacity:0}
+#char-select #char-info.char-fade-in{animation:fadeIn 0.2s ease-out forwards}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 h1{font-size:28px;color:#ff3333;margin-bottom:30px;text-align:center;text-shadow:0 0 20px rgba(255,51,51,.5)}
 h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 .btn{width:210px;padding:14px 20px;margin:7px 0;border:none;border-radius:50px;font-size:16px;font-weight:600;cursor:pointer;background:linear-gradient(135deg,#2a2a2a 0%,#1a1a1a 50%,#0a0a0a 100%);color:#fff;touch-action:manipulation;transition:all 0.3s ease;position:relative;overflow:hidden}
@@ -136,8 +139,8 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 
 <div id="char-select" class="screen">
   <h2 id="char-select-title">Выбери персонажа</h2>
-  <div class="char-content">
-    <div id="char-viewer" style="width:200px;height:280px;position:relative;margin:10px auto;background:transparent;border-radius:12px;"></div>
+  <div id="char-viewer" style="width:200px;height:280px;position:relative;margin:10px auto;background:transparent;border-radius:12px;"></div>
+  <div id="char-info">
     <p id="char-name" style="color:#fff;font-size:22px;font-weight:700;margin:8px 0;text-align:center">—</p>
     <p id="char-age" style="color:#888;font-size:14px;margin:0 0 10px;text-align:center">—</p>
     <p id="char-desc" style="color:#aaa;font-size:13px;margin:0 0 15px;text-align:center;max-width:300px;line-height:1.5">—</p>
@@ -370,6 +373,83 @@ var gGameSessionId = null;
 var gRoomRef = null;
 var gRoomCallback = null;
 
+/* ═══════ MODEL PRELOAD ═══════ */
+var modelsPreloading = false;
+var modelsLoaded = false;
+var modelsLoadingCount = 0;
+var modelsTotalCount = 0;
+var loadedModelPaths = new Set();
+
+function preloadModels(config, callback) {
+  if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
+    if (callback) callback();
+    return;
+  }
+  
+  var loader = new THREE.GLTFLoader();
+  var allPaths = [];
+  
+  // Collect all animation paths
+  for (var type in config) {
+    for (var key in config[type]) {
+      var char = config[type][key];
+      if (char.animations) {
+        for (var animKey in char.animations) {
+          var path = char.animations[animKey];
+          if (path && allPaths.indexOf(path) === -1) {
+            allPaths.push(path);
+          }
+        }
+      }
+    }
+  }
+  
+  modelsTotalCount = allPaths.length;
+  modelsLoadingCount = 0;
+  modelsPreloading = true;
+  
+  if (allPaths.length === 0) {
+    modelsPreloading = false;
+    modelsLoaded = true;
+    if (callback) callback();
+    return;
+  }
+  
+  function updateLoadStatus() {
+    if (loadStatus && modelsTotalCount > 0) {
+      var pct = Math.round((modelsLoadingCount / modelsTotalCount) * 100);
+      loadStatus.textContent = 'Модели: ' + modelsLoadingCount + '/' + modelsTotalCount + ' (' + pct + '%)';
+    }
+  }
+  
+  allPaths.forEach(function(path) {
+    loader.load(
+      path,
+      function(gltf) {
+        loadedModelPaths.add(path);
+        modelsLoadingCount++;
+        updateLoadStatus();
+        if (modelsLoadingCount >= modelsTotalCount) {
+          modelsPreloading = false;
+          modelsLoaded = true;
+          if (callback) callback();
+        }
+      },
+      function(progress) {},
+      function(err) {
+        console.warn('[Preload] Failed to load:', path);
+        modelsLoadingCount++;
+        updateLoadStatus();
+        if (modelsLoadingCount >= modelsTotalCount) {
+          modelsPreloading = false;
+          modelsLoaded = true;
+          if (callback) callback();
+        }
+      }
+    );
+  });
+}
+
 /* ═══════ UI HELPERS ═══════ */
 function showToast(msg, duration) {
   duration = duration || 2500;
@@ -407,6 +487,7 @@ var charViewerAnimationId = null;
 var charIsDragging = false;
 var charLastX = 0;
 var charRotationY = 0;
+var charNavLocked = false;
 
 /* ═══════ GRAPHICS SETTINGS ═══════ */
 var gSettings = {
@@ -546,7 +627,7 @@ function loadDefaultChars() {
   ];
 }
 
-function loadModelsFromFirebase() {
+function loadModelsFromFirebase(callback) {
   if (window.firebaseLoaded && window.fbFS) {
     window.fbFS.collection('characters').doc('config').get().then(function(doc) {
       if (doc.exists && doc.data().data) {
@@ -554,11 +635,15 @@ function loadModelsFromFirebase() {
         if (fbModels.killer || fbModels.survivor) {
           localStorage.setItem('dbd_models', JSON.stringify(fbModels));
           loadAvailableCharacters();
+          if (callback) callback();
         }
       }
     }).catch(function(err) {
       console.log('Firestore not available:', err);
+      if (callback) callback();
     });
+  } else {
+    if (callback) callback();
   }
 }
 
@@ -573,26 +658,29 @@ window.addEventListener('storage', function(e) {
 
 function showCharSelect() {
   loadAvailableCharacters();
-  loadModelsFromFirebase();
-  showScreen('char-select');
-  var chars = selectedRole === 'killer' ? killerChars : survivorChars;
   selectedCharIndex = 0;
+  charNavLocked = false;
   
-  // Show debug info if no chars loaded
-  var debugEl = document.getElementById('char-debug');
-  if (chars.length === 0) {
-    if (!debugEl) {
-      debugEl = document.createElement('div');
-      debugEl.id = 'char-debug';
-      debugEl.style.cssText = 'position:fixed;bottom:10px;left:10px;background:rgba(255,0,0,0.8);color:#fff;padding:10px;border-radius:8px;font-size:12px;z-index:9999;';
-      document.body.appendChild(debugEl);
+  loadModelsFromFirebase(function() {
+    showScreen('char-select');
+    var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+    
+    // Show debug info if no chars loaded
+    var debugEl = document.getElementById('char-debug');
+    if (chars.length === 0) {
+      if (!debugEl) {
+        debugEl = document.createElement('div');
+        debugEl.id = 'char-debug';
+        debugEl.style.cssText = 'position:fixed;bottom:10px;left:10px;background:rgba(255,0,0,0.8);color:#fff;padding:10px;border-radius:8px;font-size:12px;z-index:9999;';
+        document.body.appendChild(debugEl);
+      }
+      var savedConfig = localStorage.getItem('dbd_models');
+      debugEl.innerHTML = 'Нет персонажей!<br>localStorage: ' + (savedConfig ? 'есть (' + savedConfig.length + ' символов)' : 'пусто');
+    } else {
+      if (debugEl) debugEl.remove();
     }
-    var savedConfig = localStorage.getItem('dbd_models');
-    debugEl.innerHTML = 'Нет персонажей!<br>localStorage: ' + (savedConfig ? 'есть (' + savedConfig.length + ' символов)' : 'пусто');
-  } else {
-    if (debugEl) debugEl.remove();
-  }
-  updateCharDisplay();
+    updateCharDisplay();
+  });
 }
 
 function updateCharDisplay() {
@@ -638,12 +726,22 @@ function setupCharViewer(ch) {
   }
   
   container.innerHTML = '';
-  
+   
   if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
     container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Three.js не загружен</p>';
     return;
   }
-  
+   
+  var modelPath = ch.model;
+  var isAlreadyLoaded = loadedModelPaths.has(modelPath);
+  var loadingSpinner = null;
+   
+  if (!isAlreadyLoaded) {
+    loadingSpinner = document.createElement('div');
+    loadingSpinner.className = 'char-spinner';
+    container.appendChild(loadingSpinner);
+  }
+   
   var containerW = 200;
   var containerH = 280;
   
@@ -670,90 +768,106 @@ function setupCharViewer(ch) {
   charViewerMixer = null;
   charRotationY = 0;
   
+  function applyModelToScene(model, animations) {
+    charViewerModel = model;
+    
+    charViewerModel.traverse(function(child) {
+      if (child.isMesh) {
+        if (child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(function(mat) {
+              mat.transparent = false;
+              mat.opacity = 1;
+              mat.depthWrite = true;
+              if (mat.map) mat.map.transparent = false;
+            });
+          } else {
+            child.material.transparent = false;
+            child.material.opacity = 1;
+            child.material.depthWrite = true;
+            if (child.material.map) child.material.map.transparent = false;
+          }
+        }
+      }
+    });
+    
+    var minX = Infinity, minY = Infinity, minZ = Infinity;
+    var maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+    var hasGeometry = false;
+    
+    charViewerModel.traverse(function(child) {
+      if (child.isMesh && child.geometry) {
+        child.geometry.computeBoundingBox();
+        var bbox = child.geometry.boundingBox;
+        if (bbox) {
+          hasGeometry = true;
+          minX = Math.min(minX, bbox.min.x);
+          minY = Math.min(minY, bbox.min.y);
+          minZ = Math.min(minZ, bbox.min.z);
+          maxX = Math.max(maxX, bbox.max.x);
+          maxY = Math.max(maxY, bbox.max.y);
+          maxZ = Math.max(maxZ, bbox.max.z);
+        }
+      }
+    });
+    
+    var sizeX = hasGeometry ? maxX - minX : 0;
+    var sizeY = hasGeometry ? maxY - minY : 0;
+    var sizeZ = hasGeometry ? maxZ - minZ : 0;
+    var maxDim = Math.max(sizeX, sizeY, sizeZ);
+    
+    if (!hasGeometry || maxDim === 0) {
+      console.error('[CharViewer] Empty model');
+      if (loadingSpinner && loadingSpinner.parentNode) {
+        loadingSpinner.remove();
+      }
+      return;
+    }
+    
+    var targetHeight = Math.min(containerW, containerH) * 0.00833;
+    var scaleVal = targetHeight / maxDim;
+    
+    charViewerModel.scale.set(scaleVal, scaleVal, scaleVal);
+    charViewerModel.position.x = -(minX + sizeX/2) * scaleVal;
+    charViewerModel.position.y = -minY * scaleVal - (sizeY * scaleVal * 0.15);
+    
+    charViewerScene.add(charViewerModel);
+    
+    if (animations && animations.length > 0) {
+      charViewerMixer = new THREE.AnimationMixer(charViewerModel);
+      var action = charViewerMixer.clipAction(animations[0]);
+      action.play();
+    }
+    
+    if (loadingSpinner && loadingSpinner.parentNode) {
+      loadingSpinner.remove();
+    }
+    
+    function animate() {
+      if (!container.parentNode) return;
+      if (charViewerMixer) charViewerMixer.update(0.004);
+      charViewerRenderer.render(charViewerScene, charViewerCamera);
+      charViewerAnimationId = requestAnimationFrame(animate);
+    }
+    animate();
+  }
+  
+  var modelPath = ch.model;
   var loader = new THREE.GLTFLoader();
   loader.load(
-    ch.model,
+    modelPath,
     function(gltf) {
-      charViewerModel = gltf.scene;
-      
-      charViewerModel.traverse(function(child) {
-        if (child.isMesh) {
-          if (child.material) {
-            if (Array.isArray(child.material)) {
-              child.material.forEach(function(mat) {
-                mat.transparent = false;
-                mat.opacity = 1;
-                mat.depthWrite = true;
-                if (mat.map) mat.map.transparent = false;
-              });
-            } else {
-              child.material.transparent = false;
-              child.material.opacity = 1;
-              child.material.depthWrite = true;
-              if (child.material.map) child.material.map.transparent = false;
-            }
-          }
-        }
-      });
-      
-      var minX = Infinity, minY = Infinity, minZ = Infinity;
-      var maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-      var hasGeometry = false;
-      
-      charViewerModel.traverse(function(child) {
-        if (child.isMesh && child.geometry) {
-          child.geometry.computeBoundingBox();
-          var bbox = child.geometry.boundingBox;
-          if (bbox) {
-            hasGeometry = true;
-            minX = Math.min(minX, bbox.min.x);
-            minY = Math.min(minY, bbox.min.y);
-            minZ = Math.min(minZ, bbox.min.z);
-            maxX = Math.max(maxX, bbox.max.x);
-            maxY = Math.max(maxY, bbox.max.y);
-            maxZ = Math.max(maxZ, bbox.max.z);
-          }
-        }
-      });
-      
-      var sizeX = hasGeometry ? maxX - minX : 0;
-      var sizeY = hasGeometry ? maxY - minY : 0;
-      var sizeZ = hasGeometry ? maxZ - minZ : 0;
-      var maxDim = Math.max(sizeX, sizeY, sizeZ);
-      
-      if (!hasGeometry || maxDim === 0) {
-        console.error('[CharViewer] Empty model');
-        return;
-      }
-      
-      var targetHeight = Math.min(containerW, containerH) * 0.00833;
-      var scaleVal = targetHeight / maxDim;
-      
-      charViewerModel.scale.set(scaleVal, scaleVal, scaleVal);
-      charViewerModel.position.x = -(minX + sizeX/2) * scaleVal;
-      charViewerModel.position.y = -minY * scaleVal - (sizeY * scaleVal * 0.15);
-      
-      charViewerScene.add(charViewerModel);
-      
-      if (gltf.animations && gltf.animations.length > 0) {
-        charViewerMixer = new THREE.AnimationMixer(charViewerModel);
-        var action = charViewerMixer.clipAction(gltf.animations[0]);
-        action.play();
-      }
+      loadedModelPaths.add(modelPath);
+      applyModelToScene(gltf.scene, gltf.animations);
     },
     function(progress) {},
     function(err) {
       console.error('[CharViewer] Error:', err);
+      if (loadingSpinner && loadingSpinner.parentNode) {
+        loadingSpinner.remove();
+      }
     }
   );
-  
-  function animate() {
-    if (!container.parentNode) return;
-    if (charViewerMixer) charViewerMixer.update(0.004);
-    charViewerRenderer.render(charViewerScene, charViewerCamera);
-    charViewerAnimationId = requestAnimationFrame(animate);
-  }
-  animate();
 }
 
 function setupSurvivorPreview(container, ch) {
@@ -1223,6 +1337,14 @@ function unsubscribeFromLobby() {
 function createLobby() {
   if (!isFirebaseReady()) { showToast('Firebase не загружен'); return; }
 
+  var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+  var selectedChar = chars[selectedCharIndex];
+  if (selectedChar && selectedChar.configKey) {
+    if (typeof setSelectedCharacter === 'function') {
+      setSelectedCharacter(selectedRole, selectedChar.configKey);
+    }
+  }
+
   gMyId = getMyId();
   gMyRole = 'killer';
   gIsHost = true;
@@ -1254,6 +1376,14 @@ function createLobby() {
 
 function findAndJoinLobby() {
   if (!isFirebaseReady()) { showToast('Firebase не загружен'); return; }
+
+  var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+  var selectedChar = chars[selectedCharIndex];
+  if (selectedChar && selectedChar.configKey) {
+    if (typeof setSelectedCharacter === 'function') {
+      setSelectedCharacter(selectedRole, selectedChar.configKey);
+    }
+  }
 
   showScreen('lobby-join');
   gMyId = getMyId();
@@ -1465,54 +1595,77 @@ function setupButtons() {
   
   // Character select navigation
   on('btn-char-prev', function() {
-    var content = document.querySelector('#char-select .char-content') || document.getElementById('char-name');
-    var charName = document.getElementById('char-name');
+    if (charNavLocked) return;
+    var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+    if (selectedCharIndex <= 0 || chars.length <= 1) return;
+    charNavLocked = true;
     
-    content && content.classList.add('char-fade-out');
+    var viewer = document.getElementById('char-viewer');
+    var charInfo = document.getElementById('char-info');
+    
+    viewer && viewer.classList.add('char-fade-out');
+    charInfo && charInfo.classList.add('char-fade-out');
     
     setTimeout(function() {
-      var chars = selectedRole === 'killer' ? killerChars : survivorChars;
-      selectedCharIndex = (selectedCharIndex - 1 + chars.length) % chars.length;
+      selectedCharIndex = selectedCharIndex - 1;
       
-      if (content) {
-        content.classList.remove('char-fade-out');
-        content.classList.add('char-fade-in-left');
-        setTimeout(function() { content.classList.remove('char-fade-in-left'); }, 400);
+      if (viewer) {
+        viewer.classList.remove('char-fade-out');
+        viewer.classList.add('char-fade-in-left');
+        setTimeout(function() { viewer.classList.remove('char-fade-in-left'); }, 250);
       }
-      if (charName) {
-        charName.classList.add('char-name-change');
-        setTimeout(function() { charName.classList.remove('char-name-change'); }, 400);
+      if (charInfo) {
+        charInfo.classList.remove('char-fade-out');
+        charInfo.classList.add('char-fade-in');
+        setTimeout(function() { charInfo.classList.remove('char-fade-in'); }, 200);
       }
       
       updateCharDisplay();
+      charNavLocked = false;
     }, 150);
   });
   
   on('btn-char-next', function() {
-    var content = document.querySelector('#char-select .char-content') || document.getElementById('char-name');
-    var charName = document.getElementById('char-name');
+    if (charNavLocked) return;
+    var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+    if (selectedCharIndex >= chars.length - 1 || chars.length <= 1) return;
+    charNavLocked = true;
     
-    content && content.classList.add('char-fade-out');
+    var viewer = document.getElementById('char-viewer');
+    var charInfo = document.getElementById('char-info');
+    
+    viewer && viewer.classList.add('char-fade-out');
+    charInfo && charInfo.classList.add('char-fade-out');
     
     setTimeout(function() {
-      var chars = selectedRole === 'killer' ? killerChars : survivorChars;
-      selectedCharIndex = (selectedCharIndex + 1) % chars.length;
+      selectedCharIndex = selectedCharIndex + 1;
       
-      if (content) {
-        content.classList.remove('char-fade-out');
-        content.classList.add('char-fade-in');
-        setTimeout(function() { content.classList.remove('char-fade-in'); }, 400);
+      if (viewer) {
+        viewer.classList.remove('char-fade-out');
+        viewer.classList.add('char-fade-in-right');
+        setTimeout(function() { viewer.classList.remove('char-fade-in-right'); }, 250);
       }
-      if (charName) {
-        charName.classList.add('char-name-change');
-        setTimeout(function() { charName.classList.remove('char-name-change'); }, 400);
+      if (charInfo) {
+        charInfo.classList.remove('char-fade-out');
+        charInfo.classList.add('char-fade-in');
+        setTimeout(function() { charInfo.classList.remove('char-fade-in'); }, 200);
       }
       
       updateCharDisplay();
+      charNavLocked = false;
     }, 150);
   });
   
   on('btn-char-play', function() {
+    var chars = selectedRole === 'killer' ? killerChars : survivorChars;
+    var selectedChar = chars[selectedCharIndex];
+    
+    if (selectedChar && selectedChar.configKey) {
+      if (typeof setSelectedCharacter === 'function') {
+        setSelectedCharacter(selectedRole, selectedChar.configKey);
+      }
+    }
+    
     if (gameMode === 'solo') {
       Game.start(selectedRole === 'killer', false, null, null);
     } else {
@@ -1780,32 +1933,56 @@ function preload3DModels() {
       return;
     }
     
-    // Initialize 3D system first
-    if (typeof initThreeJS === 'function' && !window.threeInitialized) {
+    // Load config from localStorage or Firebase
+    var savedConfig = localStorage.getItem('dbd_models');
+    var config = null;
+    
+    if (savedConfig) {
       try {
-        initThreeJS();
-        window.threeInitialized = true;
-        console.log('[Preload] 3D system initialized');
-      } catch(e) {
-        console.error('[Preload] initThreeJS error:', e);
-      }
+        config = JSON.parse(savedConfig);
+      } catch(e) {}
     }
     
-    // Wait for models to load (initThreeJS loads them)
-    var checkInterval = setInterval(function() {
-      if (window.killerLoaded && window.survivorLoaded) {
-        clearInterval(checkInterval);
-        setProgress(4.5, '3D модели загружены');
-        resolve();
-      }
-    }, 500);
+    // Use default config if nothing saved
+    if (!config) {
+      config = {
+        killer: {
+          scare: {
+            animations: {
+              idle: 'src/models/killers/scare/ScareKiller_Idle.glb',
+              run: 'src/models/killers/scare/ScareKiller_Run.glb'
+            }
+          }
+        },
+        survivor: {
+          jack: {
+            animations: {
+              idle: 'src/models/survivors/Jack/Jack_Idle.glb',
+              run: 'src/models/survivors/Jack/Jack_Run.glb'
+            }
+          }
+        }
+      };
+    }
     
-    // Timeout after 30 seconds
-    setTimeout(function() {
-      clearInterval(checkInterval);
-      setProgress(4.5, '3D модели загружены (возможно с ошибками)');
+    // Preload all models using our cache system
+    preloadModels(config, function() {
+      console.log('[Preload] All models cached');
+      
+      // Initialize 3D system
+      if (typeof initThreeJS === 'function' && !window.threeInitialized) {
+        try {
+          initThreeJS();
+          window.threeInitialized = true;
+          console.log('[Preload] 3D system initialized');
+        } catch(e) {
+          console.error('[Preload] initThreeJS error:', e);
+        }
+      }
+      
+      setProgress(4.5, '3D модели загружены');
       resolve();
-    }, 30000);
+    });
   });
 }
 

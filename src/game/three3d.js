@@ -95,6 +95,27 @@ function loadCharacterConfigFromFirestore(callback) {
 // Initialize with default config until Firestore loads
 CHARACTER_CONFIG = getDefaultCharacterConfig();
 
+// ═══════ SELECTED CHARACTER ═══════
+// Store the selected character key for gameplay
+var selectedKillerKey = null;
+var selectedSurvivorKey = null;
+
+function setSelectedCharacter(role, key) {
+    if (role === 'killer') {
+        selectedKillerKey = key;
+    } else {
+        selectedSurvivorKey = key;
+    }
+}
+
+function getSelectedCharacterKey(type) {
+    if (type === 'killer') {
+        return selectedKillerKey || getFirstCharacterKey('killer');
+    } else {
+        return selectedSurvivorKey || getFirstCharacterKey('survivor');
+    }
+}
+
 // ═══════ CHARACTER DATA ═══════
 var characters3D = {};
 
@@ -620,7 +641,7 @@ function updateSurvivor3DSprite(dt) {
 
     // Update survivor (player)
     if (!isKiller && player && player.sprite && player.state !== 'dead' && player.state !== 'hooked' && player.state !== 'carried') {
-        var survivorKey = getFirstCharacterKey('survivor');
+        var survivorKey = getSelectedCharacterKey('survivor');
         if (survivorKey) {
             updateCharacter3DSprite(player.sprite, 'survivor_' + survivorKey, dt);
         }
@@ -658,7 +679,7 @@ function updateSurvivor3DSprite(dt) {
         if (aiKiller && aiKiller.sprite) {
             aiKiller.sprite.setVisible(false);
             if (aiKiller.glowFx) aiKiller.glowFx.setVisible(false);
-            var killerKey = getFirstCharacterKey('killer');
+            var killerKey = getSelectedCharacterKey('killer');
             if (killerKey) {
                 updateCharacter3DSprite(aiKiller.sprite, 'killer_' + killerKey, dt);
             }
@@ -677,7 +698,7 @@ function updateKiller3DSprite(dt) {
 
     // Update killer (player)
     if (isKiller && player && player.sprite) {
-        var killerKey = getFirstCharacterKey('killer');
+        var killerKey = getSelectedCharacterKey('killer');
         if (killerKey) {
             updateCharacter3DSprite(player.sprite, 'killer_' + killerKey, dt);
         }
@@ -779,6 +800,7 @@ window.cleanupThreeJS = cleanupThreeJS;
 window.updateCharacter3DSprite = updateCharacter3DSprite;
 window.updateSurvivor3DSprite = updateSurvivor3DSprite;
 window.updateKiller3DSprite = updateKiller3DSprite;
+window.setSelectedCharacter = setSelectedCharacter;
 window.CHARACTER_CONFIG = CHARACTER_CONFIG;
 window.characters3D = characters3D;
 window.createAnimationMenu = createAnimationMenu;

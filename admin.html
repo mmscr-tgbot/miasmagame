@@ -218,6 +218,8 @@
             font-weight: 600;
             z-index: 9999;
             animation: slideIn 0.3s ease;
+            max-width: 400px;
+            text-align: center;
         }
         .toast-success { background: #27ae60; }
         .toast-error { background: #c0392b; }
@@ -505,6 +507,58 @@
                 <div id="modelPreview3D" style="width:200px;height:200px;background:rgba(0,0,0,0.3);border-radius:8px;margin-top:10px;"></div>
                 <div id="previewInfo" style="color:#888;font-size:12px;margin-top:5px;"></div>
             </div>
+            
+            <div class="form-group" id="additionalAnimsSection" style="display:none;">
+                <label>➕ Добавить анимации</label>
+                <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
+                    <div class="anim-file-item optional">
+                        <label>🟡 Walk (ходьба)</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="addAnimWalk" accept=".glb" onchange="handleAddAnimFile(this, 'walk')">
+                            <div class="file-input-preview" id="addWalkPreview">
+                                <span class="file-placeholder">Выберите файл...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="anim-file-item optional">
+                        <label>🟠 Attack (атака)</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="addAnimAttack" accept=".glb" onchange="handleAddAnimFile(this, 'attack')">
+                            <div class="file-input-preview" id="addAttackPreview">
+                                <span class="file-placeholder">Выберите файл...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="anim-file-item optional">
+                        <label>🔴 Death (смерть)</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="addAnimDeath" accept=".glb" onchange="handleAddAnimFile(this, 'death')">
+                            <div class="file-input-preview" id="addDeathPreview">
+                                <span class="file-placeholder">Выберите файл...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="anim-file-item optional">
+                        <label>🟣 Crawl (ползание) - для выживших</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="addAnimCrawl" accept=".glb" onchange="handleAddAnimFile(this, 'crawl')">
+                            <div class="file-input-preview" id="addCrawlPreview">
+                                <span class="file-placeholder">Выберите файл...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="anim-file-item optional">
+                        <label>⚪ Idle Alt (альтернативный idle)</label>
+                        <div class="file-input-wrapper">
+                            <input type="file" id="addAnimIdleAlt" accept=".glb" onchange="handleAddAnimFile(this, 'idleAlt')">
+                            <div class="file-input-preview" id="addIdleAltPreview">
+                                <span class="file-placeholder">Выберите файл...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="currentAnimsInfo" style="color:#888;font-size:12px;margin-top:10px;"></div>
+            </div>
         </div>
         
         <!-- Model List Panel -->
@@ -777,6 +831,39 @@
         
         // File upload handling for animation files
         let animFiles = { idle: null, walk: null, run: null };
+        let additionalAnimFiles = {};
+        
+        function handleAddAnimFile(input, type) {
+            const file = input.files[0];
+            const preview = document.getElementById('add' + type.charAt(0).toUpperCase() + type.slice(1) + 'Preview');
+            
+            if (!file) {
+                additionalAnimFiles[type] = null;
+                preview.innerHTML = '<span class="file-placeholder">Выберите файл...</span>';
+                preview.classList.remove('has-file');
+                return;
+            }
+            
+            if (!file.name.match(/\.glb$/i)) {
+                showToast('Выберите GLB файл!', 'error');
+                input.value = '';
+                return;
+            }
+            
+            const maxSize = 6 * 1024 * 1024;
+            if (file.size > maxSize) {
+                showToast('Файл слишком большой! Максимум 6 МБ', 'error');
+                input.value = '';
+                return;
+            }
+            
+            additionalAnimFiles[type] = file;
+            
+            preview.innerHTML = 
+                '<span class="file-name">📦 ' + file.name + '</span>' +
+                '<div class="file-size">' + (file.size / 1024).toFixed(1) + ' KB</div>';
+            preview.classList.add('has-file');
+        }
         
         function getModelStats(gltf) {
             let totalVertices = 0;
@@ -928,11 +1015,31 @@
                 models[type][key].description = document.getElementById('charDescription').value.trim() || '';
                 models[type][key].enabled = document.getElementById('modelEnabled').checked;
                 
+                // Скачивание дополнительных анимаций
+                const folderPath = models[type][key].animations.idle ? 
+                    models[type][key].animations.idle.replace(/\/[^\/]+$/, '/') :
+                    `src/models/${type}s/${key}/`;
+                
+                let hasNewAnimations = false;
+                for (const animKey in additionalAnimFiles) {
+                    if (additionalAnimFiles[animKey]) {
+                        hasNewAnimations = true;
+                        const animName = key + '_' + animKey.charAt(0).toUpperCase() + animKey.slice(1) + '.glb';
+                        downloadGLB(additionalAnimFiles[animKey], animName);
+                        models[type][key].animations[animKey] = folderPath + animName;
+                    }
+                }
+                
                 saveModels();
                 cancelEdit();
                 renderModelList();
                 updateConfigPreview();
-                showToast('Параметры сохранены!', 'success');
+                
+                if (hasNewAnimations) {
+                    showToast('Параметры сохранены! Файлы анимаций скачаны - переместите их в папку модели', 'success');
+                } else {
+                    showToast('Параметры сохранены!', 'success');
+                }
                 return;
             }
             
@@ -1020,6 +1127,7 @@
         
         function resetAddForm() {
             animFiles = { idle: null, walk: null, run: null };
+            additionalAnimFiles = {};
             
             document.getElementById('animIdle').value = '';
             document.getElementById('animWalk').value = '';
@@ -1076,9 +1184,11 @@
                             </div>
                             <div class="card-info">
                                 ID: <span>${key}</span><br>
-                                Масштаб: <span>${model.scale}</span><br>
+                                ${model.age ? 'Возраст: <span>' + model.age + '</span><br>' : ''}
+                                ${model.description ? 'Описание: <span>' + model.description.substring(0, 50) + (model.description.length > 50 ? '...' : '') + '</span><br>' : ''}
+                                Масштаб: <span>${model.scale}</span> |
                                 Canvas: <span>${model.canvasWidth}x${model.canvasHeight}</span><br>
-                                Анимаций: <span>${animCount}</span><br>
+                                Анимации: <span>${Object.keys(model.animations).join(', ')}</span><br>
                                 ${!isEnabled ? '<span style="color:#e74c3c;">🚫 Выключен</span>' : '<span style="color:#27ae60;">✅ Включен</span>'}
                             </div>
                             <div class="card-actions">
@@ -1149,8 +1259,30 @@
             document.querySelector('.folder-structure').style.display = 'none';
             document.querySelector('#addForm h3').style.display = 'none';
             
-            // Показываем 3D превью
+            // Показываем 3D превью и дополнительные анимации
             document.getElementById('previewSection').style.display = 'block';
+            document.getElementById('additionalAnimsSection').style.display = 'block';
+            
+            // Показываем текущие анимации
+            const anims = model.animations || {};
+            let animsInfo = '<b>Текущие анимации:</b><br>';
+            for (const animKey in anims) {
+                const fileName = anims[animKey].split('/').pop();
+                animsInfo += `• ${animKey}: ${fileName}<br>`;
+            }
+            document.getElementById('currentAnimsInfo').innerHTML = animsInfo;
+            
+            // Очищаем поля новых анимаций
+            additionalAnimFiles = {};
+            ['Walk', 'Attack', 'Death', 'Crawl', 'IdleAlt'].forEach(function(anim) {
+                const preview = document.getElementById('add' + anim + 'Preview');
+                const input = document.getElementById('addAnim' + anim);
+                if (preview) {
+                    preview.innerHTML = '<span class="file-placeholder">Выберите файл...</span>';
+                    preview.classList.remove('has-file');
+                }
+                if (input) input.value = '';
+            });
             
             document.getElementById('saveBtn').textContent = '💾 Сохранить изменения';
             document.getElementById('cancelBtn').style.display = 'inline-block';
@@ -1225,15 +1357,19 @@
             document.getElementById('editType').value = '';
             document.getElementById('editKey').value = '';
             
-            // Показываем файлы анимации, скрываем превью
+            // Показываем файлы анимации, скрываем превью и доп. анимации
             document.querySelector('.anim-files-grid').style.display = 'flex';
             document.querySelector('.folder-structure').style.display = 'block';
             document.querySelector('#addForm h3').style.display = 'block';
             document.getElementById('previewSection').style.display = 'none';
+            document.getElementById('additionalAnimsSection').style.display = 'none';
             
             // Очищаем превью
             document.getElementById('modelPreview3D').innerHTML = '';
             previewModel = null;
+            
+            // Очищаем дополнительные анимации
+            additionalAnimFiles = {};
             
             document.getElementById('saveBtn').textContent = '✓ Добавить модель';
             document.getElementById('cancelBtn').style.display = 'none';
