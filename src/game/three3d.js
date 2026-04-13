@@ -1,59 +1,88 @@
-// ═══════ THREE.JS 3D MODELS ═══════
+// ═══════ THREE.JS UNIFIED CHARACTER SYSTEM ═══════
 
-var killerModelRun = null;
-var killerModelIdle = null;
-var killerModelWalking = null;
-var killerModel = null;
-var killerMixerRun = null;
-var killerMixerIdle = null;
-var killerMixerWalking = null;
-var killerAnimationsRun = {};
-var killerAnimationsIdle = {};
-var killerAnimationsWalking = {};
-var modelsLoaded = 0;
-var survivorModelsLoaded = 0;
-var survivorModelIdle = null;
-var survivorMixerIdle = null;
-var survivorAnimationsIdle = {};
-var survivorModelRun = null;
-var survivorMixerRun = null;
-var survivorAnimationsRun = {};
-var survivorModelCrawl = null;
-var survivorMixerCrawl = null;
-var survivorAnimationsCrawl = {};
-var survivorCurrentState = 'idle';
-var survivorCanvas = null;
-var survivorRenderer = null;
-var survivorScene = null;
-var survivorCamera = null;
-var survivorModel = null;
-var survivorMixer = null;
-var survivorRotation = 0;
-var survivorLoaded = false;
-var killerLoaded = false;
-var currentKillerState = 'idle';
-var currentKillerRotation = 0;
-var totalKillerModels = 3;
-var totalSurvivorModels = 3;
-var currentKillerAnimation = null;
-var currentSurvivorAnimation = null;
-var survivorAnimationStates = {};
+// ═══════ CHARACTER CONFIGURATIONS ═══════
+// Load from localStorage or use defaults
+function getCharacterConfig() {
+    var saved = localStorage.getItem('dbd_models');
+    if (saved) {
+        return JSON.parse(saved);
+    }
+    // Default configuration
+    return {
+        killer: {
+            scare: {
+                name: 'Scare',
+                displayName: 'Scare Killer',
+                isKiller: true,
+                scale: 1.0,
+                canvasWidth: 110,
+                canvasHeight: 155,
+                speedWalk: 20,
+                speedRun: 160,
+                enabled: true,
+                animations: {
+                    idle: 'src/models/killers/scare/ScareKiller_Idle.glb',
+                    walk: 'src/models/killers/scare/ScareKiller_Walking.glb',
+                    run: 'src/models/killers/scare/ScareKiller_Run.glb'
+                }
+            }
+        },
+        survivor: {
+            jack: {
+                name: 'Jack',
+                displayName: 'Jack',
+                isKiller: false,
+                scale: 0.6,
+                canvasWidth: 80,
+                canvasHeight: 120,
+                speedWalk: 0,
+                speedRun: 20,
+                enabled: true,
+                animations: {
+                    idle: 'src/models/survivors/Jack/Jack_Idle.glb',
+                    run: 'src/models/survivors/Jack/Jack_Run.glb'
+                }
+            }
+        }
+    };
+}
 
-// Multiple 3D canvases - one for each character
+var CHARACTER_CONFIG = getCharacterConfig();
+
+// ═══════ CHARACTER DATA ═══════
+var characters3D = {};
+
+function createCharacter3D(type, characterConfig) {
+    return {
+        type: type,
+        config: characterConfig,
+        models: {},
+        mixers: {},
+        slotModels: {},
+        loaded: false
+    };
+}
+
+// ═══════ GLOBAL VARIABLES ═══════
+var threeLoaded = false;
+var threeError = false;
 var threeCanvases = {};
 var threeRenderers = {};
 var threeScenes = {};
 var threeCameras = {};
+var allAnimationActions = [];
 
-function createThreeCanvas(id, isKiller) {
-    var canvasSize = isKiller ? 110 : 80;
-    var canvasHeight = isKiller ? 155 : 120;
-    
+// Legacy variables for compatibility
+var killerLoaded = false;
+var survivorLoaded = false;
+
+// ═══════ CREATE 3D CANVAS ═══════
+function createThreeCanvas(id, width, height) {
     var canvas = document.createElement('canvas');
-    canvas.width = canvasSize;
-    canvas.height = canvasHeight;
+    canvas.width = width;
+    canvas.height = height;
     document.body.appendChild(canvas);
-    canvas.setAttribute('style', 'position:fixed!important;top:0!important;left:0!important;z-index:20!important;pointer-events:none!important;display:none!important;width:' + canvasSize + 'px!important;height:' + canvasHeight + 'px!important;border:2px solid red!important;');
+    canvas.setAttribute('style', 'position:fixed!important;top:0!important;left:0!important;z-index:20!important;pointer-events:none!important;display:none!important;width:' + width + 'px!important;height:' + height + 'px!important;');
     
     var renderer = new THREE.WebGLRenderer({
         canvas: canvas,
@@ -62,7 +91,7 @@ function createThreeCanvas(id, isKiller) {
         preserveDrawingBuffer: true,
         powerPreference: 'high-performance'
     });
-    renderer.setSize(canvasSize, canvasHeight);
+    renderer.setSize(width, height);
     renderer.setPixelRatio(1);
     renderer.setClearColor(0x000000, 0);
     renderer.outputEncoding = THREE.sRGBEncoding;
@@ -70,7 +99,7 @@ function createThreeCanvas(id, isKiller) {
     renderer.toneMapping = THREE.NoToneMapping;
     
     var scene = new THREE.Scene();
-    var camera = new THREE.PerspectiveCamera(60, canvasSize / canvasHeight, 0.01, 50);
+    var camera = new THREE.PerspectiveCamera(60, width / height, 0.01, 50);
     camera.position.set(0, 0.08, 0.15);
     camera.lookAt(0, 0.05, 0);
     
@@ -82,11 +111,144 @@ function createThreeCanvas(id, isKiller) {
     return { canvas: canvas, renderer: renderer, scene: scene, camera: camera };
 }
 
+// ═══════ LOAD CHARACTER MODEL ═══════
+function loadCharacterModel(character, animKey, modelPath, callback) {
+    if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
+        console.warn('[3D] GLTFLoader not available');
+        return;
+    }
+
+    var loader = new THREE.GLTFLoader();
+    console.log('[3D] Loading', character.config.name, animKey, 'from:', modelPath);
+
+    loader.load(
+        modelPath,
+        function (gltf) {
+            var model = gltf.scene;
+            model.traverse(function (child) {
+                if (child.isMesh) {
+                    child.castShadow = false;
+                    child.receiveShadow = false;
+                }
+            });
+
+            var box = new THREE.Box3().setFromObject(model);
+            var targetScale = character.config.scale;
+            
+            model.scale.set(targetScale, targetScale, targetScale);
+            var center = box.getCenter(new THREE.Vector3());
+            model.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
+            model.visible = false;
+            
+            // Create mixer
+            if (gltf.animations && gltf.animations.length > 0) {
+                console.log('[3D] Found', gltf.animations.length, 'animations');
+                
+                var mixer = new THREE.AnimationMixer(model);
+                character.mixers[animKey] = mixer;
+                
+                gltf.animations.forEach(function (clip) {
+                    var action = mixer.clipAction(clip);
+                    action.setLoop(THREE.LoopRepeat, Infinity);
+                    action.timeScale = 1.0;
+                    action.play();
+                    allAnimationActions.push(action);
+                });
+            } else {
+                console.warn('[3D] No animations found');
+            }
+
+            character.models[animKey] = model;
+            console.log('[3D] Model loaded:', animKey);
+            
+            if (callback) callback();
+        },
+        function (progress) {
+            var percent = Math.round(progress.loaded / progress.total * 100);
+            console.log('[3D] Loading:', percent + '%');
+        },
+        function (error) {
+            console.error('[3D] Load error:', error);
+        }
+    );
+}
+
+// ═══════ LOAD CHARACTER ═══════
+function loadCharacter3D(charType, charKey, characterConfig, scene, callback) {
+    var type = charType + '_' + charKey;
+    var character = createCharacter3D(type, characterConfig);
+    character.charType = charType;
+    character.charKey = charKey;
+    
+    var animKeys = Object.keys(characterConfig.animations || {});
+    var loadedCount = 0;
+    
+    function checkAllLoaded() {
+        loadedCount++;
+        if (loadedCount >= animKeys.length) {
+            // Add models to scene
+            for (var key in character.models) {
+                scene.add(character.models[key]);
+                
+                // For survivors, also add clones to all survivor canvases
+                if (charType === 'survivor') {
+                    if (!character.slotModels) character.slotModels = {};
+                    for (var i = 0; i < 4; i++) {
+                        var slotScene = threeScenes['survivor_' + i];
+                        if (slotScene) {
+                            var clone = character.models[key].clone(true); // deep clone
+                            clone.visible = false;
+                            slotScene.add(clone);
+                            
+                            if (!character.slotModels['survivor_' + i]) character.slotModels['survivor_' + i] = {};
+                            character.slotModels['survivor_' + i][key] = clone;
+                            
+                            // Create mixer for cloned model
+                            var cloneMixer = new THREE.AnimationMixer(clone);
+                            cloneMixer.addEventListener('finished', function() {});
+                            
+                            // Add all animations
+                            if (character.mixers[key]) {
+                                character.mixers[key]._actions.forEach(function(action) {
+                                    if (action._clip) {
+                                        var newAction = cloneMixer.clipAction(action._clip);
+                                        newAction.setLoop(action.loop, action._repeatCount);
+                                        newAction.timeScale = action.timeScale;
+                                        newAction.enabled = action.enabled;
+                                        newAction.play();
+                                    }
+                                });
+                            }
+                            
+                            if (!character.slotMixers) character.slotMixers = {};
+                            if (!character.slotMixers['survivor_' + i]) character.slotMixers['survivor_' + i] = {};
+                            character.slotMixers['survivor_' + i][key] = cloneMixer;
+                        }
+                    }
+                }
+            }
+            character.loaded = true;
+            characters3D[type] = character;
+            if (callback) callback();
+        }
+    }
+    
+    animKeys.forEach(function(animKey) {
+        var animPath = characterConfig.animations[animKey];
+        if (animPath) {
+            loadCharacterModel(character, animKey, animPath, checkAllLoaded);
+        } else {
+            loadedCount++;
+        }
+    });
+}
+
+// ═══════ INITIALIZE 3D SYSTEM ═══════
 function initThreeJS() {
-    console.log('[3D] initThreeJS called, threeLoaded:', threeLoaded, 'threeError:', threeError);
+    console.log('[3D] initThreeJS called');
     
     if (threeLoaded || threeError) {
-        console.log('[3D] Already loaded or error, skipping');
+        console.log('[3D] Already loaded or error');
         return;
     }
     if (typeof THREE === 'undefined') {
@@ -96,286 +258,294 @@ function initThreeJS() {
     }
     
     try {
-        // Check if canvases already exist
         if (threeCanvases && Object.keys(threeCanvases).length > 0) {
-            console.log('[3D] Canvases already exist, reusing');
+            console.log('[3D] Canvases already exist');
             threeLoaded = true;
             return;
         }
         
         console.log('[3D] Creating canvases...');
         
-        // Reset animation state
-        survivorAnimationStates = {};
-        currentKillerAnimation = null;
+        // Refresh config from localStorage
+        CHARACTER_CONFIG = getCharacterConfig();
         
-        // Create canvases: 1 killer, 3 survivors
-        var killerCanvas = createThreeCanvas('killer', true);
-        threeCanvases['killer'] = killerCanvas.canvas;
-        threeRenderers['killer'] = killerCanvas.renderer;
-        threeScenes['killer'] = killerCanvas.scene;
-        threeCameras['killer'] = killerCanvas.camera;
+        // Create canvases for each character
+        for (var charType in CHARACTER_CONFIG) {
+            for (var charKey in CHARACTER_CONFIG[charType]) {
+                var config = CHARACTER_CONFIG[charType][charKey];
+                if (!config) continue;
+                var canvasKey = charType + '_' + charKey;
+                var canvasData = createThreeCanvas(canvasKey, config.canvasWidth || 100, config.canvasHeight || 150);
+                threeCanvases[canvasKey] = canvasData.canvas;
+                threeRenderers[canvasKey] = canvasData.renderer;
+                threeScenes[canvasKey] = canvasData.scene;
+                threeCameras[canvasKey] = canvasData.camera;
+            }
+        }
         
-        for (var i = 0; i < 3; i++) {
-            var survivorCanvas = createThreeCanvas('survivor' + i, false);
-            threeCanvases['survivor' + i] = survivorCanvas.canvas;
-            threeRenderers['survivor' + i] = survivorCanvas.renderer;
-            threeScenes['survivor' + i] = survivorCanvas.scene;
-            threeCameras['survivor' + i] = survivorCanvas.camera;
+        // Create canvases for AI survivors (up to 4 total) - one per survivor
+        var defaultSurvivorConfig = CHARACTER_CONFIG.survivor ? CHARACTER_CONFIG.survivor[Object.keys(CHARACTER_CONFIG.survivor || {})[0]] : null;
+        for (var i = 0; i < 4; i++) {
+            var canvasData = createThreeCanvas('survivor_' + i, defaultSurvivorConfig ? defaultSurvivorConfig.canvasWidth : 80, defaultSurvivorConfig ? defaultSurvivorConfig.canvasHeight : 120);
+            threeCanvases['survivor_' + i] = canvasData.canvas;
+            threeRenderers['survivor_' + i] = canvasData.renderer;
+            threeScenes['survivor_' + i] = canvasData.scene;
+            threeCameras['survivor_' + i] = canvasData.camera;
         }
         
         console.log('[3D] Canvases created:', Object.keys(threeCanvases));
         
-        // Keep original for compatibility
-        threeCanvas = threeCanvases['killer'];
-        threeRenderer = threeRenderers['killer'];
-        threeScene = threeScenes['killer'];
-        threeCamera = threeCameras['killer'];
-
-        // Load models
-        console.log('[3D] Loading models...');
-        loadKillerModel('idle', 'src/models/killers/scare/ScareKiller_Idle.glb');
-        loadKillerModel('walking', 'src/models/killers/scare/ScareKiller_Walking.glb');
-        loadKillerModel('running', 'src/models/killers/scare/ScareKiller_Run.glb');
-        loadSurvivorModel('idle', 'src/models/survivors/Jack/Jack_Idle.glb');
-        loadSurvivorModel('run', 'src/models/survivors/Jack/Jack_Run.glb');
-        loadSurvivorModel('crawl', 'src/models/survivors/Jack/Jack_Crawl.glb');
-
-        threeLoaded = true;
-        console.log('[3D] Three.js initialized, scenes:', Object.keys(threeScenes));
+        // Load all characters
+        var charactersToLoad = Object.keys(CHARACTER_CONFIG);
+        var loadedCount = 0;
+        
+        function onCharacterLoaded() {
+            loadedCount++;
+            if (loadedCount >= charactersToLoad.length) {
+                threeLoaded = true;
+                console.log('[3D] All characters loaded');
+                
+                // Set loaded flags - check for any killer/survivor character
+                for (var key in characters3D) {
+                    if (key.indexOf('killer_') === 0) killerLoaded = true;
+                    if (key.indexOf('survivor_') === 0) survivorLoaded = true;
+                }
+            }
+        }
+        
+        charactersToLoad.forEach(function(charType) {
+            for (var charKey in CHARACTER_CONFIG[charType]) {
+                var config = CHARACTER_CONFIG[charType][charKey];
+                if (!config) continue;
+                var canvasKey = charType + '_' + charKey;
+                var scene = threeScenes[canvasKey];
+                if (!scene) scene = threeScenes[charType];
+                loadCharacter3D(charType, charKey, config, scene, onCharacterLoaded);
+            }
+        });
+        
     } catch (e) {
-        console.error('[3D] Three.js init error:', e);
+        console.error('[3D] Init error:', e);
         threeError = true;
     }
 }
 
-function loadKillerModel(type, modelPath) {
-    if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
-        console.warn('[3D] GLTFLoader not available');
-        threeError = true;
+// ═══════ RENDER SURVIVOR ON SLOT ═══════
+function renderSurvivorOnSlot(aiSprite, slot, dt) {
+    if (!threeLoaded) return;
+    if (!window.scene || !window.scene.cameras) return;
+    
+    // Debug: log every 2 seconds
+    if (!renderSurvivorOnSlot._debugTimer) renderSurvivorOnSlot._debugTimer = 0;
+    renderSurvivorOnSlot._debugTimer += dt / 1000;
+    if (renderSurvivorOnSlot._debugTimer > 2) {
+        renderSurvivorOnSlot._debugTimer = 0;
+        var survivorKey = getFirstCharacterKey('survivor');
+        var charKey = 'survivor_' + survivorKey;
+        var character = characters3D[charKey];
+        var modelsKeys = character && character.slotModels ? Object.keys(character.slotModels) : [];
+        var mixersKeys = character && character.slotMixers ? Object.keys(character.slotMixers) : [];
+        console.log('[3D Slot]', slot, 'models:', modelsKeys, 'mixers:', mixersKeys);
+    }
+    
+    var cam = window.scene.cameras.main;
+    if (!cam) return;
+    if (!aiSprite) return;
+    
+    // Find first loaded survivor character
+    var survivorKey = getFirstCharacterKey('survivor');
+    var charKey = 'survivor_' + survivorKey;
+    var character = characters3D[charKey];
+    if (!character || !character.loaded) return;
+    
+    var canvas = threeCanvases[slot];
+    var scene = threeScenes[slot];
+    var camera = threeCameras[slot];
+    var renderer = threeRenderers[slot];
+    
+    if (!canvas || !scene || !camera || !renderer) return;
+    
+    var screenX = aiSprite.x - cam.scrollX;
+    var screenY = aiSprite.y - cam.scrollY;
+    
+    if (screenX < -100 || screenX > window.innerWidth + 100 || screenY < -100 || screenY > window.innerHeight + 100) {
+        canvas.style.display = 'none';
         return;
     }
-
-    var loader = new THREE.GLTFLoader();
-    console.log('[3D] Loading killer ' + type + ' from:', modelPath);
-
-    loader.load(
-        modelPath,
-        function (gltf) {
-            var model = gltf.scene;
-            model.traverse(function (child) {
-                if (child.isMesh) {
-                    child.castShadow = false;
-                    child.receiveShadow = false;
-                }
-            });
-
-            var box = new THREE.Box3().setFromObject(model);
-            var size = box.getSize(new THREE.Vector3());
-            var height = size.y || 1;
-            var targetScale = 1.0;
-            
-            model.scale.set(targetScale, targetScale, targetScale);
-            var center = box.getCenter(new THREE.Vector3());
-            model.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
-            model.visible = false;
-            
-            // Add model to all scenes
-            var modelRefs = {};
-            for (var key in threeScenes) {
-                if (threeScenes[key]) {
-                    var clonedModel = model.clone();
-                    clonedModel.visible = false;
-                    threeScenes[key].add(clonedModel);
-                    modelRefs[key] = clonedModel;
-                }
-            }
-            
-            // Add original model to killer scene for animations
-            threeScenes['killer'].add(model);
-            modelRefs['killer'] = model;
-            
-            var mixer = null;
-            if (gltf.animations && gltf.animations.length > 0) {
-                console.log('[3D] Killer', type, 'found', gltf.animations.length, 'animation(s):', gltf.animations.map(function(c) { return c.name; }));
-                
-                // Create mixer for this model
-                var killerModel = modelRefs['killer'];
-                
-                if (killerModel) {
-                    var killerMixer = new THREE.AnimationMixer(killerModel);
-                    mixer = killerMixer;
-                    
-                    // Store by type
-                    if (!window.killerCanvasMixers) window.killerCanvasMixers = {};
-                    window.killerCanvasMixers[type] = killerMixer;
-                    
-                    gltf.animations.forEach(function (clip, index) {
-                        console.log('[3D] Killer', type, 'clip:', clip.name);
-                        var action = killerMixer.clipAction(clip);
-                        action.play();
-                    });
-                    
-                    console.log('[3D] Killer mixer created for', type);
-                }
-            } else {
-                console.warn('[3D] No animations found in killer', type);
-            }
-
-            // Store references
-            if (type === 'idle') { 
-                window.killerModelIdleRefs = modelRefs;
-                killerModelIdle = modelRefs; 
-                killerMixerIdle = mixer; 
-            }
-            else if (type === 'running') { 
-                window.killerModelRunRefs = modelRefs;
-                killerModelRun = modelRefs; 
-                killerMixerRun = mixer; 
-            }
-            else { 
-                window.killerModelWalkingRefs = modelRefs;
-                killerModelWalking = modelRefs; 
-                killerMixerWalking = mixer; 
-            }
-            
-            console.log('[3D] Killer model loaded:', type, 'modelRefs keys:', Object.keys(modelRefs));
-
-            modelsLoaded++;
-            if (modelsLoaded >= totalKillerModels) {
-                killerLoaded = true;
-                window.killerLoaded = true;
-                console.log('[3D] All killer models loaded');
-            }
-        },
-        function (progress) { console.log('[3D] Loading killer ' + type + ':', Math.round(progress.loaded / progress.total * 100) + '%'); },
-        function (error) { console.error('[3D] Killer model load error (' + type + '):', error); threeError = true; }
-    );
-}
-
-function loadSurvivorModel(type, modelPath) {
-    if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') return;
-
-    var loader = new THREE.GLTFLoader();
-    console.log('[3D] Loading survivor ' + type + ' from:', modelPath);
     
-    // Показываем загрузку
-    var debugEl = document.getElementById('debug-info');
-    if (debugEl) debugEl.textContent = 'Загрузка модели выжившего: ' + type;
-
-    loader.load(
-        modelPath,
-        function (gltf) {
-            console.log('[3D] Survivor', type, 'loaded, scenes:', Object.keys(threeScenes));
-            
-            var model = gltf.scene;
-            model.traverse(function (child) {
-                if (child.isMesh) {
-                    child.castShadow = false;
-                    child.receiveShadow = false;
-                }
-            });
-
-            var box = new THREE.Box3().setFromObject(model);
-            var size = box.getSize(new THREE.Vector3());
-            var height = size.y || 1;
-            var targetScale = 0.6;
-            
-            model.scale.set(targetScale, targetScale, targetScale);
-            var center = box.getCenter(new THREE.Vector3());
-            model.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
-            model.visible = false;
-            
-            // Add model to all scenes
-            var modelRefs = {};
-            for (var key in threeScenes) {
-                if (threeScenes[key]) {
-                    var clonedModel = model.clone();
-                    clonedModel.visible = false;
-                    threeScenes[key].add(clonedModel);
-                    modelRefs[key] = clonedModel;
-                }
-            }
-            
-            // Add original model to survivor0 scene for animations
-            if (threeScenes['survivor0']) {
-                threeScenes['survivor0'].add(model);
-                modelRefs['survivor0'] = model;
-            }
-            
-            var mixer = null;
-            var canvasMixers = {};
-            if (gltf.animations && gltf.animations.length > 0) {
-                console.log('[3D] Survivor', type, 'animations:', gltf.animations.map(function(c) { return c.name; }));
-                
-                var timeScale = 1.0;
-                
-                for (var key in threeScenes) {
-                    if (threeScenes[key] && modelRefs[key]) {
-                        var canvasMixer = new THREE.AnimationMixer(modelRefs[key]);
-                        canvasMixers[key] = canvasMixer;
-                        gltf.animations.forEach(function (clip, index) {
-                            var action = canvasMixer.clipAction(clip);
-                            action.timeScale = timeScale;
-                            action.play();
-                        });
-                    }
-                }
-                mixer = canvasMixers['survivor0'] || Object.values(canvasMixers)[0];
-                window.survivorCanvasMixers = canvasMixers;
-                if (!window.survivorAnimationsByType) window.survivorAnimationsByType = {};
-                window.survivorAnimationsByType[type] = gltf.animations;
-            } else {
-                console.warn('[3D] No animations found in survivor', type);
-            }
-            
-            // Store references
-            if (type === 'idle') { 
-                window.survivorModelIdleRefs = modelRefs;
-                survivorModelIdle = modelRefs; 
-                survivorMixerIdle = mixer; 
-            }
-            else if (type === 'run') { 
-                window.survivorModelRunRefs = modelRefs;
-                survivorModelRun = modelRefs; 
-                survivorMixerRun = mixer; 
-            }
-            else { 
-                window.survivorModelCrawlRefs = modelRefs;
-                survivorModelCrawl = modelRefs; 
-                survivorMixerCrawl = mixer; 
-            }
-            
-            console.log('[3D] Survivor model loaded:', type, 'modelRefs keys:', Object.keys(modelRefs), 'mixer:', mixer);
-
-            survivorModelsLoaded++;
-            if (survivorModelsLoaded >= totalSurvivorModels) {
-                survivorModel = survivorModelIdle;
-                survivorLoaded = true;
-                window.survivorLoaded = true;
-                if (survivorModelIdle && survivorModelIdle['survivor0']) survivorModelIdle['survivor0'].visible = true;
-                console.log('[3D] All survivor models loaded');
-                var debugEl = document.getElementById('debug-info');
-                if (debugEl) debugEl.textContent = 'ВСЕ МОДЕЛИ ЗАГРУЖЕНЫ!';
-            }
-        },
-        function (progress) { console.log('[3D] Loading survivor ' + type + ':', Math.round(progress.loaded / progress.total * 100) + '%'); },
-        function (error) { console.error('[3D] Survivor model load error (' + type + '):', error); }
-    );
+    canvas.style.display = 'block';
+    canvas.style.position = 'fixed';
+    canvas.style.left = (screenX - 40) + 'px';
+    canvas.style.top = (screenY - 60) + 'px';
+    canvas.style.zIndex = '1000';
+    canvas.style.pointerEvents = 'none';
+    
+    // Get slot-specific models
+    var slotModels = character.slotModels && character.slotModels[slot] ? character.slotModels[slot] : null;
+    
+    if (!slotModels) return;
+    
+    var speed = 0;
+    if (aiSprite.body) {
+        speed = Math.sqrt(
+            aiSprite.body.velocity.x * aiSprite.body.velocity.x + 
+            aiSprite.body.velocity.y * aiSprite.body.velocity.y
+        );
+    }
+    
+    var state = speed > 20 ? 'run' : 'idle';
+    
+    var modelIdle = slotModels['idle'] || null;
+    var modelRun = slotModels['run'] || null;
+    
+    if (!modelIdle || !modelRun) return;
+    
+    if (modelIdle) modelIdle.visible = false;
+    if (modelRun) modelRun.visible = false;
+    
+    var currentModel = state === 'run' ? modelRun : modelIdle;
+    if (currentModel) {
+        currentModel.visible = true;
+        if (aiSprite.body && (Math.abs(aiSprite.body.velocity.x) > 0.5 || Math.abs(aiSprite.body.velocity.y) > 0.5)) {
+            var angle = Math.atan2(aiSprite.body.velocity.y, aiSprite.body.velocity.x);
+            currentModel.rotation.y = angle;
+        }
+    }
+    
+    canvas.style.display = 'block';
+    
+    // Use individual slot mixer if available, otherwise fall back to shared
+    var slotMixer = character.slotMixers && character.slotMixers[slot] ? character.slotMixers[slot][state] : null;
+    if (slotMixer) {
+        slotMixer.update(dt / 1000);
+    } else if (character.mixers[state]) {
+        character.mixers[state].update(dt / 1000);
+    } else {
+        console.warn('[3D] No mixer for slot:', slot, 'state:', state);
+    }
+    
+    renderer.render(scene, camera);
 }
 
-function updateSurvivor3DSprite(dt) {
-    if (!threeLoaded || !threeCanvases || !threeRenderers) return;
+// ═══════ UPDATE CHARACTER 3D SPRITE ═══════
+function updateCharacter3DSprite(charSprite, characterType, dt) {
+    if (!threeLoaded) return;
     if (!window.scene || !window.scene.cameras) return;
     
     var cam = window.scene.cameras.main;
     if (!cam) return;
+    if (!charSprite) return;
+    
+    var character = characters3D[characterType];
+    if (!character || !character.loaded) return;
+    
+    var config = character.config;
+    var canvas = threeCanvases[characterType] || threeCanvases['survivor'];
+    var scene = threeScenes[characterType] || threeScenes['survivor'];
+    var camera = threeCameras[characterType] || threeCameras['survivor'];
+    var renderer = threeRenderers[characterType] || threeRenderers['survivor'];
+    
+    if (!canvas || !scene || !camera || !renderer) return;
+    
+    var screenX = charSprite.x - cam.scrollX;
+    var screenY = charSprite.y - cam.scrollY;
+    
+    if (screenX < -100 || screenX > window.innerWidth + 100 || screenY < -100 || screenY > window.innerHeight + 100) {
+        canvas.style.display = 'none';
+        return;
+    }
+    
+    canvas.style.display = 'block';
+    canvas.style.position = 'fixed';
+    canvas.style.left = (screenX - config.canvasWidth / 2) + 'px';
+    canvas.style.top = (screenY - config.canvasHeight / 2) + 'px';
+    canvas.style.zIndex = '1000';
+    canvas.style.pointerEvents = 'none';
+    
+    // Calculate speed
+    var speed = 0;
+    if (charSprite.body) {
+        speed = Math.sqrt(
+            charSprite.body.velocity.x * charSprite.body.velocity.x + 
+            charSprite.body.velocity.y * charSprite.body.velocity.y
+        );
+    }
+    
+    // Determine animation state
+    var state = 'idle';
+    var mixer = null;
+    var currentModel = null;
+    
+    if (config.isKiller) {
+        if (speed > config.speedRun) {
+            state = 'run';
+            mixer = character.mixers['run'];
+            currentModel = character.models['run'];
+        } else if (speed > config.speedWalk) {
+            state = 'walk';
+            mixer = character.mixers['walk'];
+            currentModel = character.models['walk'];
+        } else {
+            state = 'idle';
+            mixer = character.mixers['idle'];
+            currentModel = character.models['idle'];
+        }
+    } else {
+        if (speed > config.speedRun) {
+            state = 'run';
+            mixer = character.mixers['run'];
+            currentModel = character.models['run'];
+        } else {
+            state = 'idle';
+            mixer = character.mixers['idle'];
+            currentModel = character.models['idle'];
+        }
+    }
+    
+    // Hide all models
+    for (var key in character.models) {
+        character.models[key].visible = false;
+    }
+    
+    // Show current model
+    if (currentModel) {
+        currentModel.visible = true;
+        
+        // Rotate based on joystick input direction
+        if (typeof inputVec !== 'undefined') {
+            var inputLen = Math.sqrt(inputVec.x * inputVec.x + inputVec.y * inputVec.y);
+            if (inputLen > 0.1) {
+                var angle = Math.atan2(inputVec.y, inputVec.x);
+                currentModel.rotation.y = -angle + Math.PI / 2;
+            }
+        }
+    }
+    
+    // Update mixer (Phaser dt is in ms, THREE.js expects seconds)
+    if (mixer) {
+        mixer.update(dt / 1000);
+    }
+    
+    renderer.render(scene, camera);
+}
 
+// ═══════ LEGACY FUNCTIONS FOR COMPATIBILITY ═══════
+
+function getFirstCharacterKey(type) {
+    var keys = Object.keys(CHARACTER_CONFIG[type] || {});
+    return keys[0] || null;
+}
+
+function updateSurvivor3DSprite(dt) {
+    if (!threeLoaded) return;
+
+    // Hide sprite
     if (player && player.sprite) {
         player.sprite.setVisible(false);
         if (player.glowFx) player.glowFx.setVisible(false);
     }
     
+    // Hide AI survivors sprites
     if (player && player.aiPlayers) {
         player.aiPlayers.forEach(function(ai) {
             if (ai && ai.sprite && !ai.isAIKiller) {
@@ -385,74 +555,34 @@ function updateSurvivor3DSprite(dt) {
         });
     }
 
+    // Update survivor (player)
     if (!isKiller && player && player.sprite && player.state !== 'dead' && player.state !== 'hooked' && player.state !== 'carried') {
-        var screenX = player.sprite.x - cam.scrollX;
-        var screenY = player.sprite.y - cam.scrollY;
-        
-        if (screenX > -50 && screenX < window.innerWidth + 50 && screenY > -50 && screenY < window.innerHeight + 50) {
-            var canvas = threeCanvases['survivor0'];
-            canvas.style.display = 'block';
-            canvas.style.position = 'fixed';
-            canvas.style.left = (screenX - 40) + 'px';
-            canvas.style.top = (screenY - 60) + 'px';
-            canvas.style.zIndex = '1000';
-            canvas.style.pointerEvents = 'none';
-            
-            var moving = player.sprite.body && (Math.abs(player.sprite.body.velocity.x) > 5 || Math.abs(player.sprite.body.velocity.y) > 5);
-            
-            var scene = threeScenes['survivor0'];
-            
-            // Get player speed
-            var speed = 0;
-            if (player && player.sprite && player.sprite.body) {
-                speed = Math.sqrt(player.sprite.body.velocity.x * player.sprite.body.velocity.x + player.sprite.body.velocity.y * player.sprite.body.velocity.y);
-            }
-            
-            // Determine state
-            var state = 'idle';
-            if (speed > 120) state = 'run';
-            else if (speed > 5) state = 'walk';
-            
-            // Always hide all first
-            if (survivorModelIdle && survivorModelIdle['survivor0']) {
-                survivorModelIdle['survivor0'].visible = false;
-            }
-            if (survivorModelRun && survivorModelRun['survivor0']) {
-                survivorModelRun['survivor0'].visible = false;
-            }
-            
-            // Show correct model
-            var currentModel = null;
-            if (state === 'run' && survivorModelRun && survivorModelRun['survivor0']) {
-                currentModel = survivorModelRun['survivor0'];
-            } else if (survivorModelIdle && survivorModelIdle['survivor0']) {
-                currentModel = survivorModelIdle['survivor0'];
-            }
-            
-            if (currentModel) {
-                currentModel.visible = true;
-                
-                // Update rotation
-                if (state !== 'idle' && player && player.sprite && player.sprite.body) {
-                    var angle = Math.atan2(player.sprite.body.velocity.y, player.sprite.body.velocity.x);
-                    currentModel.rotation.y = angle;
-                }
-            }
-            
-            threeRenderers['survivor0'].render(scene, threeCameras['survivor0']);
-            
-            // Update survivor mixer
-            if (window.survivorCanvasMixers) {
-                var mixerType = state === 'run' ? 'run' : 'idle';
-                if (window.survivorCanvasMixers[mixerType]) {
-                    window.survivorCanvasMixers[mixerType].update(dt);
-                }
-            }
-        } else {
-            threeCanvases['survivor0'].style.display = 'none';
+        var survivorKey = getFirstCharacterKey('survivor');
+        if (survivorKey) {
+            updateCharacter3DSprite(player.sprite, 'survivor_' + survivorKey, dt);
         }
     }
 
+    // Update AI survivors with 3D models
+    if (!isKiller && !isMultiplayer && player && player.aiPlayers) {
+        if (survivorLoaded) {
+            var survivorIndex = 0;
+            player.aiPlayers.forEach(function(ai) {
+                if (ai && ai.sprite && !ai.isAIKiller && ai.state !== 'dead' && ai.state !== 'hooked' && ai.state !== 'carried') {
+                    if (ai.sprite.visible) ai.sprite.setVisible(false);
+                    if (ai.glowFx) ai.glowFx.setVisible(false);
+                    
+                    var slot = 'survivor_' + survivorIndex;
+                    if (threeCanvases[slot]) {
+                        renderSurvivorOnSlot(ai.sprite, slot, dt);
+                    }
+                    survivorIndex++;
+                }
+            });
+        }
+    }
+
+    // Update AI killer
     if (!isKiller && !isMultiplayer && player && player.aiPlayers) {
         var aiKiller = null;
         for (var i = 0; i < player.aiPlayers.length; i++) {
@@ -465,284 +595,65 @@ function updateSurvivor3DSprite(dt) {
         if (aiKiller && aiKiller.sprite) {
             aiKiller.sprite.setVisible(false);
             if (aiKiller.glowFx) aiKiller.glowFx.setVisible(false);
-            
-            var screenX = aiKiller.sprite.x - cam.scrollX;
-            var screenY = aiKiller.sprite.y - cam.scrollY;
-            
-            if (screenX > -50 && screenX < window.innerWidth + 50 && screenY > -50 && screenY < window.innerHeight + 50) {
-                var canvas = threeCanvases['killer'];
-                canvas.style.display = 'block';
-                canvas.style.position = 'fixed';
-                canvas.style.left = (screenX - 55) + 'px';
-                canvas.style.top = (screenY - 77) + 'px';
-                canvas.style.zIndex = '1000';
-                canvas.style.pointerEvents = 'none';
-                
-                var moving = aiKiller.sprite.body && (Math.abs(aiKiller.sprite.body.velocity.x) > 5 || Math.abs(aiKiller.sprite.body.velocity.y) > 5);
-                
-                var scene = threeScenes['killer'];
-                
-                if (killerModelIdle) {
-                    var refs = killerModelIdle;
-                    for (var k in refs) { if (refs[k]) refs[k].visible = false; }
-                }
-                if (killerModelRun) {
-                    var refs = killerModelRun;
-                    for (var k in refs) { if (refs[k]) refs[k].visible = false; }
-                }
-                if (killerModelWalking) {
-                    var refs = killerModelWalking;
-                    for (var k in refs) { if (refs[k]) refs[k].visible = false; }
-                }
-                
-                var modelRefs = moving ? killerModelRun : killerModelIdle;
-                if (modelRefs && modelRefs['killer']) {
-                    modelRefs['killer'].visible = true;
-                    
-                    if (moving && aiKiller.sprite.body) {
-                        var angle = Math.atan2(aiKiller.sprite.body.velocity.y, aiKiller.sprite.body.velocity.x);
-                        modelRefs['killer'].rotation.y = angle + Math.PI;
-                    }
-                }
-                
-                threeRenderers['killer'].render(threeScenes['killer'], threeCameras['killer']);
-                
-                if (window.killerCanvasMixers) {
-                    for (var mixKey in window.killerCanvasMixers) {
-                        if (window.killerCanvasMixers[mixKey]) {
-                            window.killerCanvasMixers[mixKey].update(dt);
-                        }
-                    }
-                }
-            } else {
-                threeCanvases['killer'].style.display = 'none';
+            var killerKey = getFirstCharacterKey('killer');
+            if (killerKey) {
+                updateCharacter3DSprite(aiKiller.sprite, 'killer_' + killerKey, dt);
             }
         }
     }
 }
 
 function updateKiller3DSprite(dt) {
-    if (!threeLoaded || !threeCanvases || !threeRenderers) return;
-    
-    if (!window.scene || !window.scene.cameras) return;
-    
-    var cam = window.scene.cameras.main;
-    if (!cam) return;
+    if (!threeLoaded) return;
 
+    // Hide killer sprite (player)
     if (player && player.sprite) {
         player.sprite.setVisible(false);
         if (player.glowFx) player.glowFx.setVisible(false);
     }
-    
-    if (isKiller && player && player.aiPlayers) {
-        player.aiPlayers.forEach(function(ai) {
-            if (ai && ai.sprite && !ai.isAIKiller) {
-                ai.sprite.setVisible(false);
-                if (ai.glowFx) ai.glowFx.setVisible(false);
-            }
-        });
-    }
 
+    // Update killer (player)
     if (isKiller && player && player.sprite) {
-        var screenX = player.sprite.x - cam.scrollX;
-        var screenY = player.sprite.y - cam.scrollY;
-        
-        if (screenX > -50 && screenX < window.innerWidth + 50 && screenY > -50 && screenY < window.innerHeight + 50) {
-            var canvas = threeCanvases['killer'];
-            canvas.style.display = 'block';
-            canvas.style.position = 'fixed';
-            var w = 110;
-            var h = 155;
-            canvas.style.left = (screenX - w / 2) + 'px';
-            canvas.style.top = (screenY - h / 2) + 'px';
-            canvas.style.zIndex = '1000';
-            canvas.style.pointerEvents = 'none';
-            
-            var scene = threeScenes['killer'];
-            
-            // Just show idle model always - simple
-            if (killerModelIdle && killerModelIdle['killer']) {
-                killerModelIdle['killer'].visible = true;
-                
-                // Update rotation
-                if (player && player.sprite && player.sprite.body) {
-                    var angle = Math.atan2(player.sprite.body.velocity.y, player.sprite.body.velocity.x);
-                    killerModelIdle['killer'].rotation.y = angle;
-                }
-            }
-
-            threeRenderers['killer'].render(scene, threeCameras['killer']);
-            
-            // Update idle mixer
-            if (window.killerCanvasMixers && window.killerCanvasMixers['idle']) {
-                window.killerCanvasMixers['idle'].update(dt);
-            }
-        } else {
-            threeCanvases['killer'].style.display = 'none';
+        var killerKey = getFirstCharacterKey('killer');
+        if (killerKey) {
+            updateCharacter3DSprite(player.sprite, 'killer_' + killerKey, dt);
         }
-    }
-
-    if (isKiller && !isMultiplayer && player && player.aiPlayers && survivorLoaded) {
-        var survivorIndex = 0;
-        
-        player.aiPlayers.forEach(function(ai) {
-            if (ai && ai.sprite && !ai.isAIKiller && ai.state !== 'dead' && ai.state !== 'hooked' && ai.state !== 'carried') {
-                var canvasKey = 'survivor' + survivorIndex;
-                if (!threeCanvases[canvasKey]) return;
-                
-                if (ai.sprite.visible) ai.sprite.setVisible(false);
-                
-                var screenX = ai.sprite.x - cam.scrollX;
-                var screenY = ai.sprite.y - cam.scrollY;
-                
-                if (screenX > -50 && screenX < window.innerWidth + 50 && screenY > -50 && screenY < window.innerHeight + 50) {
-                    var canvas = threeCanvases[canvasKey];
-                    canvas.style.left = (screenX - 40) + 'px';
-                    canvas.style.top = (screenY - 60) + 'px';
-                    canvas.style.display = 'block';
-                    
-                    var moving = ai.sprite.body && (Math.abs(ai.sprite.body.velocity.x) > 5 || Math.abs(ai.sprite.body.velocity.y) > 5);
-                    
-                    var scene = threeScenes[canvasKey];
-                    
-                    // Simple: just show idle model
-                    if (survivorModelIdle && survivorModelIdle[canvasKey]) {
-                        survivorModelIdle[canvasKey].visible = true;
-                        if (moving && ai.sprite.body) {
-                            var angle = Math.atan2(ai.sprite.body.velocity.y, ai.sprite.body.velocity.x);
-                            survivorModelIdle[canvasKey].rotation.y = angle;
-                        }
-                    }
-                    
-                    threeRenderers[canvasKey].render(scene, threeCameras[canvasKey]);
-                } else {
-                    threeCanvases[canvasKey].style.display = 'none';
-                }
-                
-                survivorIndex++;
-            }
-        });
     }
     
-    if (!isKiller && !isMultiplayer && player && player.aiPlayers) {
-        var aiKiller = null;
-        for (var i = 0; i < player.aiPlayers.length; i++) {
-            if (player.aiPlayers[i].isAIKiller && player.aiPlayers[i].sprite) {
-                aiKiller = player.aiPlayers[i];
-                break;
-            }
-        }
-        
-        if (aiKiller && aiKiller.sprite) {
-            aiKiller.sprite.setVisible(false);
-            if (aiKiller.glowFx) aiKiller.glowFx.setVisible(false);
-            
-            var screenX = aiKiller.sprite.x - cam.scrollX;
-            var screenY = aiKiller.sprite.y - cam.scrollY;
-            
-            if (screenX > -50 && screenX < window.innerWidth + 50 && screenY > -50 && screenY < window.innerHeight + 50) {
-                var canvas = threeCanvases['killer'];
-                canvas.style.display = 'block';
-                canvas.style.position = 'fixed';
-                canvas.style.left = (screenX - 55) + 'px';
-                canvas.style.top = (screenY - 77) + 'px';
-                canvas.style.zIndex = '1000';
-                canvas.style.pointerEvents = 'none';
-                
-                var moving = aiKiller.sprite.body && (Math.abs(aiKiller.sprite.body.velocity.x) > 5 || Math.abs(aiKiller.sprite.body.velocity.y) > 5);
-                
-                var scene = threeScenes['killer'];
-                
-                if (killerModelIdle) {
-                    var refs = killerModelIdle;
-                    for (var k in refs) { if (refs[k]) refs[k].visible = false; }
-                }
-                if (killerModelRun) {
-                    var refs = killerModelRun;
-                    for (var k in refs) { if (refs[k]) refs[k].visible = false; }
-                }
-                if (killerModelWalking) {
-                    var refs = killerModelWalking;
-                    for (var k in refs) { if (refs[k]) refs[k].visible = false; }
-                }
-                
-                var modelRefs = moving ? killerModelRun : killerModelIdle;
-                if (modelRefs && modelRefs['killer']) {
-                    modelRefs['killer'].visible = true;
+    // Update AI survivors with 3D models
+    if (isKiller && !isMultiplayer && player && player.aiPlayers) {
+        if (survivorLoaded) {
+            var survivorIndex = 0;
+            player.aiPlayers.forEach(function(ai) {
+                if (ai && ai.sprite && !ai.isAIKiller && ai.state !== 'dead' && ai.state !== 'hooked' && ai.state !== 'carried') {
+                    if (ai.sprite.visible) ai.sprite.setVisible(false);
+                    if (ai.glowFx) ai.glowFx.setVisible(false);
                     
-                    if (moving && aiKiller.sprite.body) {
-                        var angle = Math.atan2(aiKiller.sprite.body.velocity.y, aiKiller.sprite.body.velocity.x);
-                        modelRefs['killer'].rotation.y = angle + Math.PI;
+                    var slot = 'survivor_' + survivorIndex;
+                    if (threeCanvases[slot]) {
+                        renderSurvivorOnSlot(ai.sprite, slot, dt);
                     }
+                    survivorIndex++;
                 }
-                
-                threeRenderers['killer'].render(threeScenes['killer'], threeCameras['killer']);
-                
-                if (window.killerCanvasMixers) {
-                    for (var mixKey in window.killerCanvasMixers) {
-                        if (window.killerCanvasMixers[mixKey]) {
-                            window.killerCanvasMixers[mixKey].update(dt);
-                        }
-                    }
-                }
-            } else {
-                threeCanvases['killer'].style.display = 'none';
-            }
+            });
         }
     }
 }
 
+// ═══════ CLEANUP ═══════
 function cleanupThreeJS() {
-    // Remove all models from all scenes
-    if (killerModelIdle) {
-        Object.values(threeScenes).forEach(function(scene) { scene.remove(killerModelIdle); });
-        killerModelIdle = null;
+    // Clear all characters
+    for (var type in characters3D) {
+        var character = characters3D[type];
+        for (var key in character.mixers) {
+            character.mixers[key].stopAllAction();
+        }
+        character.models = {};
+        character.mixers = {};
     }
-    if (killerModelWalking) {
-        Object.values(threeScenes).forEach(function(scene) { scene.remove(killerModelWalking); });
-        killerModelWalking = null;
-    }
-    if (killerModelRun) {
-        Object.values(threeScenes).forEach(function(scene) { scene.remove(killerModelRun); });
-        killerModelRun = null;
-    }
-    if (killerMixerIdle) { killerMixerIdle.stopAllAction(); killerMixerIdle = null; }
-    if (killerMixerWalking) { killerMixerWalking.stopAllAction(); killerMixerWalking = null; }
-    if (killerMixerRun) { killerMixerRun.stopAllAction(); killerMixerRun = null; }
-    killerAnimationsIdle = {};
-    killerAnimationsWalking = {};
-    killerAnimationsRun = {};
-    killerModel = null;
-    killerRotation = 0;
-
-    if (survivorModelIdle) {
-        Object.values(threeScenes).forEach(function(scene) { scene.remove(survivorModelIdle); });
-        survivorModelIdle = null;
-    }
-    if (survivorModelRun) {
-        Object.values(threeScenes).forEach(function(scene) { scene.remove(survivorModelRun); });
-        survivorModelRun = null;
-    }
-    if (survivorModelCrawl) {
-        Object.values(threeScenes).forEach(function(scene) { scene.remove(survivorModelCrawl); });
-        survivorModelCrawl = null;
-    }
-    if (survivorMixerIdle) { survivorMixerIdle.stopAllAction(); survivorMixerIdle = null; }
-    if (survivorMixerRun) { survivorMixerRun.stopAllAction(); survivorMixerRun = null; }
-    if (survivorMixerCrawl) { survivorMixerCrawl.stopAllAction(); survivorMixerCrawl = null; }
-    survivorAnimationsIdle = {};
-    survivorAnimationsRun = {};
-    survivorAnimationsCrawl = {};
-    survivorModel = null;
-    survivorRotation = 0;
-    survivorCurrentState = 'idle';
+    characters3D = {};
     
-    window.killerCanvasMixers = null;
-    window.killerAnimationsByType = null;
-    window.survivorCanvasMixers = null;
-    window.survivorAnimationsByType = null;
-
-    // Clean up all canvases
+    // Clean up canvases
     for (var key in threeCanvases) {
         if (threeCanvases[key] && threeCanvases[key].parentNode) {
             threeCanvases[key].parentNode.removeChild(threeCanvases[key]);
@@ -753,19 +664,58 @@ function cleanupThreeJS() {
     threeScenes = {};
     threeCameras = {};
     
-    threeRenderer = null;
-    threeScene = null;
-    threeCamera = null;
-    threeCanvas = null;
     threeLoaded = false;
-    survivorLoaded = false;
     killerLoaded = false;
-    survivorAnimationStates = {};
-    currentKillerAnimation = null;
+    survivorLoaded = false;
 }
 
-// Expose functions to global scope
-window.updateSurvivor3DSprite = updateSurvivor3DSprite;
-window.updateKiller3DSprite = updateKiller3DSprite;
+// ═══════ ANIMATION SPEED CONTROLS ═══════
+var animationTimeScale = 0.02;
+
+function createAnimationMenu() {
+    var menu = document.createElement('div');
+    menu.id = 'animationMenu';
+    menu.style.cssText = 'position:fixed;top:10px;right:10px;background:rgba(0,0,0,0.8);color:white;padding:15px;border-radius:8px;z-index:99999;font-family:Arial;font-size:12px;min-width:200px;';
+    menu.innerHTML = 
+        '<div style="margin-bottom:10px;font-weight:bold;">Настройка анимаций</div>' +
+        '<div style="margin-bottom:10px;">' +
+            '<label>Скорость: <span id="animSpeedValue">0.01</span></label><br>' +
+            '<input type="range" id="animSpeedSlider" min="1" max="100" value="2" style="width:100%">' +
+        '</div>' +
+        '<button id="animSpeedReset" style="padding:5px 10px;cursor:pointer;">Сброс</button>';
+    document.body.appendChild(menu);
+    
+    var slider = document.getElementById('animSpeedSlider');
+    var valueDisplay = document.getElementById('animSpeedValue');
+    var resetBtn = document.getElementById('animSpeedReset');
+    
+    slider.addEventListener('input', function() {
+        var value = this.value / 100;
+        animationTimeScale = value;
+        valueDisplay.textContent = value.toFixed(2);
+        updateAllAnimationSpeeds();
+    });
+    
+    resetBtn.addEventListener('click', function() {
+        animationTimeScale = 0.02;
+        slider.value = 2;
+        valueDisplay.textContent = '0.02';
+        updateAllAnimationSpeeds();
+    });
+}
+
+function updateAllAnimationSpeeds() {
+    allAnimationActions.forEach(function(action) {
+        action.timeScale = animationTimeScale;
+    });
+}
+
+// ═══════ EXPORT TO WINDOW ═══════
 window.initThreeJS = initThreeJS;
 window.cleanupThreeJS = cleanupThreeJS;
+window.updateCharacter3DSprite = updateCharacter3DSprite;
+window.updateSurvivor3DSprite = updateSurvivor3DSprite;
+window.updateKiller3DSprite = updateKiller3DSprite;
+window.CHARACTER_CONFIG = CHARACTER_CONFIG;
+window.characters3D = characters3D;
+window.createAnimationMenu = createAnimationMenu;

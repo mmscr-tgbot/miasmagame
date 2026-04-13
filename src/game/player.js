@@ -258,7 +258,8 @@ function killerAction(dt) {
 
     if (nearGen && hitTargets.length === 0) {
         // Damage generator - rollback progress
-        nearGen.progress = Math.max(0, nearGen.progress - 15);
+        nearGen.rollbackProgress = 15;
+        nearGen.beingSabotaged = true;
         UI.showToast('\uD83D\uDD27 \u0413\u0435\u043D\u0435\u0440\u0430\u0442\u043E\u0440 \u043F\u043E\u0432\u0440\u0435\u0436\u0434\u0451\u043D!', 1000);
         killerAttackCooldown = 1.0;
         
@@ -370,7 +371,15 @@ function survivorAction(dt) {
             return;
         }
 
-        gen.progress += CONFIG.GENERATOR_REPAIR_RATE * dt / 1000;
+        // Handle rollback when being sabotaged by killer
+        if (gen.beingSabotaged && gen.progress > 0) {
+            gen.progress = Math.max(0, gen.progress - 15 * dt / 1000);
+            if (gen.progress <= 0) {
+                gen.beingSabotaged = false;
+            }
+        } else {
+            gen.progress += CONFIG.GENERATOR_REPAIR_RATE * dt / 1000;
+        }
 
         // Sparks
         if (gen.repairSparks) {

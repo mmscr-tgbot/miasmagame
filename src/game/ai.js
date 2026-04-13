@@ -46,10 +46,36 @@ function updateAI(dt) {
                 return;
             }
             
+            // Check for generators to sabotage
+            var nearGen = null;
+            generators.forEach(function(gen) {
+                if (!gen.repaired) {
+                    var dg = dist(sp, gen);
+                    if (dg < CONFIG.INTERACT_DISTANCE + 20) {
+                        nearGen = gen;
+                    }
+                }
+            });
+            
+            if (nearGen && ai.aiHitCooldown <= 0) {
+                // Sabotage generator - rollback progress
+                nearGen.beingSabotaged = true;
+                ai.aiHitCooldown = 1.5;
+                nearGen.rollbackProgress = 0;
+                UI.showToast('\uD83D\uDD27 AI \u043B\u043E\u043C\u0430\u0435\u0442 \u0433\u0435\u043D\u0435\u0440\u0430\u0442\u043E\u0440!', 1000);
+                return;
+            }
+            
             // Find nearest target (player survivor OR AI survivors)
             var target = findNearestSurvivorForKiller(sp);
             if (!target) {
-                sp.body.setVelocity(0, 0);
+                // No survivors found - patrol or go to generator
+                var unrepairedGen = generators.find(function(g) { return !g.repaired; });
+                if (unrepairedGen) {
+                    aiMoveToKiller(sp, unrepairedGen.x, unrepairedGen.y, dt, ai);
+                } else {
+                    sp.body.setVelocity(0, 0);
+                }
                 return;
             }
             
@@ -197,10 +223,21 @@ function findNearestSurvivorForKiller(sp) {
 function updateSmartSurvivorAI(ai, dt) {
     var sp = ai.sprite;
     
+    if (!ai || !sp || !sp.body) return;
+    
     // Handle states
     if (ai.state === 'dead' || ai.state === 'carried') {
         sp.body.setVelocity(0, 0);
         return;
+    }
+    
+    // Debug every 5 seconds
+    if (!ai._debugTimer) ai._debugTimer = 0;
+    ai._debugTimer += dt / 1000;
+    if (ai._debugTimer > 5) {
+        ai._debugTimer = 0;
+        var genCount = generators ? generators.length : 0;
+        console.log('[AI Survivor] State:', ai.state, 'Pos:', Math.round(sp.x), Math.round(sp.y), 'Gens:', genCount, 'Repairing:', ai.isRepairing);
     }
     
     if (ai.state === 'hooked') {
@@ -213,131 +250,7 @@ function updateSmartSurvivorAI(ai, dt) {
         return;
     }
     
-    // Priority 1: Unhook hooked survivors
-    var hookedSurvivor = findHookedSurvivor(ai);
-    if (hookedSurvivor && ai.state === 'alive') {
-        var hook = hooks.find(function(h) { return h.occupied && h.hookedSurvivor === hookedSurvivor; });
-        if (hook) {
-            var d = dist(sp, hook);
-            if (d < CONFIG.INTERACT_DISTANCE) {
-                // Unhook
-                hook.occupied = false;
-                hook.hookedSurvivor = null;
-                hook.hookTimer = 0;
-                hookedSurvivor.state = 'injured';
-                hookedSurvivor.sprite.clearTint();
-                hookedSurvivor.sprite.setPosition(hook.x + 30, hook.y);
-                ai.aiActionCooldown = 2;
-                return;
-            } else {
-                moveTo(sp, hook.x, hook.y, CONFIG.PLAYER_SPEED);
-                return;
-            }
-        }
-    }
-    
-    // Priority 2: Heal injured survivors
-    var injuredAlly = findInjuredAlly(ai);
-    if (injuredAlly && ai.state === 'alive' && (!ai.aiActionCooldown || ai.aiActionCooldown <= 0)) {
-        var d = dist(sp, injuredAlly.sprite);
-        if (d < CONFIG.INTERACT_DISTANCE) {
-            injuredAlly.state = 'alive';
-            injuredAlly.sprite.clearTint();
-            matchStats.survivorsHealed++;
-            addBloodpoints('altruism', 1500, 'AI лечение');
-            ai.aiActionCooldown = 3;
-            return;
-        } else {
-            moveTo(sp, injuredAlly.sprite.x, injuredAlly.sprite.y, CONFIG.PLAYER_SPEED);
-            return;
-        }
-    }
-    
-    // Priority 3: Repair generators
-    var unrepairedGen = generators.find(function(g) { return !g.repaired; });
-    if (unrepairedGen) {
-        var d = dist(sp, unrepairedGen);
-        if (d < CONFIG.INTERACT_DISTANCE && (!ai.isRepairing)) {
-            // Start repairing
-            ai.isRepairing = true;
-            ai.progressAction = unrepairedGen;
-            if (!sp.texture.key.includes('_repair')) {
-                sp.setTexture(getTexWithFallback(ai.tex, '_repair'));
-            }
-        }
-        
-        if (ai.isRepairing && ai.progressAction === unrepairedGen && !unrepairedGen.repaired) {
-            unrepairedGen.progress += CONFIG.GENERATOR_REPAIR_RATE * dt / 1000;
-            
-            // Sparks
-            if (unrepairedGen.repairSparks) {
-                unrepairedGen.repairSparks.setVisible(true);
-                unrepairedGen.repairSparks.clear();
-                for (var i = 0; i < 3; i++) {
-                    var sx = unrepairedGen.bx + (Math.random() - 0.5) * 30;
-                    var sy = unrepairedGen.by + (Math.random() - 0.5) * 20;
-                    unrepairedGen.repairSparks.fillStyle(0xffff00, 0.6 + Math.random() * 0.4);
-                    unrepairedGen.repairSparks.fillCircle(sx, sy, 1 + Math.random() * 2);
-                }
-            }
-            
-            // Progress bar
-            if (unrepairedGen.barGfx) {
-                unrepairedGen.barGfx.clear();
-                unrepairedGen.barGfx.fillStyle(0x000000, 0.7);
-                unrepairedGen.barGfx.fillRect(unrepairedGen.bx - 25, unrepairedGen.by - 45, 50, 8);
-                unrepairedGen.barGfx.fillStyle(0xffee00, 0.9);
-                unrepairedGen.barGfx.fillRect(unrepairedGen.bx - 24, unrepairedGen.by - 44, 48 * (unrepairedGen.progress / 100), 6);
-            }
-            
-            if (unrepairedGen.progress >= 100) {
-                unrepairedGen.progress = 100;
-                unrepairedGen.repaired = true;
-                ai.isRepairing = false;
-                ai.progressAction = null;
-                if (sp.texture.key.includes('_repair')) sp.setTexture(ai.tex);
-                if (unrepairedGen.repairSparks) unrepairedGen.repairSparks.setVisible(false);
-                
-                matchStats.generatorsRepaired++;
-                addBloodpoints('objective', 2000, 'AI починил генератор');
-                
-                var repairedCount = generators.filter(function(g) { return g.repaired; }).length;
-                if (repairedCount >= CONFIG.GENS_REQUIRED_FOR_EXIT && !exitOpen) {
-                    exitOpen = true;
-                }
-                if (repairedCount >= 5 && !hatchOpen && !hatchClosed) {
-                    hatchOpen = true;
-                    hatch.sprite.setVisible(true);
-                    hatch.sprite.setDepth(hatch.sprite.y + 1);
-                }
-            }
-            return;
-        }
-        
-        if (!ai.isRepairing && d > CONFIG.INTERACT_DISTANCE + 10) {
-            moveTo(sp, unrepairedGen.x, unrepairedGen.y, CONFIG.PLAYER_SPEED);
-            return;
-        }
-    }
-    
-    // Priority 4: Open gates if all generators done
-    if (exitOpen) {
-        var closedGate = gates.find(function(g) { return !g.opened; });
-        if (closedGate) {
-            var d = dist(sp, closedGate);
-            if (d < CONFIG.INTERACT_DISTANCE) {
-                closedGate.isOpening = true;
-                closedGate.progress = 0;
-                ai.aiActionCooldown = 5;
-                return;
-            } else {
-                moveTo(sp, closedGate.bx, closedGate.by, CONFIG.PLAYER_SPEED);
-                return;
-            }
-        }
-    }
-    
-    // Priority 5: Run away from killer
+    // Find killer
     var killer = null;
     if (player && player.role === 'killer') {
         killer = player.sprite;
@@ -347,13 +260,223 @@ function updateSmartSurvivorAI(ai, dt) {
         });
     }
     
+    // Check if another survivor is already opening gate
+    var isOtherSurvivorOpeningGate = false;
+    if (player && player.aiPlayers) {
+        player.aiPlayers.forEach(function(other) {
+            if (other !== ai && !other.isAIKiller && other.isOpeningGate) {
+                isOtherSurvivorOpeningGate = true;
+            }
+        });
+    }
+    
+    // Priority 1: Drop pallet if killer is close and in front of pallet
+    var nearPallet = findPalletToDrop(ai, killer);
+    if (nearPallet && killer && dist(sp, killer) < 150) {
+        var dPallet = dist(sp, nearPallet);
+        if (dPallet < CONFIG.INTERACT_DISTANCE) {
+            dropPallet(ai, nearPallet);
+            return;
+        } else {
+            moveTo(sp, nearPallet.x, nearPallet.y, ai.state === 'injured' ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED);
+            return;
+        }
+    }
+    
+    // Priority 2: Run away from killer (if approaching fast)
     if (killer) {
         var dk = dist(sp, killer);
-        if (dk < 200) {
+        if (dk < 120) {
             var ak = Math.atan2(sp.y - killer.y, sp.x - killer.x);
             var dir = { x: Math.cos(ak), y: Math.sin(ak) };
             var speed = ai.state === 'injured' ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED;
             sp.body.setVelocity(dir.x * speed, dir.y * speed);
+            ai.fleeingFromKiller = true;
+            return;
+        }
+    }
+    ai.fleeingFromKiller = false;
+    
+    // Priority 3: Open gates if all generators done (only one survivor should do this)
+    var repairedCount = generators.filter(function(g) { return g.repaired; }).length;
+    if (repairedCount >= CONFIG.GENS_REQUIRED_FOR_EXIT && !exitOpen) {
+        exitOpen = true;
+    }
+    
+    if (exitOpen && !isOtherSurvivorOpeningGate && !ai.isOpeningGate) {
+        var closedGate = gates.find(function(g) { return !g.opened; });
+        if (closedGate) {
+            var dGate = dist(sp, closedGate);
+            if (dGate < CONFIG.INTERACT_DISTANCE) {
+                closedGate.isOpening = true;
+                closedGate.progress = 0;
+                ai.isOpeningGate = true;
+                return;
+            } else {
+                moveTo(sp, closedGate.bx, closedGate.by, CONFIG.PLAYER_SPEED);
+                return;
+            }
+        }
+    }
+    
+    // If another survivor is opening gate, wait nearby
+    if (isOtherSurvivorOpeningGate && !exitOpen) {
+        var gateBeingOpened = gates.find(function(g) { return !g.opened; });
+        if (gateBeingOpened) {
+            var dGate = dist(sp, gateBeingOpened);
+            if (dGate < CONFIG.INTERACT_DISTANCE + 50) {
+                // Wait near the gate
+                sp.body.setVelocity(0, 0);
+                return;
+            } else {
+                moveTo(sp, gateBeingOpened.bx, gateBeingOpened.by, CONFIG.PLAYER_SPEED);
+                return;
+            }
+        }
+    }
+    
+    // Priority 4: Repair generators (continue or start new)
+    if (!generators || generators.length === 0) {
+        // Wander
+        ai.aiTimer = (ai.aiTimer || 0) - dt / 1000;
+        if (ai.aiTimer <= 0) {
+            ai.aiTimer = 1 + Math.random() * 3;
+            var ang = Math.random() * Math.PI * 2;
+            ai.aiDir = { x: Math.cos(ang), y: Math.sin(ang) };
+        }
+        var speed = ai.state === 'injured' ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED;
+        if (ai.aiDir) {
+            sp.body.setVelocity(ai.aiDir.x * speed, ai.aiDir.y * speed);
+        }
+        return;
+    }
+    
+    var unrepairedGens = generators.filter(function(g) { return !g.repaired; });
+    
+    // Reset repairing state if not near generator or killer is too close
+    if (ai.isRepairing) {
+        var genStillValid = false;
+        if (ai.progressAction && !ai.progressAction.repaired) {
+            var currentDist = dist(sp, ai.progressAction);
+            var killerCloseToGen = killer && dist(killer, ai.progressAction) < 150;
+            if (currentDist < CONFIG.INTERACT_DISTANCE + 30 && !killerCloseToGen) {
+                genStillValid = true;
+            }
+        }
+        if (!genStillValid) {
+            ai.isRepairing = false;
+            ai.progressAction = null;
+            ai.isOpeningGate = false;
+            if (sp.texture.key.includes('_repair')) sp.setTexture(ai.tex);
+            if (ai.progressAction && ai.progressAction.repairSparks) ai.progressAction.repairSparks.setVisible(false);
+        }
+    }
+    
+    // Find best generator to repair (prefer zero progress, then nearest)
+    var bestGen = null;
+    var bestGenDist = Infinity;
+    var zeroProgressGens = unrepairedGens.filter(function(g) { return g.progress === 0; });
+    var otherGens = unrepairedGens.filter(function(g) { return g.progress > 0; });
+    
+    // Prefer zero progress generators
+    if (zeroProgressGens.length > 0) {
+        zeroProgressGens.forEach(function(g) {
+            var d = dist(sp, g);
+            if (d < bestGenDist) {
+                bestGenDist = d;
+                bestGen = g;
+            }
+        });
+    } else if (otherGens.length > 0) {
+        otherGens.forEach(function(g) {
+            var d = dist(sp, g);
+            if (d < bestGenDist) {
+                bestGenDist = d;
+                bestGen = g;
+            }
+        });
+    }
+    
+    if (bestGen) {
+        var dGen = dist(sp, bestGen);
+        var killerCloseToGen = killer && dist(killer, bestGen) < 150;
+        
+        // Move towards generator if too far
+        if (dGen > CONFIG.INTERACT_DISTANCE + 10) {
+            moveTo(sp, bestGen.x, bestGen.y, ai.state === 'injured' ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED);
+            return;
+        }
+        
+        // Start repairing if close enough and killer not too close
+        if (!ai.isRepairing && !killerCloseToGen) {
+            ai.isRepairing = true;
+            ai.progressAction = bestGen;
+            ai.isOpeningGate = false;
+            if (!sp.texture.key.includes('_repair')) {
+                sp.setTexture(getTexWithFallback(ai.tex, '_repair'));
+            }
+        }
+        
+        // Continue repairing
+        if (ai.isRepairing && ai.progressAction === bestGen && !bestGen.repaired) {
+            // Check if killer got too close
+            if (killer && dist(killer, bestGen) < 100) {
+                ai.isRepairing = false;
+                ai.progressAction = null;
+                if (sp.texture.key.includes('_repair')) sp.setTexture(ai.tex);
+                if (bestGen.repairSparks) bestGen.repairSparks.setVisible(false);
+            } else {
+                bestGen.progress += CONFIG.GENERATOR_REPAIR_RATE * dt / 1000;
+                
+                // Sparks
+                if (bestGen.repairSparks) {
+                    bestGen.repairSparks.setVisible(true);
+                    bestGen.repairSparks.clear();
+                    for (var i = 0; i < 3; i++) {
+                        var sx = bestGen.bx + (Math.random() - 0.5) * 30;
+                        var sy = bestGen.by + (Math.random() - 0.5) * 20;
+                        bestGen.repairSparks.fillStyle(0xffff00, 0.6 + Math.random() * 0.4);
+                        bestGen.repairSparks.fillCircle(sx, sy, 1 + Math.random() * 2);
+                    }
+                }
+                
+                // Progress bar
+                if (bestGen.barGfx) {
+                    bestGen.barGfx.clear();
+                    bestGen.barGfx.fillStyle(0x000000, 0.7);
+                    bestGen.barGfx.fillRect(bestGen.bx - 25, bestGen.by - 45, 50, 8);
+                    bestGen.barGfx.fillStyle(0xffee00, 0.9);
+                    bestGen.barGfx.fillRect(bestGen.bx - 24, bestGen.by - 44, 48 * (bestGen.progress / 100), 6);
+                }
+                
+                if (bestGen.progress >= 100) {
+                    bestGen.progress = 100;
+                    bestGen.repaired = true;
+                    ai.isRepairing = false;
+                    ai.progressAction = null;
+                    if (sp.texture.key.includes('_repair')) sp.setTexture(ai.tex);
+                    if (bestGen.repairSparks) bestGen.repairSparks.setVisible(false);
+                    
+                    matchStats.generatorsRepaired++;
+                    addBloodpoints('objective', 2000, 'AI починил генератор');
+                    
+                    var repairedNow = generators.filter(function(g) { return g.repaired; }).length;
+                    if (repairedNow >= CONFIG.GENS_REQUIRED_FOR_EXIT && !exitOpen) {
+                        exitOpen = true;
+                    }
+                    if (repairedNow >= 5 && !hatchOpen && !hatchClosed) {
+                        hatchOpen = true;
+                        hatch.sprite.setVisible(true);
+                        hatch.sprite.setDepth(hatch.sprite.y + 1);
+                    }
+                }
+            }
+            return;
+        }
+        
+        // Move to generator if too far
+        if (!ai.isRepairing && dGen > CONFIG.INTERACT_DISTANCE + 20) {
+            moveTo(sp, bestGen.x, bestGen.y, ai.state === 'injured' ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED);
             return;
         }
     }
@@ -366,12 +489,77 @@ function updateSmartSurvivorAI(ai, dt) {
         ai.aiDir = { x: Math.cos(ang), y: Math.sin(ang) };
     }
     
+    // Force movement if stuck
+    var currentSpeed = Math.sqrt(sp.body.velocity.x * sp.body.velocity.x + sp.body.velocity.y * sp.body.velocity.y);
+    if (currentSpeed < 5) {
+        // Move towards nearest unrepaired generator
+        if (unrepairedGens.length > 0) {
+            var nearestGen = null;
+            var minD = Infinity;
+            unrepairedGens.forEach(function(g) {
+                var d = dist(sp, g);
+                if (d < minD) {
+                    minD = d;
+                    nearestGen = g;
+                }
+            });
+            if (nearestGen) {
+                moveTo(sp, nearestGen.x, nearestGen.y, CONFIG.PLAYER_SPEED);
+                return;
+            }
+        }
+    }
+    
     var speed = ai.state === 'injured' ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED;
     if (ai.aiDir) {
         sp.body.setVelocity(ai.aiDir.x * speed, ai.aiDir.y * speed);
     }
     
     if (ai.aiActionCooldown > 0) ai.aiActionCooldown -= dt / 1000;
+}
+
+// Find pallet that survivor can drop on killer
+function findPalletToDrop(ai, killer) {
+    if (!pallets || pallets.length === 0) return null;
+    
+    var sp = ai.sprite;
+    var bestPallet = null;
+    var bestDist = CONFIG.INTERACT_DISTANCE * 2;
+    
+    pallets.forEach(function(p) {
+        if (p.dropped) return; // Already dropped
+        
+        var d = dist(sp, p);
+        if (d > bestDist) return;
+        
+        // Check if killer is in front of pallet
+        if (killer) {
+            var angleToKiller = Math.atan2(killer.y - p.y, killer.x - p.x);
+            var angleToSurvivor = Math.atan2(sp.y - p.y, sp.x - p.x);
+            var angleDiff = Math.abs(angleToKiller - angleToSurvivor);
+            
+            // Killer should be on opposite side of survivor relative to pallet
+            if (angleDiff < Math.PI * 0.7) return; // Too close in angle, killer not in front
+        }
+        
+        bestDist = d;
+        bestPallet = p;
+    });
+    
+    return bestPallet;
+}
+
+// Drop pallet
+function dropPallet(ai, pallet) {
+    if (!pallet || pallet.dropped) return;
+    
+    pallet.dropped = true;
+    if (pallet.sprite) {
+        pallet.sprite.setFrame(1); // Dropped frame
+    }
+    
+    addBloodpoints('boldness', 500, 'AI сбросил доску');
+    ai.aiActionCooldown = 3;
 }
 
 function findHookedSurvivor(ai) {
@@ -384,7 +572,6 @@ function findHookedSurvivor(ai) {
 }
 
 function findInjuredAlly(ai) {
-    // Check other AI survivors
     if (player && player.aiPlayers) {
         for (var i = 0; i < player.aiPlayers.length; i++) {
             var other = player.aiPlayers[i];
@@ -393,7 +580,6 @@ function findInjuredAlly(ai) {
             }
         }
     }
-    // Check player
     if (!isKiller && player && player.state === 'injured') {
         return player;
     }

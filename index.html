@@ -104,6 +104,7 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
       <button id="btn-solo" class="btn secondary" style="width:220px">🎮 Играть (Соло)</button>
       <button id="btn-profile" class="btn" style="width:220px;background:#333">👤 Профиль</button>
       <button id="btn-settings" class="btn" style="width:220px;background:#333">⚙️ Настройки</button>
+      <button id="btn-admin" class="btn" style="width:220px;background:#222;margin-top:15px" onclick="window.open('admin.html','_blank')">🔧 Админка 3D моделей</button>
     </div>
   </div>
 </div>
@@ -117,7 +118,7 @@ h2{font-size:22px;color:#ff3333;margin-bottom:20px;text-align:center}
 
 <div id="char-select" class="screen">
   <h2 id="char-select-title">Выбери персонажа</h2>
-  <div id="char-viewer" style="width:200px;height:280px;position:relative;margin:10px auto;"></div>
+  <div id="char-viewer" style="width:200px;height:280px;position:relative;margin:10px auto;background:transparent;border-radius:12px;"></div>
   <p id="char-name" style="color:#fff;font-size:18px;margin:8px 0">—</p>
   <p id="char-desc" style="color:#aaa;font-size:13px;margin:0 0 15px;text-align:center;max-width:260px">—</p>
   <div id="char-nav" style="display:flex;align-items:center;gap:15px;margin-bottom:15px;">
@@ -449,15 +450,78 @@ function syncGSettings() {
 
 loadGSettings();
 
-var killerChars = [
-  { name: 'Scare', desc: 'Жуткий маньяк в маске из мешковины', model: 'src/models/killers/scare/ScareKiller_Idle.glb' }
-];
+var killerChars = [];
+var survivorChars = [];
 
-var survivorChars = [
-  { name: 'Jack', desc: 'Выживший в синей куртке', model: 'src/models/survivors/Jack/Jack_Idle.glb' }
-];
+function loadAvailableCharacters() {
+  var savedConfig = localStorage.getItem('dbd_models');
+  
+  if (savedConfig) {
+    try {
+      var config = JSON.parse(savedConfig);
+      
+      killerChars = [];
+      if (config.killer) {
+        for (var key in config.killer) {
+          var char = config.killer[key];
+          if (char.enabled === false) continue;
+          var idlePath = char.animations && char.animations.idle ? char.animations.idle : '';
+          killerChars.push({
+            name: char.displayName || key,
+            desc: 'Настройка: масштаб ' + (char.scale || 1),
+            model: idlePath,
+            configKey: key,
+            config: char
+          });
+        }
+      }
+      
+      survivorChars = [];
+      if (config.survivor) {
+        for (var key in config.survivor) {
+          var char = config.survivor[key];
+          if (char.enabled === false) continue;
+          var idlePath = char.animations && char.animations.idle ? char.animations.idle : '';
+          survivorChars.push({
+            name: char.displayName || key,
+            desc: 'Настройка: масштаб ' + (char.scale || 1),
+            model: idlePath,
+            configKey: key,
+            config: char
+          });
+        }
+      }
+      
+      console.log('[Chars] Loaded:', killerChars.length, 'killers,', survivorChars.length, 'survivors');
+    } catch (e) {
+      console.error('[Chars] Error parsing config:', e);
+      loadDefaultChars();
+    }
+  } else {
+    loadDefaultChars();
+  }
+}
+
+function loadDefaultChars() {
+  killerChars = [
+    { name: 'Scare', desc: 'Жуткий маньяк в маске из мешковины', model: 'src/models/killers/scare/ScareKiller_Idle.glb' }
+  ];
+  survivorChars = [
+    { name: 'Jack', desc: 'Выживший в синей куртке', model: 'src/models/survivors/Jack/Jack_Idle.glb' }
+  ];
+}
+
+loadAvailableCharacters();
+
+window.addEventListener('storage', function(e) {
+  if (e.key === 'dbd_models') {
+    console.log('[Chars] Models updated, reloading...');
+    loadAvailableCharacters();
+  }
+});
 
 function showCharSelect() {
+  loadAvailableCharacters();
   console.log('[CharSelect] showCharSelect called, role:', selectedRole);
   showScreen('char-select');
   var chars = selectedRole === 'killer' ? killerChars : survivorChars;
@@ -507,140 +571,116 @@ function setupCharViewer(ch) {
     return;
   }
   
-  container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Загрузка 3D...</p>';
+  container.innerHTML = '';
   
-  function tryLoad() {
-    if (typeof THREE === 'undefined') {
-      console.log('[CharViewer] Waiting for THREE...');
-      container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Загрузка Three.js...</p>';
-      setTimeout(tryLoad, 500);
-      return;
-    }
-    if (typeof THREE.GLTFLoader === 'undefined') {
-      console.log('[CharViewer] Waiting for GLTFLoader...');
-      container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Загрузка GLTFLoader...</p>';
-      setTimeout(tryLoad, 500);
-      return;
-    }
-    
-    console.log('[CharViewer] THREE ready, creating renderer...');
-    container.innerHTML = '';
-    
-    charViewerRenderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
-    charViewerRenderer.setSize(200, 280);
-    charViewerRenderer.setPixelRatio(1);
-    charViewerRenderer.setClearColor(0x1a1a1a, 1);
-    charViewerRenderer.domElement.style.cssText = 'width:100%;height:100%;border-radius:12px;cursor:grab;';
-    container.appendChild(charViewerRenderer.domElement);
-    
-    charViewerScene = new THREE.Scene();
-    charViewerCamera = new THREE.PerspectiveCamera(45, 200 / 280, 0.01, 100);
-    charViewerCamera.position.set(0, 1, 3);
-    charViewerCamera.lookAt(0, 0.8, 0);
-    
-    var ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-    charViewerScene.add(ambientLight);
-    
-    var frontLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    frontLight.position.set(0, 2, 3);
-    charViewerScene.add(frontLight);
-    
-    var backLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    backLight.position.set(0, 1, -2);
-    charViewerScene.add(backLight);
-    
-    charViewerModel = null;
-    charViewerMixer = null;
-    charRotationY = 0;
-    charIsDragging = false;
-    charLastX = 0;
-    
-    console.log('[CharViewer] Loading model:', ch.model);
-    
-    fetch(ch.model).then(function(res) {
-      console.log('[CharViewer] File exists, status:', res.status);
-    }).catch(function(e) {
-      console.error('[CharViewer] File NOT accessible:', e);
-    });
-    
-    var loader = new THREE.GLTFLoader();
-    loader.load(
-      ch.model,
-      function(gltf) {
-        console.log('[CharViewer] Model loaded callback fired!');
-        console.log('[CharViewer] ✓ Model loaded callback!', gltf.scene);
-        charViewerModel = gltf.scene;
-        
-        charViewerModel.traverse(function(child) {
-          if (child.isMesh) {
-            console.log('[CharViewer] Found mesh:', child.name, 'scale:', child.scale);
-            child.castShadow = false;
-            child.receiveShadow = false;
-            if (child.material) {
-              child.material.emissive = new THREE.Color(0x222222);
-            }
-          }
-        });
-        
-        console.log('[CharViewer] Root model scale before:', charViewerModel.scale);
-        
-        var box = new THREE.Box3().setFromObject(charViewerModel);
-        var size = box.getSize(new THREE.Vector3());
-        
-        console.log('[CharViewer] Model size (bounding box):', size.x, size.y, size.z);
-        
-        var isKiller = ch.model.indexOf('killer') !== -1;
-        var targetScale = isKiller ? 15.5 : 10.5;
-        console.log('[CharViewer] Using fixed scale:', targetScale, '(killer:', isKiller, ')');
-        
-        charViewerModel.scale.set(targetScale, targetScale, targetScale);
-        console.log('[CharViewer] Root model scale after:', charViewerModel.scale);
-        
-        var newBox = new THREE.Box3().setFromObject(charViewerModel);
-        var newSize = newBox.getSize(new THREE.Vector3());
-        console.log('[CharViewer] Scaled model size:', newSize.x, newSize.y, newSize.z);
-        
-        charViewerModel.position.set(0, -box.min.y * targetScale, 0);
-        
-        charViewerScene.add(charViewerModel);
-        console.log('[CharViewer] Model added to scene! Scale:', targetScale);
-        
-        if (gltf.animations && gltf.animations.length > 0) {
-          charViewerMixer = new THREE.AnimationMixer(charViewerModel);
-          var action = charViewerMixer.clipAction(gltf.animations[0]);
-          action.play();
-          console.log('[CharViewer] Animation playing');
-        } else {
-          console.log('[CharViewer] No animations in model');
-        }
-      },
-      function(progress) {
-        var pct = progress.total ? Math.round(progress.loaded / progress.total * 100) : 0;
-        console.log('[CharViewer] Loading:', pct + '%');
-        if (container.querySelector('p')) {
-          container.querySelector('p').textContent = 'Загрузка 3D... ' + pct + '%';
-        }
-      },
-      function(err) {
-        console.error('[CharViewer] Error loading model:', err);
-        container.innerHTML = '<p style="color:#f44;text-align:center;padding:20px">Ошибка: ' + (err.message || 'не удалось загрузить') + '</p>';
-      }
-    );
-    
-    var canvas = charViewerRenderer.domElement;
-    // No drag rotation - model is static
-    
-    function animate() {
-      if (!container.parentNode) return;
-      if (charViewerModel) charViewerModel.rotation.y = charRotationY;
-      if (charViewerMixer) charViewerMixer.update(0.004);
-      charViewerRenderer.render(charViewerScene, charViewerCamera);
-      charViewerAnimationId = requestAnimationFrame(animate);
-    }
-    animate();
+  if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
+    container.innerHTML = '<p style="color:#aaa;text-align:center;padding:40px">Three.js не загружен</p>';
+    return;
   }
   
-  tryLoad();
+  var containerW = 200;
+  var containerH = 280;
+  
+  charViewerRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  charViewerRenderer.setSize(containerW, containerH);
+  charViewerRenderer.setPixelRatio(1);
+  charViewerRenderer.setClearColor(0x000000, 0);
+  container.appendChild(charViewerRenderer.domElement);
+  
+  charViewerScene = new THREE.Scene();
+  
+  charViewerCamera = new THREE.PerspectiveCamera(40, containerW / containerH, 0.1, 1000);
+  charViewerCamera.position.set(0, 1.5, 3);
+  charViewerCamera.lookAt(0, 0.5, 0);
+  
+  var ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+  charViewerScene.add(ambientLight);
+  
+  var dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+  dirLight.position.set(1, 2, 1);
+  charViewerScene.add(dirLight);
+  
+  charViewerModel = null;
+  charViewerMixer = null;
+  charRotationY = 0;
+  
+  var loader = new THREE.GLTFLoader();
+  loader.load(
+    ch.model,
+    function(gltf) {
+      charViewerModel = gltf.scene;
+      
+      charViewerModel.traverse(function(child) {
+        if (child.isMesh) {
+          if (child.material) {
+            child.material.transparent = false;
+            child.material.opacity = 1;
+            child.material.depthWrite = true;
+            if (child.material.map) {
+              child.material.map.transparent = false;
+            }
+          }
+        }
+      });
+      
+      var minX = Infinity, minY = Infinity, minZ = Infinity;
+      var maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+      var hasGeometry = false;
+      
+      charViewerModel.traverse(function(child) {
+        if (child.isMesh && child.geometry) {
+          child.geometry.computeBoundingBox();
+          var bbox = child.geometry.boundingBox;
+          if (bbox) {
+            hasGeometry = true;
+            minX = Math.min(minX, bbox.min.x);
+            minY = Math.min(minY, bbox.min.y);
+            minZ = Math.min(minZ, bbox.min.z);
+            maxX = Math.max(maxX, bbox.max.x);
+            maxY = Math.max(maxY, bbox.max.y);
+            maxZ = Math.max(maxZ, bbox.max.z);
+          }
+        }
+      });
+      
+      var sizeX = hasGeometry ? maxX - minX : 0;
+      var sizeY = hasGeometry ? maxY - minY : 0;
+      var sizeZ = hasGeometry ? maxZ - minZ : 0;
+      var maxDim = Math.max(sizeX, sizeY, sizeZ);
+      
+      if (!hasGeometry || maxDim === 0) {
+        console.error('[CharViewer] Empty model');
+        return;
+      }
+      
+      var targetHeight = Math.min(containerW, containerH) * 0.00833;
+      var scaleVal = targetHeight / maxDim;
+      
+      charViewerModel.scale.set(scaleVal, scaleVal, scaleVal);
+      charViewerModel.position.x = -(minX + sizeX/2) * scaleVal;
+      charViewerModel.position.y = -minY * scaleVal - (sizeY * scaleVal * 0.15);
+      
+      charViewerScene.add(charViewerModel);
+      
+      if (gltf.animations && gltf.animations.length > 0) {
+        charViewerMixer = new THREE.AnimationMixer(charViewerModel);
+        var action = charViewerMixer.clipAction(gltf.animations[0]);
+        action.play();
+      }
+    },
+    function(progress) {},
+    function(err) {
+      console.error('[CharViewer] Error:', err);
+    }
+  );
+  
+  function animate() {
+    if (!container.parentNode) return;
+    if (charViewerMixer) charViewerMixer.update(0.004);
+    charViewerRenderer.render(charViewerScene, charViewerCamera);
+    charViewerAnimationId = requestAnimationFrame(animate);
+  }
+  animate();
 }
 
 function setupSurvivorPreview(container, ch) {

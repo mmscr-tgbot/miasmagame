@@ -73,9 +73,39 @@ function createControls() {
     });
 
     joy.addEventListener('touchcancel', resetJoy);
-    joy.addEventListener('mousedown', handleJoy);
-    document.addEventListener('mousemove', function(e) { if (e.buttons === 1) handleJoy(e); });
-    document.addEventListener('mouseup', resetJoy);
+    
+    document.addEventListener('touchend', function(e) {
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joyTouchId) {
+                resetJoy();
+                break;
+            }
+        }
+    });
+    
+    document.addEventListener('touchcancel', function(e) {
+        for (var i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joyTouchId) {
+                resetJoy();
+                break;
+            }
+        }
+    });
+    
+    joy.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        handleJoy(e);
+    });
+    joy.addEventListener('mousemove', function(e) {
+        if (e.buttons === 1) {
+            var rect = joyBase.getBoundingClientRect();
+            if (e.clientX >= rect.left && e.clientX <= rect.right && 
+                e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                handleJoy(e);
+            }
+        }
+    });
+    joy.addEventListener('mouseup', resetJoy);
 
     // Action button
     ab.addEventListener('touchstart', function(e) {
