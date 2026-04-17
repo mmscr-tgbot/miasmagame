@@ -228,11 +228,12 @@ function updatePallets(dt) {
 
 function checkPalletStun(pallet) {
     var killerHit = false;
+    var stunRadius = 70;
     
     // Check local killer
     if (isKiller && player && player.sprite) {
         var d = Math.sqrt(Math.pow(player.sprite.x - pallet.bx, 2) + Math.pow(player.sprite.y - pallet.by, 2));
-        if (d < 60) {
+        if (d < stunRadius) {
             killerHit = true;
             killerStun = CONFIG.STUN_TIME;
             UI.showToast('\uD83D\uDCA5 \u0423\u0431\u0438\u0439\u0446\u0430 \u043E\u0433\u043B\u0443\u0448\u0451\u043D!', 1500);
@@ -244,7 +245,7 @@ function checkPalletStun(pallet) {
         player.aiPlayers.forEach(function(ai) {
             if (ai.isAIKiller && ai.sprite && !killerHit) {
                 var d = Math.sqrt(Math.pow(ai.sprite.x - pallet.bx, 2) + Math.pow(ai.sprite.y - pallet.by, 2));
-                if (d < 60) {
+                if (d < stunRadius) {
                     killerHit = true;
                     killerStun = CONFIG.STUN_TIME;
                     ai.slowdownTimer = CONFIG.STUN_TIME;
@@ -259,7 +260,7 @@ function checkPalletStun(pallet) {
         Object.values(remotePlayers).forEach(function(rp) {
             if (rp.role === 'killer' && rp.sprite && !killerHit) {
                 var d = Math.sqrt(Math.pow(rp.sprite.x - pallet.bx, 2) + Math.pow(rp.sprite.y - pallet.by, 2));
-                if (d < 60) {
+                if (d < stunRadius) {
                     killerHit = true;
                     if (isMultiplayer && roomCode && playerId) stunRemoteKiller(roomCode);
                     UI.showToast('\uD83D\uDCA5 \u0423\u0431\u0438\u0439\u0446\u0430 \u043E\u0433\u043B\u0443\u0448\u0451\u043D!', 1500);

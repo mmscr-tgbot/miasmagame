@@ -79,8 +79,75 @@ function initMultiplayerSync() {
         });
 
         console.log('[MP] Multiplayer sync initialized for room:', roomCode);
+        
+        startPingMeasurement();
     } catch (e) {
         console.error('[MP] ERROR in initMultiplayerSync:', e);
+    }
+}
+
+// ═══════ PING MEASUREMENT ═══════
+function startPingMeasurement() {
+    if (!isMultiplayer || !roomCode) return;
+    
+    var pingIndicator = document.getElementById('ping-indicator');
+    if (pingIndicator) {
+        pingIndicator.style.display = 'block';
+    }
+    
+    measurePing();
+}
+
+function measurePing() {
+    if (!isMultiplayer || !roomCode || !db) return;
+    
+    var pingId = 'ping_' + Date.now();
+    pingTimestamps[pingId] = Date.now();
+    
+    db.ref('rooms/' + roomCode + '/ping/' + playerId).set({
+        id: pingId,
+        time: Date.now()
+    }).then(function() {
+        setTimeout(function() {
+            checkPingResponse(pingId);
+        }, 1000);
+    }).catch(function() {});
+}
+
+function checkPingResponse(pingId) {
+    var sentTime = pingTimestamps[pingId];
+    if (sentTime) {
+        localPing = Date.now() - sentTime;
+        delete pingTimestamps[pingId];
+        updatePingDisplay();
+    }
+    
+    setTimeout(function() {
+        measurePing();
+    }, 2000);
+}
+
+function updatePingDisplay() {
+    var pingIcon = document.getElementById('ping-icon');
+    var pingValue = document.getElementById('ping-value');
+    
+    if (!pingIcon || !pingValue) return;
+    
+    var ping = localPing;
+    pingValue.textContent = ping + 'ms';
+    
+    if (ping < 100) {
+        pingIcon.textContent = '🟢';
+        pingValue.style.color = '#44ff44';
+    } else if (ping < 200) {
+        pingIcon.textContent = '🟡';
+        pingValue.style.color = '#ffcc00';
+    } else if (ping < 400) {
+        pingIcon.textContent = '🟠';
+        pingValue.style.color = '#ff8800';
+    } else {
+        pingIcon.textContent = '🔴';
+        pingValue.style.color = '#ff4444';
     }
 }
 

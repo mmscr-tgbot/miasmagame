@@ -40,6 +40,21 @@ function getDefaultCharacterConfig() {
                     idle: 'src/models/survivors/Jack/Jack_Idle.glb',
                     run: 'src/models/survivors/Jack/Jack_Run.glb'
                 }
+            },
+            vika: {
+                name: 'Vika',
+                displayName: 'Vika',
+                isKiller: false,
+                scale: 0.55,
+                canvasWidth: 75,
+                canvasHeight: 115,
+                speedWalk: 0,
+                speedRun: 22,
+                enabled: true,
+                animations: {
+                    idle: 'src/models/survivors/Vika/Vika_Idle.glb',
+                    run: 'src/models/survivors/Vika/Vika_Run.glb'
+                }
             }
         }
     };
@@ -62,7 +77,6 @@ function getCharacterConfig() {
 
 function loadCharacterConfigFromFirestore(callback) {
     if (typeof firebase === 'undefined' || !firebase.firestore) {
-        console.log('[3D] Firestore not available, using local config');
         CHARACTER_CONFIG = getCharacterConfig();
         if (callback) callback();
         return;
@@ -75,7 +89,6 @@ function loadCharacterConfigFromFirestore(callback) {
             if (fbConfig.killer || fbConfig.survivor) {
                 CHARACTER_CONFIG = fbConfig;
                 localStorage.setItem('dbd_models', JSON.stringify(CHARACTER_CONFIG));
-                console.log('[3D] Character config loaded from Firestore');
             } else {
                 CHARACTER_CONFIG = getCharacterConfig();
             }
@@ -85,7 +98,6 @@ function loadCharacterConfigFromFirestore(callback) {
         configLoaded = true;
         if (callback) callback();
     }).catch(function(err) {
-        console.error('[3D] Error loading from Firestore:', err);
         CHARACTER_CONFIG = getCharacterConfig();
         configLoaded = true;
         if (callback) callback();
@@ -106,6 +118,86 @@ function setSelectedCharacter(role, key) {
     } else {
         selectedSurvivorKey = key;
     }
+    ensureCharacterLoaded(role, key);
+}
+
+function ensureCharacterLoaded(role, key) {
+    var characterType = role === 'killer' ? 'killer' : 'survivor';
+    var canvasKey = characterType + '_' + key;
+    
+    if (characters3D[canvasKey] && characters3D[canvasKey].loaded) {
+        return;
+    }
+    
+    var config = CHARACTER_CONFIG[characterType] && CHARACTER_CONFIG[characterType][key];
+    
+    if (!config) {
+        var savedConfig = localStorage.getItem('dbd_models');
+        if (savedConfig) {
+            try {
+                var localConfig = JSON.parse(savedConfig);
+                if (localConfig[characterType] && localConfig[characterType][key]) {
+                    config = localConfig[characterType][key];
+                    if (!CHARACTER_CONFIG[characterType]) CHARACTER_CONFIG[characterType] = {};
+                    CHARACTER_CONFIG[characterType][key] = config;
+                }
+            } catch(e) {}
+        }
+    }
+    
+    // Fall back to first available character if config not found
+    if (!config) {
+        var keys = Object.keys(CHARACTER_CONFIG[characterType] || {});
+        if (keys.length > 0) {
+            key = keys[0];
+            canvasKey = characterType + '_' + key;
+            config = CHARACTER_CONFIG[characterType][key];
+            // Update selected key to match fallback
+            if (role === 'killer') {
+                selectedKillerKey = key;
+            } else {
+                selectedSurvivorKey = key;
+            }
+        }
+        
+        // If still no config and this is survivor, use default survivor config
+        if (!config && characterType === 'survivor') {
+            config = {
+                name: key || 'survivor',
+                displayName: key || 'Survivor',
+                isKiller: false,
+                scale: 0.6,
+                canvasWidth: 80,
+                canvasHeight: 120,
+                speedWalk: 0,
+                speedRun: 20,
+                enabled: true,
+                animations: {
+                    idle: 'src/models/survivors/' + key + '/' + key + '_Idle.glb',
+                    run: 'src/models/survivors/' + key + '/' + key + '_Run.glb',
+                    crawl: 'src/models/survivors/' + key + '/' + key + '_Crawl.glb'
+                }
+            };
+        }
+    }
+    
+    if (!config) {
+        return;
+    }
+    
+    if (!threeCanvases[canvasKey]) {
+        var canvasData = createThreeCanvas(canvasKey, config.canvasWidth || 80, config.canvasHeight || 120);
+        threeCanvases[canvasKey] = canvasData.canvas;
+        threeRenderers[canvasKey] = canvasData.renderer;
+        threeScenes[canvasKey] = canvasData.scene;
+        threeCameras[canvasKey] = canvasData.camera;
+    }
+    
+    if (!threeCanvases[canvasKey].parentNode) {
+        document.body.appendChild(threeCanvases[canvasKey]);
+    }
+    
+    loadCharacter3D(characterType, key, config, threeScenes[canvasKey], function() {});
 }
 
 function getSelectedCharacterKey(type) {
@@ -148,8 +240,9 @@ function createThreeCanvas(id, width, height) {
     var canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
+    canvas.id = 'canvas_' + id;
     document.body.appendChild(canvas);
-    canvas.setAttribute('style', 'position:fixed!important;top:0!important;left:0!important;z-index:20!important;pointer-events:none!important;display:none!important;width:' + width + 'px!important;height:' + height + 'px!important;');
+    canvas.style.cssText = 'position:fixed;top:0;left:0;z-index:20;pointer-events:none;display:none;width:' + width + 'px;height:' + height + 'px;';
     
     var renderer = new THREE.WebGLRenderer({
         canvas: canvas,
@@ -179,14 +272,19 @@ function createThreeCanvas(id, width, height) {
 }
 
 // ═══════ LOAD CHARACTER MODEL ═══════
-function loadCharacterModel(character, animKey, modelPath, callback) {
+function loadCharacterModel(character, charType, characterConfig, animKey, modelPath, callback) {
     if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
-        console.warn('[3D] GLTFLoader not available');
+        return;
+    }
+    
+    // Check if model already loaded (cache)
+    if (isModelLoaded(modelPath)) {
+        console.log('[3D] Model already loaded:', modelPath);
+        if (callback) callback();
         return;
     }
 
     var loader = new THREE.GLTFLoader();
-    console.log('[3D] Loading', character.config.name, animKey, 'from:', modelPath);
 
     loader.load(
         modelPath,
@@ -212,18 +310,39 @@ function loadCharacterModel(character, animKey, modelPath, callback) {
                 }
             });
 
-            var box = new THREE.Box3().setFromObject(model);
-            var targetScale = character.config.scale;
+            // Store model height for reference
+            if (!character.modelHeights) character.modelHeights = {};
             
-            model.scale.set(targetScale, targetScale, targetScale);
+            // Calculate scale and center model properly
+            var box = new THREE.Box3().setFromObject(model);
+            var size = box.getSize(new THREE.Vector3());
             var center = box.getCenter(new THREE.Vector3());
-            model.position.set(-center.x * targetScale, -center.y * targetScale, -center.z * targetScale);
+            
+            // Target scale based on character type
+            var targetHeight = charType === 'survivor' ? 1.2 : 1.5;
+            var fixedScale = characterConfig.scale || (size.y > 0 ? targetHeight / size.y : (charType === 'survivor' ? 0.6 : 1.0));
+            
+            // Apply scale first
+            model.scale.set(fixedScale, fixedScale, fixedScale);
+            
+            // Recalculate after scale
+            var scaledBox = new THREE.Box3().setFromObject(model);
+            var scaledSize = scaledBox.getSize(new THREE.Vector3());
+            var scaledCenter = scaledBox.getCenter(new THREE.Vector3());
+            
+            // Center model - move to origin and lift so feet are at y=0
+            model.position.x = -scaledCenter.x;
+            model.position.y = -scaledCenter.y + scaledSize.y / 2;
+            model.position.z = -scaledCenter.z;
+            
             model.visible = false;
+            
+            // Store model info
+            character.modelHeight = size.y;
+            character.targetScale = fixedScale;
             
             // Create mixer
             if (gltf.animations && gltf.animations.length > 0) {
-                console.log('[3D] Found', gltf.animations.length, 'animations');
-                
                 var mixer = new THREE.AnimationMixer(model);
                 character.mixers[animKey] = mixer;
                 
@@ -234,22 +353,17 @@ function loadCharacterModel(character, animKey, modelPath, callback) {
                     action.play();
                     allAnimationActions.push(action);
                 });
-            } else {
-                console.warn('[3D] No animations found');
             }
 
             character.models[animKey] = model;
-            console.log('[3D] Model loaded:', animKey);
+            
+            // Mark model as loaded
+            markModelLoaded(modelPath);
             
             if (callback) callback();
         },
-        function (progress) {
-            var percent = Math.round(progress.loaded / progress.total * 100);
-            console.log('[3D] Loading:', percent + '%');
-        },
-        function (error) {
-            console.error('[3D] Load error:', error);
-        }
+        function (progress) {},
+        function (error) {}
     );
 }
 
@@ -266,6 +380,9 @@ function loadCharacter3D(charType, charKey, characterConfig, scene, callback) {
     function checkAllLoaded() {
         loadedCount++;
         if (loadedCount >= animKeys.length) {
+            // Models already have correct scale/position from loadCharacterModel
+            character.targetScale = character.targetScale || 0.6;
+            
             // Add models to scene
             for (var key in character.models) {
                 scene.add(character.models[key]);
@@ -273,36 +390,49 @@ function loadCharacter3D(charType, charKey, characterConfig, scene, callback) {
                 // For survivors, also add clones to all survivor canvases
                 if (charType === 'survivor') {
                     if (!character.slotModels) character.slotModels = {};
+                    
+                    // Store original clips for cloning
+                    var originalClips = {};
+                    for (var mixKey in character.mixers) {
+                        if (character.mixers[mixKey]._actions && character.mixers[mixKey]._actions.length > 0) {
+                            originalClips[mixKey] = character.mixers[mixKey]._actions.map(function(a) { return a._clip; }).filter(function(c) { return c; });
+                        }
+                    }
+                    
                     for (var i = 0; i < 4; i++) {
                         var slotScene = threeScenes['survivor_' + i];
                         if (slotScene) {
-                            var clone = character.models[key].clone(true); // deep clone
-                            clone.visible = false;
-                            slotScene.add(clone);
-                            
-                            if (!character.slotModels['survivor_' + i]) character.slotModels['survivor_' + i] = {};
-                            character.slotModels['survivor_' + i][key] = clone;
-                            
-                            // Create mixer for cloned model
-                            var cloneMixer = new THREE.AnimationMixer(clone);
-                            cloneMixer.addEventListener('finished', function() {});
-                            
-                            // Add all animations
-                            if (character.mixers[key]) {
-                                character.mixers[key]._actions.forEach(function(action) {
-                                    if (action._clip) {
-                                        var newAction = cloneMixer.clipAction(action._clip);
-                                        newAction.setLoop(action.loop, action._repeatCount);
-                                        newAction.timeScale = action.timeScale;
-                                        newAction.enabled = action.enabled;
-                                        newAction.play();
-                                    }
-                                });
+                            // Clone each model
+                            for (var modelKey in character.models) {
+                                var clone = character.models[modelKey].clone(true);
+                                clone.visible = false;
+                                slotScene.add(clone);
+                                
+                                if (!character.slotModels['survivor_' + i]) character.slotModels['survivor_' + i] = {};
+                                character.slotModels['survivor_' + i][modelKey] = clone;
                             }
                             
+                            // Create mixers for each animation state separately
                             if (!character.slotMixers) character.slotMixers = {};
-                            if (!character.slotMixers['survivor_' + i]) character.slotMixers['survivor_' + i] = {};
-                            character.slotMixers['survivor_' + i][key] = cloneMixer;
+                            character.slotMixers['survivor_' + i] = {};
+                            
+                            // Create a mixer for each state (idle, run) - use only the matching clip
+                            var stateMapping = { 'idle': 'idle', 'run': 'run', 'crawl': 'crawl' };
+                            for (var stateKey in stateMapping) {
+                                var clipKey = stateMapping[stateKey];
+                                if (originalClips[clipKey] && originalClips[clipKey].length > 0) {
+                                    var cloneMixer = new THREE.AnimationMixer(slotScene.children[slotScene.children.length - 1]);
+                                    
+                                    originalClips[clipKey].forEach(function(clip) {
+                                        var action = cloneMixer.clipAction(clip);
+                                        action.setLoop(THREE.LoopRepeat, Infinity);
+                                        action.timeScale = 1.0;
+                                        action.play();
+                                    });
+                                    
+                                    character.slotMixers['survivor_' + i][stateKey] = cloneMixer;
+                                }
+                            }
                         }
                     }
                 }
@@ -316,7 +446,7 @@ function loadCharacter3D(charType, charKey, characterConfig, scene, callback) {
     animKeys.forEach(function(animKey) {
         var animPath = characterConfig.animations[animKey];
         if (animPath) {
-            loadCharacterModel(character, animKey, animPath, checkAllLoaded);
+            loadCharacterModel(character, charType, characterConfig, animKey, animPath, checkAllLoaded);
         } else {
             loadedCount++;
         }
@@ -325,14 +455,10 @@ function loadCharacter3D(charType, charKey, characterConfig, scene, callback) {
 
 // ═══════ INITIALIZE 3D SYSTEM ═══════
 function initThreeJS() {
-    console.log('[3D] initThreeJS called');
-    
     if (threeLoaded || threeError) {
-        console.log('[3D] Already loaded or error');
         return;
     }
     if (typeof THREE === 'undefined') {
-        console.warn('[3D] Three.js not loaded');
         threeError = true;
         return;
     }
@@ -346,12 +472,9 @@ function initThreeJS() {
 function continueInit() {
     try {
         if (threeCanvases && Object.keys(threeCanvases).length > 0) {
-            console.log('[3D] Canvases already exist');
             threeLoaded = true;
             return;
         }
-        
-        console.log('[3D] Creating canvases with config:', Object.keys(CHARACTER_CONFIG));
         
         // Create canvases for each character
         for (var charType in CHARACTER_CONFIG) {
@@ -377,19 +500,21 @@ function continueInit() {
             threeCameras['survivor_' + i] = canvasData.camera;
         }
         
-        console.log('[3D] Canvases created:', Object.keys(threeCanvases));
+        // Load all characters - count individual characters, not types
+        var totalCharactersToLoad = 0;
+        for (var ct in CHARACTER_CONFIG) {
+            for (var ck in CHARACTER_CONFIG[ct]) {
+                totalCharactersToLoad++;
+            }
+        }
         
-        // Load all characters
-        var charactersToLoad = Object.keys(CHARACTER_CONFIG);
         var loadedCount = 0;
         
         function onCharacterLoaded() {
             loadedCount++;
-            if (loadedCount >= charactersToLoad.length) {
+            if (loadedCount >= totalCharactersToLoad) {
                 threeLoaded = true;
-                console.log('[3D] All characters loaded');
                 
-                // Set loaded flags - check for any killer/survivor character
                 for (var key in characters3D) {
                     if (key.indexOf('killer_') === 0) killerLoaded = true;
                     if (key.indexOf('survivor_') === 0) survivorLoaded = true;
@@ -397,7 +522,7 @@ function continueInit() {
             }
         }
         
-        charactersToLoad.forEach(function(charType) {
+        for (var charType in CHARACTER_CONFIG) {
             for (var charKey in CHARACTER_CONFIG[charType]) {
                 var config = CHARACTER_CONFIG[charType][charKey];
                 if (!config) continue;
@@ -406,7 +531,7 @@ function continueInit() {
                 if (!scene) scene = threeScenes[charType];
                 loadCharacter3D(charType, charKey, config, scene, onCharacterLoaded);
             }
-        });
+        }
         
     } catch (e) {
         console.error('[3D] Init error:', e);
@@ -415,31 +540,35 @@ function continueInit() {
 }
 
 // ═══════ RENDER SURVIVOR ON SLOT ═══════
-function renderSurvivorOnSlot(aiSprite, slot, dt) {
-    if (!threeLoaded) return;
-    if (!window.scene || !window.scene.cameras) return;
-    
-    // Debug: log every 2 seconds
-    if (!renderSurvivorOnSlot._debugTimer) renderSurvivorOnSlot._debugTimer = 0;
-    renderSurvivorOnSlot._debugTimer += dt / 1000;
-    if (renderSurvivorOnSlot._debugTimer > 2) {
-        renderSurvivorOnSlot._debugTimer = 0;
-        var survivorKey = getFirstCharacterKey('survivor');
-        var charKey = 'survivor_' + survivorKey;
-        var character = characters3D[charKey];
-        var modelsKeys = character && character.slotModels ? Object.keys(character.slotModels) : [];
-        var mixersKeys = character && character.slotMixers ? Object.keys(character.slotMixers) : [];
-        console.log('[3D Slot]', slot, 'models:', modelsKeys, 'mixers:', mixersKeys);
-    }
-    
+function renderSurvivorOnSlot(aiSprite, slot, dt, charKeyOverride) {
     var cam = window.scene.cameras.main;
     if (!cam) return;
     if (!aiSprite) return;
     
-    // Find first loaded survivor character
-    var survivorKey = getFirstCharacterKey('survivor');
-    var charKey = 'survivor_' + survivorKey;
+    // Check if sprite coordinates are valid
+    var worldX = aiSprite.x;
+    var worldY = aiSprite.y;
+    if (isNaN(worldX) || isNaN(worldY)) return;
+    
+    // Check if camera scroll values are valid
+    var scrollX = cam.scrollX || 0;
+    var scrollY = cam.scrollY || 0;
+    
+    // Use override charKey or find first loaded survivor character
+    var charKey = charKeyOverride || ('survivor_' + getFirstCharacterKey('survivor'));
     var character = characters3D[charKey];
+    
+    // Fallback: if not found, search for any loaded survivor character
+    if (!character || !character.loaded) {
+        for (var ck in characters3D) {
+            var c = characters3D[ck];
+            if (c && c.loaded && c.charType === 'survivor') {
+                character = c;
+                break;
+            }
+        }
+    }
+    
     if (!character || !character.loaded) return;
     
     var canvas = threeCanvases[slot];
@@ -449,27 +578,36 @@ function renderSurvivorOnSlot(aiSprite, slot, dt) {
     
     if (!canvas || !scene || !camera || !renderer) return;
     
-    var screenX = aiSprite.x - cam.scrollX;
-    var screenY = aiSprite.y - cam.scrollY;
+    var zoom = cam.zoom || 1;
+    var screenX = (worldX - scrollX) * zoom;
+    var screenY = (worldY - scrollY) * zoom;
     
-    if (screenX < -100 || screenX > window.innerWidth + 100 || screenY < -100 || screenY > window.innerHeight + 100) {
+    if (screenX < -200 || screenX > window.innerWidth + 200 || screenY < -200 || screenY > window.innerHeight + 200) {
         canvas.style.display = 'none';
         return;
     }
     
     canvas.style.display = 'block';
     canvas.style.position = 'fixed';
-    canvas.style.left = (screenX - 40) + 'px';
-    canvas.style.top = (screenY - 60) + 'px';
+    canvas.style.left = (screenX - canvas.width/2) + 'px';
+    canvas.style.top = (screenY - canvas.height/2) + 'px';
     canvas.style.zIndex = '1000';
     canvas.style.pointerEvents = 'none';
     
     // Get slot-specific models
     var slotModels = character.slotModels && character.slotModels[slot] ? character.slotModels[slot] : null;
+    var slotMixers = character.slotMixers && character.slotMixers[slot] ? character.slotMixers[slot] : null;
+    
+    // Debug output (limited to avoid spam)
+    if (window._3dDebugCount === undefined) window._3dDebugCount = 0;
+    if (window._3dDebugCount < 3) {
+        console.log('[3D] CharKey:', charKey, 'Slot:', slot, 'HasSlotModels:', !!slotModels, 'HasSlotMixers:', !!slotMixers, 'Loaded:', character.loaded);
+        window._3dDebugCount++;
+    }
     
     if (!slotModels) return;
     
-    var speed = 0;
+var speed = 0;
     if (aiSprite.body) {
         speed = Math.sqrt(
             aiSprite.body.velocity.x * aiSprite.body.velocity.x + 
@@ -483,7 +621,7 @@ function renderSurvivorOnSlot(aiSprite, slot, dt) {
     var modelRun = slotModels['run'] || null;
     
     if (!modelIdle || !modelRun) return;
-    
+
     if (modelIdle) modelIdle.visible = false;
     if (modelRun) modelRun.visible = false;
     
@@ -498,14 +636,24 @@ function renderSurvivorOnSlot(aiSprite, slot, dt) {
     
     canvas.style.display = 'block';
     
-    // Use individual slot mixer if available, otherwise fall back to shared
-    var slotMixer = character.slotMixers && character.slotMixers[slot] ? character.slotMixers[slot][state] : null;
-    if (slotMixer) {
-        slotMixer.update(dt / 1000);
-    } else if (character.mixers[state]) {
-        character.mixers[state].update(dt / 1000);
+    var slotMixers = character.slotMixers && character.slotMixers[slot];
+    var mixer = null;
+    if (slotMixers && slotMixers[state]) {
+        mixer = slotMixers[state];
+    } else if (character.mixers && character.mixers[state]) {
+        mixer = character.mixers[state];
+    }
+    
+    if (mixer) {
+        mixer.update(dt / 1000);
     } else {
-        console.warn('[3D] No mixer for slot:', slot, 'state:', state);
+        // Fallback: use the first available mixer if no specific state mixer found
+        if (slotMixers) {
+            var firstKey = Object.keys(slotMixers)[0];
+            if (firstKey && slotMixers[firstKey]) {
+                slotMixers[firstKey].update(dt / 1000);
+            }
+        }
     }
     
     renderer.render(scene, camera);
@@ -520,31 +668,60 @@ function updateCharacter3DSprite(charSprite, characterType, dt) {
     if (!cam) return;
     if (!charSprite) return;
     
+    // Check if sprite coordinates are valid
+    var worldX = charSprite.x;
+    var worldY = charSprite.y;
+    if (isNaN(worldX) || isNaN(worldY)) {
+        // Sprite might not be fully initialized yet
+        return;
+    }
+    
+    // Check if camera scroll values are valid
+    var scrollX = cam.scrollX;
+    var scrollY = cam.scrollY;
+    if (isNaN(scrollX) || isNaN(scrollY)) {
+        scrollX = 0;
+        scrollY = 0;
+    }
+    
     var character = characters3D[characterType];
-    if (!character || !character.loaded) return;
+    if (!character || !character.loaded) {
+        return;
+    }
     
     var config = character.config;
-    var canvas = threeCanvases[characterType] || threeCanvases['survivor'];
-    var scene = threeScenes[characterType] || threeScenes['survivor'];
-    var camera = threeCameras[characterType] || threeCameras['survivor'];
-    var renderer = threeRenderers[characterType] || threeRenderers['survivor'];
+    var isSurvivor = characterType.indexOf('survivor') === 0;
+    var canvasWidth = config.canvasWidth || (isSurvivor ? 80 : 110);
+    var canvasHeight = config.canvasHeight || (isSurvivor ? 120 : 155);
     
-    if (!canvas || !scene || !camera || !renderer) return;
+    var canvas = threeCanvases[characterType];
+    var scene = threeScenes[characterType];
+    var camera = threeCameras[characterType];
+    var renderer = threeRenderers[characterType];
     
-    var screenX = charSprite.x - cam.scrollX;
-    var screenY = charSprite.y - cam.scrollY;
+    if (!canvas || !scene || !renderer) {
+        return;
+    }
     
-    if (screenX < -100 || screenX > window.innerWidth + 100 || screenY < -100 || screenY > window.innerHeight + 100) {
+    if (!canvas.parentNode) {
+        document.body.appendChild(canvas);
+    }
+
+    var zoom = cam.zoom || 1;
+    var screenX = (worldX - scrollX) * zoom;
+    var screenY = (worldY - scrollY) * zoom;
+    
+    if (screenX < -200 || screenX > window.innerWidth + 200 || screenY < -200 || screenY > window.innerHeight + 200) {
         canvas.style.display = 'none';
         return;
     }
     
     canvas.style.display = 'block';
     canvas.style.position = 'fixed';
-    canvas.style.left = (screenX - config.canvasWidth / 2) + 'px';
-    canvas.style.top = (screenY - config.canvasHeight / 2) + 'px';
     canvas.style.zIndex = '1000';
     canvas.style.pointerEvents = 'none';
+    canvas.style.left = (screenX - canvasWidth / 2) + 'px';
+    canvas.style.top = (screenY - canvasHeight / 2) + 'px';
     
     // Calculate speed
     var speed = 0;
@@ -560,12 +737,26 @@ function updateCharacter3DSprite(charSprite, characterType, dt) {
     var mixer = null;
     var currentModel = null;
     
-    if (config.isKiller) {
-        if (speed > config.speedRun) {
+    if (isSurvivor) {
+        if (speed > (config.speedRun || 20)) {
             state = 'run';
             mixer = character.mixers['run'];
             currentModel = character.models['run'];
-        } else if (speed > config.speedWalk) {
+        } else if (player && player.state === 'dying' && character.mixers['crawl']) {
+            state = 'crawl';
+            mixer = character.mixers['crawl'];
+            currentModel = character.models['crawl'];
+        } else {
+            state = 'idle';
+            mixer = character.mixers['idle'];
+            currentModel = character.models['idle'];
+        }
+    } else {
+        if (speed > (config.speedRun || 160)) {
+            state = 'run';
+            mixer = character.mixers['run'];
+            currentModel = character.models['run'];
+        } else if (speed > (config.speedWalk || 20)) {
             state = 'walk';
             mixer = character.mixers['walk'];
             currentModel = character.models['walk'];
@@ -574,16 +765,47 @@ function updateCharacter3DSprite(charSprite, characterType, dt) {
             mixer = character.mixers['idle'];
             currentModel = character.models['idle'];
         }
-    } else {
-        if (speed > config.speedRun) {
-            state = 'run';
-            mixer = character.mixers['run'];
-            currentModel = character.models['run'];
-        } else {
-            state = 'idle';
-            mixer = character.mixers['idle'];
-            currentModel = character.models['idle'];
+    }
+    
+    // Debug info
+    var modelScale = currentModel ? currentModel.scale.x.toFixed(3) : 'N/A';
+    var threeL = threeLoaded ? 'YES' : 'NO';
+    var playerState = player ? player.state : 'N/A';
+    var loaded = character && character.loaded ? 'YES' : 'NO';
+    var debugInfo = characterType + ' | loaded:' + loaded + ' | scale:' + modelScale + ' | state:' + playerState;
+    
+    var debugEl = document.getElementById('model-debug');
+    if (!debugEl) {
+        debugEl = document.createElement('div');
+        debugEl.id = 'model-debug';
+        debugEl.style.cssText = 'position:fixed;top:10px;right:10px;background:rgba(0,0,0,0.9);color:#0f0;font-size:12px;padding:10px;border-radius:5px;z-index:99999;font-family:monospace;max-width:400px;border:2px solid #0f0;';
+        document.body.appendChild(debugEl);
+    }
+    debugEl.textContent = debugInfo;
+    
+    // Crossfade animation transition
+    var currentAction = character.currentAction;
+    var targetAction = null;
+    if (mixer && state) {
+        var actions = mixer._actions || [];
+        for (var i = 0; i < actions.length; i++) {
+            if (actions[i]._clip && actions[i]._clip.name.toLowerCase().includes(state)) {
+                targetAction = actions[i];
+                break;
+            }
         }
+    }
+    
+    // Smooth crossfade
+    if (targetAction && targetAction !== currentAction) {
+        var crossfadeDuration = 0.15;
+        if (currentAction) {
+            currentAction.fadeOut(crossfadeDuration);
+        }
+        if (targetAction) {
+            targetAction.reset().fadeIn(crossfadeDuration).play();
+        }
+        character.currentAction = targetAction;
     }
     
     // Hide all models
@@ -616,20 +838,36 @@ function updateCharacter3DSprite(charSprite, characterType, dt) {
 // ═══════ LEGACY FUNCTIONS FOR COMPATIBILITY ═══════
 
 function getFirstCharacterKey(type) {
-    var keys = Object.keys(CHARACTER_CONFIG[type] || {});
-    return keys[0] || null;
+    // Try CHARACTER_CONFIG first, but also check loaded characters
+    if (CHARACTER_CONFIG && CHARACTER_CONFIG[type]) {
+        var keys = Object.keys(CHARACTER_CONFIG[type]);
+        if (keys.length > 0) return keys[0];
+    }
+    
+    // Fallback: find first loaded character of this type
+    for (var key in characters3D) {
+        var c = characters3D[key];
+        if (c && c.charType === type) {
+            return c.charKey;
+        }
+    }
+    
+    return null;
 }
 
 function updateSurvivor3DSprite(dt) {
     if (!threeLoaded) return;
 
-    // Hide sprite
+    var survivorKey = getSelectedCharacterKey('survivor');
+    var charKey = 'survivor_' + survivorKey;
+    var survivor3DLoaded = survivorKey && characters3D[charKey] && characters3D[charKey].loaded;
+
+    // Always hide 2D sprites - only 3D allowed
     if (player && player.sprite) {
         player.sprite.setVisible(false);
         if (player.glowFx) player.glowFx.setVisible(false);
     }
     
-    // Hide AI survivors sprites
     if (player && player.aiPlayers) {
         player.aiPlayers.forEach(function(ai) {
             if (ai && ai.sprite && !ai.isAIKiller) {
@@ -639,11 +877,11 @@ function updateSurvivor3DSprite(dt) {
         });
     }
 
-    // Update survivor (player)
+    // Update survivor (player) 3D
     if (!isKiller && player && player.sprite && player.state !== 'dead' && player.state !== 'hooked' && player.state !== 'carried') {
-        var survivorKey = getSelectedCharacterKey('survivor');
-        if (survivorKey) {
-            updateCharacter3DSprite(player.sprite, 'survivor_' + survivorKey, dt);
+        if (survivor3DLoaded) {
+            var playerCharKey = 'survivor_' + (player.survivorKey || getFirstCharacterKey('survivor'));
+            updateCharacter3DSprite(player.sprite, playerCharKey, dt);
         }
     }
 
@@ -653,12 +891,14 @@ function updateSurvivor3DSprite(dt) {
             var survivorIndex = 0;
             player.aiPlayers.forEach(function(ai) {
                 if (ai && ai.sprite && !ai.isAIKiller && ai.state !== 'dead' && ai.state !== 'hooked' && ai.state !== 'carried') {
+                    // Hide 2D sprite
                     if (ai.sprite.visible) ai.sprite.setVisible(false);
                     if (ai.glowFx) ai.glowFx.setVisible(false);
                     
                     var slot = 'survivor_' + survivorIndex;
-                    if (threeCanvases[slot]) {
-                        renderSurvivorOnSlot(ai.sprite, slot, dt);
+                    var charKey = 'survivor_' + (ai.survivorKey || 'jack');
+                    if (threeCanvases[slot] && threeScenes[slot]) {
+                        renderSurvivorOnSlot(ai.sprite, slot, dt, charKey);
                     }
                     survivorIndex++;
                 }
@@ -676,12 +916,17 @@ function updateSurvivor3DSprite(dt) {
             }
         }
         
-        if (aiKiller && aiKiller.sprite) {
+        var killerKey = getSelectedCharacterKey('killer');
+        var killerCharKey = 'killer_' + killerKey;
+        var killer3DLoaded = killerKey && characters3D[killerCharKey] && characters3D[killerCharKey].loaded;
+        
+        if (aiKiller && aiKiller.sprite && !isNaN(aiKiller.sprite.x)) {
+            // Always hide 2D sprites - only 3D allowed
             aiKiller.sprite.setVisible(false);
             if (aiKiller.glowFx) aiKiller.glowFx.setVisible(false);
-            var killerKey = getSelectedCharacterKey('killer');
-            if (killerKey) {
-                updateCharacter3DSprite(aiKiller.sprite, 'killer_' + killerKey, dt);
+            
+            if (killer3DLoaded) {
+                updateCharacter3DSprite(aiKiller.sprite, killerCharKey, dt);
             }
         }
     }
@@ -714,8 +959,9 @@ function updateKiller3DSprite(dt) {
                     if (ai.glowFx) ai.glowFx.setVisible(false);
                     
                     var slot = 'survivor_' + survivorIndex;
+                    var charKey = 'survivor_' + (ai.survivorKey || 'jack');
                     if (threeCanvases[slot]) {
-                        renderSurvivorOnSlot(ai.sprite, slot, dt);
+                        renderSurvivorOnSlot(ai.sprite, slot, dt, charKey);
                     }
                     survivorIndex++;
                 }
@@ -794,6 +1040,99 @@ function updateAllAnimationSpeeds() {
     });
 }
 
+// ═══════ DISPOSE 3D MODELS ═══════
+function disposeCharacter(character) {
+    if (!character) return;
+    
+    // Dispose main models
+    if (character.models) {
+        Object.values(character.models).forEach(function(model) {
+            if (!model) return;
+            model.traverse(function(obj) {
+                if (obj.isMesh) {
+                    if (obj.geometry) {
+                        obj.geometry.dispose();
+                    }
+                    if (obj.material) {
+                        if (Array.isArray(obj.material)) {
+                            obj.material.forEach(function(m) { m.dispose(); });
+                        } else {
+                            obj.material.dispose();
+                        }
+                    }
+                }
+            });
+        });
+    }
+    
+    // Dispose slot models
+    if (character.slotModels) {
+        Object.keys(character.slotModels).forEach(function(slot) {
+            var models = character.slotModels[slot];
+            if (models) {
+                Object.values(models).forEach(function(model) {
+                    if (!model) return;
+                    model.traverse(function(obj) {
+                        if (obj.isMesh) {
+                            if (obj.geometry) obj.geometry.dispose();
+                            if (obj.material) {
+                                if (Array.isArray(obj.material)) {
+                                    obj.material.forEach(function(m) { m.dispose(); });
+                                } else {
+                                    obj.material.dispose();
+                                }
+                            }
+                        }
+                    });
+                });
+            }
+        });
+        character.slotModels = {};
+    }
+    
+    // Dispose mixers
+    if (character.mixers) {
+        Object.values(character.mixers).forEach(function(mixer) {
+            if (mixer) mixer.stopAllAction();
+        });
+        character.mixers = {};
+    }
+    
+    if (character.slotMixers) {
+        Object.values(character.slotMixers).forEach(function(mixer) {
+            if (mixer) mixer.stopAllAction();
+        });
+        character.slotMixers = {};
+    }
+    
+    character.loaded = false;
+}
+
+// Clean up characters that are not being used
+function cleanupUnusedCharacters() {
+    var activeChar = isKiller ? selectedKillerKey : selectedSurvivorKey;
+    var activeType = isKiller ? 'killer' : 'survivor';
+    var activeKey = activeType + '_' + activeChar;
+    
+    Object.keys(characters3D).forEach(function(key) {
+        if (key !== activeKey && key.indexOf(activeType + '_') !== 0) {
+            disposeCharacter(characters3D[key]);
+            delete characters3D[key];
+        }
+    });
+}
+
+// Cache for loaded model paths
+var loadedModelPaths = {};
+
+function isModelLoaded(modelPath) {
+    return loadedModelPaths[modelPath] === true;
+}
+
+function markModelLoaded(modelPath) {
+    loadedModelPaths[modelPath] = true;
+}
+
 // ═══════ EXPORT TO WINDOW ═══════
 window.initThreeJS = initThreeJS;
 window.cleanupThreeJS = cleanupThreeJS;
@@ -804,3 +1143,5 @@ window.setSelectedCharacter = setSelectedCharacter;
 window.CHARACTER_CONFIG = CHARACTER_CONFIG;
 window.characters3D = characters3D;
 window.createAnimationMenu = createAnimationMenu;
+window.ensureCharacterLoaded = ensureCharacterLoaded;
+window.setSelectedCharacter = setSelectedCharacter;

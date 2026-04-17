@@ -18,6 +18,12 @@ function updateGates(dt) {
     gates.forEach(function(gate) {
         if (gate.isOpening && !gate.opened) {
             gate.progress += CONFIG.GATE_RATE * dt / 1000;
+            
+            // Sync progress in multiplayer
+            if (isMultiplayer && roomCode && playerId && p.isMe) {
+                updateGateProgress(roomCode, gate.progress);
+            }
+            
             if (gate.progress >= 100) {
                 gate.progress = 100;
                 gate.opened = true;

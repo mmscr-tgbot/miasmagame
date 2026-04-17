@@ -1,5 +1,17 @@
 // ═══════ INPUT CONTROLS ═══════
 
+// Quick phrases for multiplayer
+var QUICK_PHRASES = [
+    { text: 'Чиню генератор!', icon: '\u2699' },
+    { text: 'Помогите!', icon: '\uD83D\uDC4D' },
+    { text: 'Иду к тебе!', icon: '\u27A1' },
+    { text: 'НаHooks!', icon: '\uD83C\uDF3F' },
+    { text: 'Ворота открыты!', icon: '\uD83D\uDEAA' },
+    { text: 'Убийца рядом!', icon: '\uD83D\uDD2A' },
+    { text: 'Лечу!', icon: '\u2764' },
+    { text: 'Ты в порядке?', icon: '\u2753' }
+];
+
 function createControls() {
     var joy = document.createElement('div');
     joy.id = 'joystick-zone';
@@ -18,6 +30,23 @@ function createControls() {
     pb.textContent = '\ud83e\udeb5';
     pb.style.cssText = 'position:fixed;bottom:130px;right:35px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#8B4513,#654321);border:2px solid rgba(255,255,255,0.25);color:#fff;font-size:24px;display:none;align-items:center;justify-content:center;z-index:99999;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;box-shadow:0 0 14px rgba(139,69,19,0.5);transition:transform 0.1s;';
     document.body.appendChild(pb);
+
+    // Quick phrases button
+    var qb = document.createElement('div');
+    qb.id = 'quick-phrases-btn';
+    qb.textContent = '\uD83D\uDAC8';
+    qb.style.cssText = 'position:fixed;bottom:30px;right:120px;width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#4488ff,#2266cc);border:2px solid rgba(255,255,255,0.35);color:#fff;font-size:22px;display:none;align-items:center;justify-content:center;z-index:99999;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;box-shadow:0 0 10px rgba(68,136,255,0.5);';
+    document.body.appendChild(qb);
+
+    qb.addEventListener('click', function(e) {
+        e.preventDefault();
+        showQuickPhrasesWheel();
+    });
+    
+    qb.addEventListener('touchstart', function(e) {
+        e.preventDefault();
+        showQuickPhrasesWheel();
+    });
 
     var joyBase = document.getElementById('joy-base');
     var joyKnob = document.getElementById('joy-knob');
@@ -179,6 +208,52 @@ function removeControls() {
     if (a) a.remove();
     var p = document.getElementById('pallet-btn');
     if (p) p.remove();
+    var q = document.getElementById('quick-phrases-btn');
+    if (q) q.remove();
+    var w = document.getElementById('quick-phrases-wheel');
+    if (w) w.remove();
     document.removeEventListener('keydown', onKey);
     document.removeEventListener('keyup', onKey);
+}
+
+// ═══════ QUICK PHRASES WHEEL ═══════
+function showQuickPhrasesWheel() {
+    var existing = document.getElementById('quick-phrases-wheel');
+    if (existing) {
+        existing.remove();
+        return;
+    }
+    
+    var wheel = document.createElement('div');
+    wheel.id = 'quick-phrases-wheel';
+    wheel.style.cssText = 'position:fixed;bottom:90px;right:120px;width:220px;background:rgba(0,0,0,0.9);border-radius:12px;padding:10px;z-index:99998;display:flex;flex-direction:column;gap:5px;';
+    
+    QUICK_PHRASES.forEach(function(phrase, index) {
+        var btn = document.createElement('div');
+        btn.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:14px;cursor:pointer;';
+        btn.innerHTML = '<span style="font-size:18px">' + phrase.icon + '</span><span>' + phrase.text + '</span>';
+        btn.onclick = function() {
+            sendQuickPhrase(phrase.text);
+            wheel.remove();
+        };
+        wheel.appendChild(btn);
+    });
+    
+    document.body.appendChild(wheel);
+    
+    // Close on outside click
+    setTimeout(function() {
+        document.addEventListener('click', function closeWheel(e) {
+            if (!wheel.contains(e.target) && e.target.id !== 'quick-phrases-btn') {
+                wheel.remove();
+                document.removeEventListener('click', closeWheel);
+            }
+        });
+    }, 100);
+}
+
+function sendQuickPhrase(text) {
+    if (isMultiplayer && roomCode && playerId) {
+        sendChatMessage(roomCode, playerId, text);
+    }
 }

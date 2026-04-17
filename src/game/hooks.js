@@ -2,6 +2,16 @@
 
 function updateHooks(dt) {
     hooks.forEach(function(hook) {
+        // Skip broken hooks
+        if (hook.broken) {
+            if (hook.hookGlow) {
+                hook.hookGlow.clear();
+                hook.hookGlow.fillStyle(0x333333, 0.05);
+                hook.hookGlow.fillCircle(hook.x, hook.y, 35);
+            }
+            return;
+        }
+        
         // Animate hook glow
         if (hook.hookGlow) {
             hook.glowPhase += dt * 0.003;
@@ -21,7 +31,7 @@ function updateHooks(dt) {
         hook.hookTimer += dt / 1000;
 
         // Hook timer countdown
-        if (hook.hookTimer >= CONFIG.HOOK_TIME) {
+if (hook.hookTimer >= CONFIG.HOOK_TIME) {
             // Survivor dies on hook
             p.state = 'dead';
             p.sprite.setAlpha(0.3);
@@ -32,10 +42,16 @@ function updateHooks(dt) {
             hook.occupied = false;
             hook.hookedSurvivor = null;
             hook.hookTimer = 0;
+            hook.broken = true; // Hook becomes permanently broken
             survivorsAlive--;
-
-            UI.showToast('\uD83D\uDC80 \u0412\u044B\u0436\u0438\u0432\u0448\u0438\u0439 \u043F\u043E\u0433\u0438\u0431 \u043D\u0430 \u043A\u0440\u044E\u043A\u0435!', 2000);
-
+            
+            UI.showToast('\uD83D\uDC80 \u0412\u044B\u0436\u0438\u0432\u0448\u0438\u0439 \u043F\u043E\u0433\u0438\u0431 \u043D\u0430 \u043A\u0440\u043E\u043A\u0435!', 2000);
+            
+            // Enter observer mode if this is local player
+            if (!isKiller && p.isMe) {
+                enableObserverMode();
+            }
+            
             if (isMultiplayer && roomCode && p.playerId) {
                 setPlayerDead(roomCode, p.playerId);
             }

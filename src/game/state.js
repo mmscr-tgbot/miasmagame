@@ -12,8 +12,12 @@ var staticGroup = null;
 
 var isKiller = false;
 var isMultiplayer = false;
+var isObserver = false;
+var observerTarget = null;
 var roomCode = null;
 var playerId = null;
+var localPing = 0;
+var pingTimestamps = {};
 
 var exitOpen = false;
 var hatchOpen = false;
@@ -24,6 +28,7 @@ var killerStun = 0;
 var boostTimer = 0;
 var killerSlowdown = 0;
 var survivorSpeedBoost = 0;
+var killerSpeedBoost = 1.0; // From perks
 var killerStrikeTimer = 0;
 var killerAttackCooldown = 0;
 var isRoomHost = false;
@@ -47,6 +52,124 @@ var keys = {};
 var gameEnded = false;
 var localPlayerId = null;
 var gameTime = 0;
+
+// Multiplayer throttle
+var POS_UPDATE_INTERVAL = 100;
+var lastPosUpdate = 0;
+var lastSentPos = { x: 0, y: 0 };
+var POS_SEND_THRESHOLD = 5;
+
+// ═══════ PERKS SYSTEM ═══════
+var PERKS = {
+    survivor: {
+        sprint: {
+            name: 'Спринтер',
+            description: 'Ускорение на 20% после удара',
+            effect: { speedBoost: 1.2, duration: 2.0 }
+        },
+        repair: {
+            name: 'Инженер',
+            description: 'Видишь ауру генераторов',
+            effect: { seeGeneratorAura: true }
+        },
+        stealth: {
+            name: 'Призрак',
+            description: 'Убийца медленнее находит тебя',
+            effect: { hideFromKiller: true }
+        },
+        healer: {
+            name: 'Медбрат',
+            description: 'Лечишься на 25% быстрее',
+            effect: { healSpeed: 1.25 }
+        },
+        luck: {
+            name: 'Удачливый',
+            description: '+10% к скорости ремонта',
+            effect: { repairSpeed: 1.1 }
+        }
+    },
+    killer: {
+        speed: {
+            name: 'Адреналин',
+            description: '+15% к скорости после удара',
+            effect: { killerSpeedBoost: 1.15 }
+        },
+        tracker: {
+            name: 'Следопыт',
+            description: 'Видишь следы выживших дольше',
+            effect: { trackDuration: 1.5 }
+        },
+        intimidation: {
+            name: 'Устрашение',
+            description: 'Выжившие медленнее чинят рядом с тобой',
+            effect: { nearbySlowdown: 0.8 }
+        },
+        brute: {
+            name: 'Сила',
+            description: 'Паллеты ломаются быстрее',
+            effect: { palletBreakSpeed: 1.5 }
+        },
+        alert: {
+            name: 'Бдительность',
+            description: '+20% к радиусу обнаружения',
+            effect: { detectRadius: 1.2 }
+        }
+    }
+};
+
+// Active perks for current game
+var activePerks = {
+    survivor: [],
+    killer: []
+};
+
+// Player's unlocked perks (loaded from localStorage)
+var unlockedPerks = {
+    survivor: ['sprint'], // Default unlocked
+    killer: ['speed']
+};
+
+function loadPerksFromStorage() {
+    try {
+        var saved = localStorage.getItem('dbd_unlocked_perks');
+        if (saved) {
+            unlockedPerks = JSON.parse(saved);
+        }
+    } catch(e) {}
+}
+
+function savePerksToStorage() {
+    try {
+        localStorage.setItem('dbd_unlocked_perks', JSON.stringify(unlockedPerks));
+    } catch(e) {}
+}
+
+function getPerkEffect(perkKey, role) {
+    var perk = PERKS[role] && PERKS[role][perkKey];
+    if (!perk) return null;
+    return perk.effect || null;
+}
+
+// Apply perk effects
+function applyPerkEffects(role, effects) {
+    if (!effects) return;
+    
+    if (effects.speedBoost) {
+        if (role === 'survivor') {
+            survivorSpeedBoost = effects.speedBoost;
+            boostTimer = effects.duration || 2.0;
+        }
+    }
+    if (effects.killerSpeedBoost) {
+        killerSpeedBoost = effects.killerSpeedBoost;
+    }
+    if (effects.repairSpeed) {
+        // Applied in player.js during repair
+    }
+    if (effects.healSpeed) {
+        // Applied in player.js during healing
+    }
+}
 
 // Remote players for multiplayer
 var remotePlayers = {};
@@ -146,6 +269,55 @@ function savePlayerStats() {
     } catch (e) {
         console.warn('Failed to save player stats:', e);
     }
+}
+
+// ═══════ PROGRESSION SYSTEM ═══════
+var PERK_COSTS = {
+    survivor: {
+        sprint: 5000,
+        repair: 8000,
+        stealth: 6000,
+        healer: 7000,
+        luck: 5000
+    },
+    killer: {
+        speed: 5000,
+        tracker: 7000,
+        intimidation: 8000,
+        brute: 6000,
+        alert: 7000
+    }
+};
+
+function canAffordPerk(role, perkKey) {
+    var cost = PERK_COSTS[role] && PERK_COSTS[role][perkKey];
+    if (!cost) return false;
+    return playerStats.totalBloodpoints >= cost;
+}
+
+function unlockPerk(role, perkKey) {
+    if (unlockedPerks[role] && unlockedPerks[role].indexOf(perkKey) !== -1) {
+        return false; // Already unlocked
+    }
+    
+    if (!canAffordPerk(role, perkKey)) {
+        return false; // Not enough BP
+    }
+    
+    var cost = PERK_COSTS[role][perkKey];
+    playerStats.totalBloodpoints -= cost;
+    
+    if (!unlockedPerks[role]) unlockedPerks[role] = [];
+    unlockedPerks[role].push(perkKey);
+    
+    savePlayerStats();
+    savePerksToStorage();
+    
+    return true;
+}
+
+function getPerkCost(role, perkKey) {
+    return PERK_COSTS[role] && PERK_COSTS[role][perkKey] || 0;
 }
 
 function resetMatchStats() {

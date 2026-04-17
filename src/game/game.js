@@ -1,10 +1,62 @@
 // ═══════ GAME ENGINE - Phaser Scene ═══════
 
+// Map presets for variety
+var MAP_PRESETS = {
+    forest: {
+        name: 'Лес',
+        description: 'Густой лес с множеством деревьев',
+        treeDensity: 1.0,
+        obstacleDensity: 1.0,
+        extraTrees: 30
+    },
+    industrial: {
+        name: 'Индустриальная зона',
+        description: 'Заброшенная фабрика с бочками',
+        treeDensity: 0.3,
+        obstacleDensity: 1.5,
+        extraRocks: 20
+    },
+    cemetery: {
+        name: 'Кладбище',
+        description: 'Жуткое место с надгробиями',
+        treeDensity: 0.5,
+        obstacleDensity: 1.2,
+        extraRocks: 15,
+        darkAtmosphere: true
+    },
+    open: {
+        name: 'Открытое поле',
+        description: 'Пространство с редкими укрытиями',
+        treeDensity: 0.2,
+        obstacleDensity: 0.8,
+        extraBushes: 10
+    }
+};
+
+var currentMapPreset = null;
+
+function getRandomMapPreset() {
+    var keys = Object.keys(MAP_PRESETS);
+    var randomKey = keys[Math.floor(Math.random() * keys.length)];
+    return MAP_PRESETS[randomKey];
+}
+
 function startGame(killerMode, multiplayer, code, pid) {
     isKiller = killerMode;
     isMultiplayer = multiplayer || false;
     roomCode = code || null;
     playerId = pid || localPlayerId;
+    
+    if (isMultiplayer) {
+        var pingIndicator = document.getElementById('ping-indicator');
+        if (pingIndicator) pingIndicator.style.display = 'block';
+    }
+    
+    // Select random map preset for solo games
+    if (!multiplayer) {
+        currentMapPreset = getRandomMapPreset();
+        console.log('[Map] Selected preset:', currentMapPreset.name);
+    }
 
     exitOpen = false; hatchOpen = false; hatchClosed = false;
     survivorsAlive = isKiller ? 3 : 0;
@@ -15,7 +67,14 @@ function startGame(killerMode, multiplayer, code, pid) {
     isCarryingNearHook = false; isNearHatch = false; isEscapingHatch = false;
     hatchEscapeProgress = 0; isNearGate = false; isEscapingGate = false;
     gateEscapeProgress = 0; floatBars = []; gameEnded = false;
+    isObserver = false; observerTarget = null;
     remotePlayers = {}; gameTime = 0;
+    
+    var observerUI = document.getElementById('observer-ui');
+    if (observerUI) observerUI.style.display = 'none';
+    
+    var pingIndicator = document.getElementById('ping-indicator');
+    if (pingIndicator) pingIndicator.style.display = 'none';
 
     // Reset match stats
     resetMatchStats();
@@ -35,33 +94,61 @@ function stopGame() {
         player.carryTarget = null;
     }
     if (isMultiplayer && roomCode) leaveGameSession(roomCode, playerId);
+    
+    var pingIndicator = document.getElementById('ping-indicator');
+    if (pingIndicator) pingIndicator.style.display = 'none';
+    
     cleanupThreeJS();
 }
 
 function initGame() {
-    console.log('initGame called');
     var container = document.getElementById('game-container');
     if (!container) {
-        console.error('game-container not found!');
-        alert('Ошибка: game-container не найден');
         return;
     }
     container.innerHTML = '';
 
-    console.log('isLowEndDevice:', window.isLowEndDevice);
-    console.log('THREE available:', typeof THREE !== 'undefined');
-
     if (!window.isLowEndDevice && typeof THREE !== 'undefined') {
         try {
             initThreeJS();
-            console.log('Three.js init called');
-        } catch (e) {
-            console.error('Three.js init error:', e);
-        }
+            
+            if (typeof ensureCharacterLoaded === 'function') {
+                if (isKiller && selectedKillerKey) {
+                    ensureCharacterLoaded('killer', selectedKillerKey);
+                } else if (!isKiller && selectedSurvivorKey) {
+                    ensureCharacterLoaded('survivor', selectedSurvivorKey);
+                } else {
+                    if (window.CHARACTER_CONFIG && window.CHARACTER_CONFIG.survivor) {
+                        var firstKey = Object.keys(window.CHARACTER_CONFIG.survivor)[0];
+                        if (firstKey) {
+                            selectedSurvivorKey = firstKey;
+                            ensureCharacterLoaded('survivor', firstKey);
+                        }
+                    }
+                }
+                
+                // Load AI killer in survivor mode
+                if (!isKiller) {
+                    var killerKey = window.CHARACTER_CONFIG && window.CHARACTER_CONFIG.killer ? 
+                        Object.keys(window.CHARACTER_CONFIG.killer)[0] : null;
+                    if (killerKey && selectedKillerKey) {
+                        ensureCharacterLoaded('killer', selectedKillerKey);
+                    } else if (killerKey) {
+                        ensureCharacterLoaded('killer', killerKey);
+                    }
+                    
+                    // Load all survivors for AI use
+                    if (window.CHARACTER_CONFIG && window.CHARACTER_CONFIG.survivor) {
+                        Object.keys(window.CHARACTER_CONFIG.survivor).forEach(function(survivorKey) {
+                            ensureCharacterLoaded('survivor', survivorKey);
+                        });
+                    }
+                }
+            }
+        } catch (e) {}
     }
 
     try {
-        console.log('Creating Phaser.Game...');
         game = new Phaser.Game({
             type: Phaser.AUTO,
             parent: 'game-container',
@@ -943,6 +1030,7 @@ function preload() {
 function create() {
     console.log('[CREATE] start, isMultiplayer:', isMultiplayer, 'roomCode:', roomCode, 'playerId:', playerId);
     scene = this;
+    window.scene = this; // Make scene accessible to 3D system
     this.physics.world.setBounds(0, 0, MAP_W, MAP_H);
 
     // Tiled ground background - WebP atlas, tiles naturally
@@ -1033,7 +1121,7 @@ function create() {
     [{x:500,y:450},{x:1900,y:450},{x:500,y:1350},{x:1900,y:1350},{x:1200,y:500},{x:1200,y:1300},{x:800,y:900},{x:1600,y:900}].forEach(function(p, i) {
         var hg = this.add.graphics(); hg.fillStyle(0xff2200, 0.08); hg.fillCircle(p.x, p.y, 35); hg.setDepth(p.y);
         var sp = this.add.sprite(p.x, p.y, 'hook').setDepth(p.y + 1).setScale(1.3);
-        sp.hookId = i; sp.occupied = false; sp.hookedSurvivor = null; sp.hookTimer = 0;
+        sp.hookId = i; sp.occupied = false; sp.hookedSurvivor = null; sp.hookTimer = 0; sp.broken = false;
         sp.hookGlow = hg; sp.glowPhase = Math.random() * Math.PI * 2;
         hooks.push(sp);
     }, this);
@@ -1187,6 +1275,12 @@ function create() {
     floatBarGfx = this.add.graphics().setDepth(55000);
 
     createControls();
+    
+    // Show quick phrases button in multiplayer
+    if (isMultiplayer) {
+        var qb = document.getElementById('quick-phrases-btn');
+        if (qb) qb.style.display = 'flex';
+    }
 
     if (isMultiplayer && roomCode && playerId) initMultiplayerSync.call(this);
     console.log('[CREATE] done');
@@ -1347,17 +1441,33 @@ function spawnPlayers() {
         player = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', true);
         this.physics.add.collider(player.sprite, staticGroup);
         if (!isMultiplayer) {
-            var sTex = ['s1','s2','s4'];
+            var sTex = ['s1', 's2', 's4'];
+            var survivorKeys = Object.keys(window.CHARACTER_CONFIG && window.CHARACTER_CONFIG.survivor || {'jack': true, 'vika': true});
             sTex.forEach(function(t, i) {
-                var ai = makePlayer(this, sSpawns[i].x, sSpawns[i].y, t, false);
+                // Mix different survivor types for variety
+                var selectedTex = survivorKeys.length > 0 ? survivorKeys[i % survivorKeys.length] : t;
+                // Map to texture key (s1=jack, s2=vika, s4=jill)
+                var texMap = { 'jack': 's1', 'vika': 's2', 'jill': 's4' };
+                var finalTex = texMap[selectedTex] || t;
+                var ai = makePlayer(this, sSpawns[i].x, sSpawns[i].y, finalTex, false);
                 ai.aiDir = {x:0,y:0}; ai.aiTimer = 0;
+                ai.survivorKey = selectedTex; // Store which survivor this AI is
                 this.physics.add.collider(ai.sprite, staticGroup);
                 player.aiPlayers = player.aiPlayers || [];
                 player.aiPlayers.push(ai);
             }, this);
         } else { player.aiPlayers = []; survivorsAlive = 0; }
     } else {
-        player = makePlayer(this, sSpawns[0].x, sSpawns[0].y, 's1', true);
+        // Map player texture based on selected survivor
+        var playerTex = 's1';
+        var playerSurvivorKey = 'jack';
+        if (selectedSurvivorKey) {
+            var texMap = { 'jack': 's1', 'vika': 's2', 'jill': 's4' };
+            playerTex = texMap[selectedSurvivorKey] || 's1';
+            playerSurvivorKey = selectedSurvivorKey;
+        }
+        player = makePlayer(this, sSpawns[0].x, sSpawns[0].y, playerTex, true);
+        player.survivorKey = playerSurvivorKey;
         this.physics.add.collider(player.sprite, staticGroup);
         if (!isMultiplayer) {
             var aiK = makePlayer(this, kSpawn.x, kSpawn.y, 'killer', false);
@@ -1440,11 +1550,21 @@ function update(time, dt) {
 
     updateBloodSplatters(dt);
 
-    // Hide 2D killer sprite
-    if (isKiller && player && player.sprite && player.sprite.visible) player.sprite.setVisible(false);
-    if (!isKiller && !isMultiplayer && player && player.aiPlayers) {
+    // Update 3D models
+    if (isKiller && !window.isLowEndDevice) updateKiller3DSprite(dt);
+    if (!isKiller && !window.isLowEndDevice) updateSurvivor3DSprite(dt);
+
+    // Hide 2D sprites - only 3D models should be visible for characters
+    if (player && player.sprite) {
+        player.sprite.setVisible(false);
+        if (player.glowFx) player.glowFx.setVisible(false);
+    }
+    if (!isMultiplayer && player && player.aiPlayers) {
         player.aiPlayers.forEach(function(ai) {
-            if (ai.isAIKiller && ai.sprite && ai.sprite.visible) ai.sprite.setVisible(false);
+            if (ai && ai.sprite) {
+                ai.sprite.setVisible(false);
+                if (ai.glowFx) ai.glowFx.setVisible(false);
+            }
         });
     }
 
@@ -1462,21 +1582,6 @@ function update(time, dt) {
     if (graphicsSettings.dust || graphicsSettings.ash) updateDustAndAsh(dt);
     if (graphicsSettings.atmosphere) updateAtmosphere(dt);
     updateGateGlow(dt);
-
-    // Update 3D models
-    if (isKiller && !window.isLowEndDevice) updateKiller3DSprite(dt);
-    if (!isKiller && !window.isLowEndDevice) updateSurvivor3DSprite(dt);
-
-    // Hide 2D sprites for AI survivors - use only 3D
-    if (!isKiller && !isMultiplayer && player && player.aiPlayers) {
-        player.aiPlayers.forEach(function(ai) {
-            if (ai && ai.sprite && !ai.isAIKiller && ai.sprite.visible) {
-                ai.sprite.setVisible(false);
-            }
-        });
-    }
-
-    // Track chase time
     if (player && player.sprite) {
         var nearestEnemy = null;
         var chaseDist = 9999;
@@ -1533,6 +1638,12 @@ function update(time, dt) {
 
     updateHUD();
     checkWinLose();
+    
+    if (isObserver && observerTarget) {
+        if (observerTarget.state === 'dead' || observerTarget.state === 'escaped') {
+            selectNextObserverTarget();
+        }
+    }
 
     // Update ground tile to follow camera
     if (scene.ground) {
@@ -1644,7 +1755,7 @@ function checkWinLose() {
         } else allElim = (player.aiPlayers||[]).filter(function(a){return a.state!=='dead'&&a.state!=='escaped';}).length === 0;
         if (allElim) doEndGame(true, '\u0422\u044B \u043F\u043E\u0439\u043C\u0430\u043B \u0432\u0441\u0435\u0445!');
     } else {
-        if (player.state === 'dead') doEndGame(false, '\u0422\u0435\u0431\u044F \u043F\u043E\u0439\u043C\u0430\u043B\u0438!');
+        if (player.state === 'dead') enableObserverMode();
         if ((player.state === 'alive' || player.state === 'injured') && exitOpen) {
             gates.forEach(function(gate) {
                 if (gate.opened && dist(player.sprite, gate) < 80) doEndGame(true, '\u0422\u044B \u0441\u0431\u0435\u0436\u0430\u043B!');
@@ -1663,6 +1774,10 @@ function checkWinLose() {
 function doEndGame(won, msg) {
     if (gameEnded) return;
     gameEnded = true; isCarryingNearHook = false;
+    
+    var pingIndicator = document.getElementById('ping-indicator');
+    if (pingIndicator) pingIndicator.style.display = 'none';
+    
     if (player && player.carryTarget) {
         var c = player.carryTarget;
         if (c && c.sprite) { c.sprite.setScale(1,1); if (c.sprite.texture.key.includes('_carried')) c.sprite.setTexture(c.tex); }
@@ -1689,6 +1804,99 @@ function doEndGame(won, msg) {
     
     if (isMultiplayer && roomCode) setGameResult(roomCode, won ? (isKiller?'killer':'survivors') : (isKiller?'survivors':'killer'), msg);
     setTimeout(function() { stopGame(); showMatchStats(matchResult, msg); }, 600);
+}
+
+// ═══════ OBSERVER MODE ═══════
+function enableObserverMode() {
+    if (isObserver) return;
+    isObserver = true;
+    gameEnded = true;
+    
+    UI.showToast('\uD83D\uDD41 \u0422\u044B \u0443\u043C\u0435\u0440! \u041D\u0430\u0431\u043B\u044E\u0434\u0430\u0435\u0448\u044C \u0437\u0430 \u0438\u0433\u0440\u043E\u0439', 3000);
+    
+    var observerUI = document.getElementById('observer-ui');
+    if (observerUI) {
+        observerUI.style.display = 'block';
+    }
+    
+    selectNextObserverTarget();
+}
+
+function getObserverTargets() {
+    var targets = [];
+    
+    if (isKiller) {
+        return [];
+    }
+    
+    if (!isMultiplayer) {
+        if (player.aiPlayers) {
+            player.aiPlayers.forEach(function(ai) {
+                if (ai && !ai.isAIKiller && ai.state !== 'dead' && ai.state !== 'escaped') {
+                    targets.push(ai);
+                }
+            });
+        }
+    } else {
+        Object.values(remotePlayers).forEach(function(rp) {
+            if (rp.role === 'survivor' && rp.state !== 'dead' && rp.state !== 'escaped') {
+                targets.push(rp);
+            }
+        });
+    }
+    
+    return targets;
+}
+
+function selectNextObserverTarget() {
+    var targets = getObserverTargets();
+    if (targets.length === 0) {
+        noTargetsLeftForObserver();
+        return;
+    }
+    
+    var currentIndex = observerTarget ? targets.indexOf(observerTarget) : -1;
+    var nextIndex = (currentIndex + 1) % targets.length;
+    observerTarget = targets[nextIndex];
+    
+    updateObserverCamera();
+}
+
+function selectPrevObserverTarget() {
+    var targets = getObserverTargets();
+    if (targets.length === 0) {
+        noTargetsLeftForObserver();
+        return;
+    }
+    
+    var currentIndex = observerTarget ? targets.indexOf(observerTarget) : -1;
+    var prevIndex = currentIndex <= 0 ? targets.length - 1 : currentIndex - 1;
+    observerTarget = targets[prevIndex];
+    
+    updateObserverCamera();
+}
+
+function updateObserverCamera() {
+    if (!observerTarget || !scene || !scene.cameras || !scene.cameras.main) return;
+    
+    var cam = scene.cameras.main;
+    if (observerTarget.sprite) {
+        cam.startFollow(observerTarget.sprite);
+        cam.setFollowOffset(-100, -50);
+    }
+    
+    var nameEl = document.getElementById('observer-target-name');
+    if (nameEl) {
+        nameEl.textContent = observerTarget.isMe ? 'Вы' : (observerTarget.name || 'Игрок');
+    }
+}
+
+function noTargetsLeftForObserver() {
+    var observerUI = document.getElementById('observer-ui');
+    if (observerUI) {
+        observerUI.style.display = 'none';
+    }
+    UI.showToast('\uD83C\uDF89 \u0412\u0441\u0435 \u0438\u0433\u0440\u043E\u043A\u0438 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u044B!', 3000);
 }
 
 function showMatchStats(result, msg) {

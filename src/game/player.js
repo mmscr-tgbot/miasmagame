@@ -107,11 +107,14 @@ function updatePlayer(dt) {
         p.glowFx.setPosition(sp.x, sp.y);
     }
 
-    // Multiplayer position sync
+    // Multiplayer position sync with throttle
     if (isMultiplayer && roomCode && playerId && p.isMe) {
         lastPosUpdate += dt;
-        if (lastPosUpdate >= POS_UPDATE_INTERVAL) {
+        var dx = Math.abs(sp.x - lastSentPos.x);
+        var dy = Math.abs(sp.y - lastSentPos.y);
+        if (lastPosUpdate >= POS_UPDATE_INTERVAL && (dx > POS_SEND_THRESHOLD || dy > POS_SEND_THRESHOLD)) {
             lastPosUpdate = 0;
+            lastSentPos = { x: sp.x, y: sp.y };
             sendPlayerPosition(roomCode, playerId, sp.x, sp.y);
             if (p.role === 'survivor') {
                 updatePlayerState(roomCode, playerId, p.state);
@@ -272,7 +275,8 @@ function killerAction(dt) {
             nearGen.barGfx.fillRect(nearGen.bx - 24, nearGen.by - 44, 48 * (nearGen.progress / 100), 6);
         }
         
-        if (isMultiplayer && roomCode && playerId) {
+        // Only send generator progress for local player in multiplayer
+        if (isMultiplayer && roomCode && playerId && p.isMe) {
             updateGeneratorProgress(roomCode, nearGen.genId, nearGen.progress, false);
         }
         return;
@@ -376,6 +380,14 @@ function survivorAction(dt) {
             gen.progress = Math.max(0, gen.progress - 15 * dt / 1000);
             if (gen.progress <= 0) {
                 gen.beingSabotaged = false;
+            }
+            // Show sabotage feedback
+            if (gen.barGfx) {
+                gen.barGfx.clear();
+                gen.barGfx.fillStyle(0x000000, 0.7);
+                gen.barGfx.fillRect(gen.bx - 25, gen.by - 45, 50, 8);
+                gen.barGfx.fillStyle(0xff0000, 0.9);
+                gen.barGfx.fillRect(gen.bx - 24, gen.by - 44, 48 * (gen.progress / 100), 6);
             }
         } else {
             gen.progress += CONFIG.GENERATOR_REPAIR_RATE * dt / 1000;

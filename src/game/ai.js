@@ -1,6 +1,59 @@
 // ═══════ AI LOGIC ═══════
 
+var aiDebugCounter = 0;
+
+// Dynamic difficulty system
+var aiDifficultyLevel = 1.0; // 1.0 = normal, increases as survivors do better
+var aiDifficultyTimer = 0;
+
+function updateAIDifficulty(dt) {
+    if (!player || isMultiplayer) return;
+    
+    aiDifficultyTimer += dt / 1000;
+    if (aiDifficultyTimer < 5) return; // Update every 5 seconds
+    aiDifficultyTimer = 0;
+    
+    // Calculate how well survivors are doing
+    var repairedGens = generators.filter(function(g) { return g.repaired; }).length;
+    var totalGens = generators.length;
+    var repairProgress = 0;
+    generators.forEach(function(g) { repairProgress += g.progress; });
+    var avgProgress = repairProgress / totalGens;
+    
+    // Difficulty increases based on:
+    // 1. Fast generator repair (>50% avg progress = harder)
+    // 2. Multiple generators repaired (2+ repaired = harder)
+    // 3. Time since game start (later in game = harder)
+    var targetDifficulty = 1.0;
+    
+    if (avgProgress > 50) targetDifficulty += 0.2;
+    if (avgProgress > 75) targetDifficulty += 0.2;
+    if (repairedGens >= 2) targetDifficulty += 0.3;
+    if (repairedGens >= 4) targetDifficulty += 0.3;
+    
+    // Clamp difficulty between 0.7 and 2.0
+    aiDifficultyLevel = Math.max(0.7, Math.min(2.0, targetDifficulty));
+    
+    // Update AI killer stats based on difficulty
+    if (player.aiPlayers) {
+        player.aiPlayers.forEach(function(ai) {
+            if (ai && ai.isAIKiller) {
+                // Increase speed based on difficulty
+                if (!ai.baseSpeed) ai.baseSpeed = CONFIG.KILLER_SPEED;
+                ai.speedMultiplier = aiDifficultyLevel;
+                
+                // Increase patrol frequency (reduce patrol wait time)
+                if (!ai.patrolWait) ai.patrolWait = 3;
+                ai.patrolWait = Math.max(0.5, 3 - (aiDifficultyLevel - 1) * 2);
+            }
+        });
+    }
+}
+
 function updateAI(dt) {
+    // Update dynamic difficulty
+    updateAIDifficulty(dt);
+    
     if (!player || !player.aiPlayers) return;
 
     player.aiPlayers.forEach(function(ai) {
@@ -10,7 +63,7 @@ function updateAI(dt) {
         // AI Killer behavior - smart hunting
         if (ai.isAIKiller) {
             // Add delay at game start before AI starts hunting
-            if (!ai.aiStartDelay) ai.aiStartDelay = 3.0;
+            if (!ai.aiStartDelay) ai.aiStartDelay = 5.0;
             if (ai.aiStartDelay > 0) {
                 ai.aiStartDelay -= dt / 1000;
                 sp.body.setVelocity(0, 0);
@@ -63,7 +116,7 @@ function updateAI(dt) {
                 ai.aiHitCooldown = 1.5;
                 nearGen.rollbackProgress = 0;
                 UI.showToast('\uD83D\uDD27 AI \u043B\u043E\u043C\u0430\u0435\u0442 \u0433\u0435\u043D\u0435\u0440\u0430\u0442\u043E\u0440!', 1000);
-                return;
+                // Continue to chase after sabotaging
             }
             
             // Find nearest target (player survivor OR AI survivors)
@@ -141,53 +194,42 @@ function aiMoveToKiller(sp, targetX, targetY, dt, aiRef) {
         return;
     }
     
-    // Base direction
-    var baseDirX = dx / d;
-    var baseDirY = dy / d;
+    // Use Phaser's built-in velocity toward target - physics handles collisions
+    var baseSpeed = CONFIG.KILLER_SPEED;
+    if (aiRef && aiRef.speedMultiplier) baseSpeed *= aiRef.speedMultiplier;
+    if (aiRef && aiRef.slowdownTimer > 0) baseSpeed *= 0.5;
     
-    // Check for obstacles ahead
-    var checkDist = 80;
-    var obstacleX = 0;
-    var obstacleY = 0;
+    // Calculate angle to target
+    var angle = Math.atan2(dy, dx);
+    var velX = Math.cos(angle) * baseSpeed;
+    var velY = Math.sin(angle) * baseSpeed;
+    
+    // Check for obstacles directly ahead using physics
+    var checkDist = 50;
     var hasObstacle = false;
     
-    // Check static group obstacles
     if (staticGroup) {
         staticGroup.getChildren().forEach(function(obs) {
             if (!obs.visible) return;
             var ox = obs.x;
             var oy = obs.y;
             var od = Math.sqrt(Math.pow(ox - sp.x, 2) + Math.pow(oy - sp.y, 2));
-            if (od < checkDist && od > 10) {
+            if (od < checkDist && od > 5) {
                 // Check if obstacle is in the path
                 var angleToObs = Math.atan2(oy - sp.y, ox - sp.x);
-                var angleToTarget = Math.atan2(dy, dx);
-                var angleDiff = Math.abs(angleToObs - angleToTarget);
-                if (angleDiff < 0.8 || angleDiff > Math.PI * 2 - 0.8) {
+                var angleDiff = Math.abs(angleToObs - angle);
+                if (angleDiff < 0.6 || angleDiff > Math.PI * 2 - 0.6) {
                     hasObstacle = true;
-                    obstacleX = ox;
-                    obstacleY = oy;
+                    // Add perpendicular offset to avoid
+                    velX += (ox > sp.x ? -1 : 1) * speed * 0.5;
+                    velY += (oy > sp.y ? -1 : 1) * speed * 0.5;
                 }
             }
         });
     }
     
-    var speed = CONFIG.KILLER_SPEED;
-    if (aiRef && aiRef.slowdownTimer > 0) speed *= 0.5;
-    
-    if (hasObstacle) {
-        // Steer around obstacle
-        var avoidAngle = Math.atan2(obstacleY - sp.y, obstacleX - sp.x);
-        var targetAngle = Math.atan2(dy, dx);
-        // Choose left or right avoidance
-        var steerDir = (targetAngle - avoidAngle + Math.PI * 2) % (Math.PI * 2) > Math.PI ? -1 : 1;
-        var avoidAngle2 = avoidAngle + steerDir * Math.PI / 3;
-        var finalX = Math.cos(avoidAngle2) * speed;
-        var finalY = Math.sin(avoidAngle2) * speed;
-        sp.body.setVelocity(finalX, finalY);
-    } else {
-        sp.body.setVelocity(baseDirX * speed, baseDirY * speed);
-    }
+    // Apply velocity - Arcade physics will handle actual collision
+    sp.body.setVelocity(velX, velY);
 }
 
 // Find nearest survivor for AI killer (includes player)
@@ -296,6 +338,38 @@ function updateSmartSurvivorAI(ai, dt) {
         }
     }
     ai.fleeingFromKiller = false;
+    
+    // Priority 2.5: Heal injured ally if close
+    var injuredAlly = null;
+    if (player && player.aiPlayers) {
+        player.aiPlayers.forEach(function(other) {
+            if (other !== ai && !other.isAIKiller && other.state === 'injured') {
+                var d = dist(sp, other.sprite);
+                if (d < 200) {
+                    injuredAlly = other;
+                }
+            }
+        });
+    }
+    
+    if (injuredAlly) {
+        var dAlly = dist(sp, injuredAlly.sprite);
+        if (dAlly < CONFIG.INTERACT_DISTANCE) {
+            // Heal the ally
+            injuredAlly.state = 'alive';
+            injuredAlly.health = 100;
+            if (injuredAlly.sprite) {
+                injuredAlly.sprite.setTint(0xffffff);
+                injuredAlly.sprite.setAlpha(1);
+            }
+            matchStats.survivorsHealed++;
+            addBloodpoints('support', 500, 'Лечение союзника');
+            UI.showToast('\u2764\uFE0F \u0421\u043E\u044E\u0437\u043D\u0438\u043A \u0438\u0437\u043B\u0435\u0447\u0435\u043D!', 1500);
+        } else {
+            moveTo(sp, injuredAlly.sprite.x, injuredAlly.sprite.y, ai.state === 'injured' ? CONFIG.INJURED_SPEED : CONFIG.PLAYER_SPEED);
+        }
+        return;
+    }
     
     // Priority 3: Open gates if all generators done (only one survivor should do this)
     var repairedCount = generators.filter(function(g) { return g.repaired; }).length;
